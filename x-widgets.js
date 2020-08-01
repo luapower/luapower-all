@@ -1,6 +1,6 @@
 /*
 
-	X-WIDGETS: Data-driven web components in JavaScript.
+	X-WIDGETS: Model-driven live-editable web components in JavaScript.
 	Written by Cosmin Apreutesei. Public Domain.
 
 */
@@ -32,7 +32,7 @@ function redo() {
 
 function focused_widget(e) {
 	e = e || document.activeElement
-	return e && e != window && e != document && e.hasclass('x-widget') && e || (e.parent && focused_widget(e.parent))
+	return e && e.typename && e || (e.parent && e.parent != e && focused_widget(e.parent))
 }
 
 editing_widget = null
@@ -96,10 +96,35 @@ function parent_widget(e) {
 	}
 }
 
+function selectable_parent_widget(e) {
+	assert(e != window)
+	let parent = e.parent
+	while (parent) {
+		if (parent.child_widgets && parent.can_select_widget)
+			return parent
+		parent = parent.parent
+	}
+}
+
 function selectable_widget(e) {
+
+	attr(e, 'props').id = {name: 'id'}
+
+	override_property_setter(e, 'id', function(inherited, id) {
+		let id0 = e.id
+		inherited.call(this, id)
+		if (id === id0)
+			return
+		this.fire('prop_changed', 'id', id, id0)
+		document.fire(event('global_changed', false, this, id, id0))
+	})
 
 	e.property('parent_widget', function() {
 		return parent_widget(this)
+	})
+
+	e.property('selectable_parent_widget', function() {
+		return selectable_parent_widget(this)
 	})
 
 	e.can_select_widget = true
@@ -127,7 +152,7 @@ function selectable_widget(e) {
 	e.select_widget = function(focus) {
 
 		// make widget unfocusable: the overlay will be focusable instead.
-		e.widget_focusable = false
+		e.focusable = false
 
 		let overlay = div({class: 'x-widget-selected-overlay', tabindex: 0})
 		e.widget_selected_overlay = overlay
@@ -147,8 +172,9 @@ function selectable_widget(e) {
 					overlay.focus()
 				if (selected_widgets.size == 1) {
 					unselect_all_widgets()
-					if (e.parent_widget)
-						e.parent_widget.widget_selected = true
+					let p = e.selectable_parent_widget
+					if (p)
+						p.widget_selected = true
 				} else
 					e.widget_selected = !e.widget_selected
 			} else
@@ -164,7 +190,7 @@ function selectable_widget(e) {
 
 	e.unselect_widget = function(focus_prev) {
 
-		e.widget_focusable = true
+		e.focusable = true
 
 		e.widget_selected_overlay.remove()
 		e.widget_selected_overlay = null
@@ -189,11 +215,11 @@ function selectable_widget(e) {
 
 			// prevent accidentally clicking on the parent of any of the selected widgets.
 			for (let e1 of selected_widgets) {
-				let p = e1.parent_widget
+				let p = e1.selectable_parent_widget
 				while (p) {
 					if (p == e)
 						return false
-					p = p.parent_widget
+					p = p.selectable_parent_widget
 				}
 			}
 
@@ -242,10 +268,10 @@ function editable_widget(e) {
 				if (editing_widget)
 					editing_widget.widget_editing = false
 				assert(editing_widget == null)
-				e.widget_focusable = false
+				e.focusable = false
 				editing_widget = e
 			} else {
-				e.widget_focusable = true
+				e.focusable = true
 				editing_widget = null
 			}
 			e.set_widget_editing(v)
@@ -260,8 +286,6 @@ function editable_widget(e) {
 // ---------------------------------------------------------------------------
 
 function cssgrid_item_widget(e) {
-
-	selectable_widget(e)
 
 	e.prop('pos_x'  , {style: 'grid-column-start' , type: 'number', default: 1})
 	e.prop('pos_y'  , {style: 'grid-row-start'    , type: 'number', default: 1})
@@ -493,10 +517,8 @@ function serializable_widget(e) {
 				if (v !== def.default) {
 					if (def.serialize)
 						v = def.serialize(v)
-					else if (v !== null && typeof v == 'object' && v.typename && v.serialize) {
-						attr(t, 'components')[prop] = true
+					else if (isobject(v) && v.serialize)
 						v = v.serialize()
-					}
 					if (v !== undefined)
 						t[prop] = v
 				}
@@ -509,7 +531,7 @@ function serializable_widget(e) {
 }
 
 // ---------------------------------------------------------------------------
-// focusable widget mixin ----------------------------------------------------
+// focusable widget mixin
 // ---------------------------------------------------------------------------
 
 function focusable_widget(e, fe) {
@@ -524,7 +546,7 @@ function focusable_widget(e, fe) {
 		fe.attr('tabindex', focusable ? i : -1)
 	}
 	e.prop('tabindex', {default: 0})
-	e.property('widget_focusable', () => focusable, function(v) {
+	e.property('focusable', () => focusable, function(v) {
 		v = !!v
 		if (v == focusable) return
 		focusable = v
@@ -533,112 +555,123 @@ function focusable_widget(e, fe) {
 }
 
 // ---------------------------------------------------------------------------
+// cell nav
+// ---------------------------------------------------------------------------
+
+function cell_nav(field_opt, rs_opt) {
+
+	let field = update({}, field_opt)
+	let row = [null]
+
+	let rs = rowset(update({
+		fields: [field],
+		rows: [row],
+		can_change_rows: true,
+	}, rs_opt))
+
+	rs.set_val(row, rs.field(0), field.val)
+
+	return {rowset: rs, focused_row: row, is_fake: true}
+}
+
+// ---------------------------------------------------------------------------
 // val widget mixin
 // ---------------------------------------------------------------------------
 
-/*
-	val widgets must implement:
-		field_prop_map: {prop->field_prop}
-		update_val(input_val, ev)
-		update_error(err, ev)
-*/
-
 function val_widget(e) {
 
+	selectable_widget(e)
 	cssgrid_item_widget(e)
 	serializable_widget(e)
 
-	e.default_val = null
-	e.field_prop_map = {
-		field_name: 'name', field_type: 'type', label: 'text',
-		format: 'format',
-		min: 'min', max: 'max', maxlen: 'maxlen', multiple_of: 'multiple_of',
-		lookup_rowset: 'lookup_rowset', lookup_col: 'lookup_col', display_col: 'display_col',
-	}
-
-	e.init_nav = function() {
-		if (!e.nav) {
-			// create an internal one-row-one-field rowset.
-
-			// transfer value of e.foo to field.bar based on field_prop_map.
-			let field = {}
-			for (let e_k in e.field_prop_map) {
-				let field_k = e.field_prop_map[e_k]
-				if (e_k in e)
-					field[field_k] = e[e_k]
-			}
-
-			let row = [e.default_val]
-
-			let internal_rowset = rowset({
-				fields: [field],
-				rows: [row],
-				can_change_rows: true,
-			})
-
-			// create a fake navigator.
-
-			e.nav = {rowset: internal_rowset, focused_row: row, is_fake: true}
-
-			e.field = e.nav.rowset.field(0)
-			e.col = e.field.name
-
-			if (e.validate) // inline validator, only for internal-rowset widgets.
-				e.nav.rowset.on_validate_val(e.col, e.validate)
-
-			e.init_field()
-		} else if (e.nav !== true) {
-			if (e.field)
-				e.col = e.field.name
-			if (e.col == null)
-				e.col = 0
-			e.field = e.nav.rowset.field(e.col)
-			e.init_field()
-		}
-	}
+	// nav & col --------------------------------------------------------------
 
 	function rowset_cell_state_changed(row, field, prop, val, ev) {
 		cell_state_changed(prop, val, ev)
 	}
 
-	e.bind_nav = function(on) {
-		if (e.nav.is_fake) {
-			e.nav.rowset.bind_user_widget(e, on)
-			e.nav.rowset.on('cell_state_changed', rowset_cell_state_changed, on)
+	function rowset_changed(rs1, rs0) {
+		bind_nav(nav, col, rs0, false)
+		bind_nav(nav, col, rs1, true)
+		e.update()
+	}
+
+	function bind_nav(nav, col, rs, on) {
+		if (!(nav && col != null && rs)) return
+		if (nav.is_fake) {
+			rs.bind_user_widget(e, on)
+			rs.on('cell_state_changed', rowset_cell_state_changed, on)
 		} else {
-			e.nav.on('focused_row_changed', e.init_val, on)
-			e.nav.on('focused_row_cell_state_changed_for_'+e.col, cell_state_changed, on)
-		}
-		e.nav.rowset.on('display_vals_changed_for_'+e.col, e.init_val, on)
-		e.nav.rowset.on('loaded', rowset_loaded, on)
-	}
-
-	e.rebind_val = function(nav, col) {
-		if (e.isConnected)
-			e.bind_nav(false)
-		e.nav = nav
-		e.col = col
-		e.field = e.nav.rowset.field(e.col)
-		e.init_field()
-		if (e.isConnected) {
-			e.bind_nav(true)
-			e.init_val()
+			nav.on('rowset_changed', rowset_changed)
+			nav.on('focused_row_changed', e.update, on)
+			nav.on('focused_row_cell_state_changed_for_'+col, cell_state_changed, on)
+			rs.on('display_vals_changed_for_'+col, e.update, on)
+			rs.on('loaded', rowset_loaded, on)
 		}
 	}
 
-	e.init_field = function() {} // stub
+	e.on('attach', function() {
+		bind_nav(nav, col, nav.rowset, true)
+		e.update()
+	})
+
+	e.on('detach', function() {
+		bind_nav(nav, col, nav.rowset, false)
+		e.update()
+	})
+
+	function set_nav_col(nav0, col0) {
+		if (e.attached) {
+			bind_nav(nav0, col0, nav0.rowset, false)
+			bind_nav(nav, col, nav.rowset, true)
+		}
+		e.update()
+	}
+
+	function set_nav(nav1) {
+		let nav0 = nav
+		nav = nav1
+		set_nav_col(nav0, col)
+	}
+	let nav = null
+	e.property('nav', () => nav, set_nav)
+
+	e.prop('nav_name', {store: 'var', bind: 'nav'})
+
+	function set_col(col1) {
+		let col0 = col
+		col = col1
+		set_nav_col(nav, col0)
+	}
+	let col = 0
+	e.property('col', () => col, set_col)
+
+	// field & val ------------------------------------------------------------
 
 	function rowset_loaded() {
-		e.field = e.nav.rowset.field(e.col)
-		e.init_field()
+		e.update()
 	}
 
-	e.init_val = function() {
-		cell_state_changed('input_val', e.input_val)
-		cell_state_changed('val', e.val)
-		cell_state_changed('cell_error', e.error)
-		cell_state_changed('cell_modified', e.modified)
+	let disabled = false
+	e.update = function() {
+		if (e.attached) {
+			e.field = nav && col != null && nav.rowset && nav.rowset.field(col)
+			disabled = !e.row || !e.field
+			e.class('disabled', disabled)
+			e.focusable = !disabled
+			cell_state_changed('input_val', e.input_val)
+			cell_state_changed('val', e.val)
+			cell_state_changed('cell_error', e.error)
+			cell_state_changed('cell_modified', e.modified)
+		} else {
+			e.field = null
+		}
 	}
+
+	function if_enabled() { if (disabled) return false }
+	e.on('mousedown', if_enabled)
+	e.on('mouseup', if_enabled)
+	e.on('click', if_enabled)
 
 	function cell_state_changed(prop, val, ev) {
 		if (prop == 'input_val')
@@ -675,36 +708,37 @@ function val_widget(e) {
 	e.to_val = function(v) { return v; }
 	e.from_val = function(v) { return v; }
 
+	e.property('row', () => nav && nav.focused_row)
+
 	function get_val() {
-		let row = e.nav.focused_row
-		return row ? e.nav.rowset.val(row, e.field) : null
+		let row = e.row
+		return row ? nav.rowset.val(row, e.field) : null
 	}
 	e.set_val = function(v, ev) {
-		let row = e.nav.focused_row
-		if (!row)
-			return
-		e.nav.rowset.set_val(row, e.field, e.to_val(v), ev)
+		let row = e.row
+		if (row)
+			nav.rowset.set_val(row, e.field, e.to_val(v), ev)
 	}
 	e.late_property('val', get_val, e.set_val)
 
 	e.property('input_val', function() {
-		let row = e.nav.focused_row
-		return row ? e.from_val(e.nav.rowset.input_val(row, e.field)) : null
+		let row = e.row
+		return row ? e.from_val(nav.rowset.input_val(e.row, e.field)) : null
 	})
 
 	e.property('error', function() {
-		let row = e.nav.focused_row
-		return row ? e.nav.rowset.cell_error(row, e.field) : undefined
+		let row = e.row
+		return row ? nav.rowset.cell_error(row, e.field) : undefined
 	})
 
 	e.property('modified', function() {
-		let row = e.nav.focused_row
-		return row ? e.nav.rowset.cell_modified(row, e.field) : false
+		let row = e.row
+		return row ? nav.rowset.cell_modified(row, e.field) : false
 	})
 
 	e.display_val = function() {
-		let row = e.nav.focused_row
-		return row ? e.nav.rowset.display_val(row, e.field) : ''
+		let row = e.row
+		return row ? nav.rowset.display_val(row, e.field) : ''
 	}
 
 }
@@ -721,8 +755,12 @@ component('x-tooltip', function(e) {
 	e.pin = div({class: 'x-tooltip-tip'})
 	e.add(e.text_div, e.pin)
 
-	e.attrval('side', 'top')
-	e.attrval('align', 'center')
+	e.prop('side'   , {attr: 'side'    , type: 'enum', enum_values: ['top', 'bottom', 'left', 'right', 'inner-top', 'inner-bottom', 'inner-left', 'inner-right', 'inner-center'], default: 'top'})
+	e.prop('align'  , {attr: 'align'   , type: 'enum', enum_values: ['center', 'start', 'end'], default: 'center'})
+	e.prop('kind'   , {attr: 'kind'    , type: 'enum', enum_values: ['default', 'info', 'error'], default: 'default'})
+	e.prop('px'     , {attr: 'px'      , type: 'number', default: 0})
+	e.prop('py'     , {attr: 'py'      , type: 'number', default: 0})
+	e.prop('timeout', {attr: 'timeout'})
 
 	let target
 
@@ -734,6 +772,12 @@ component('x-tooltip', function(e) {
 	e.update = function() {
 		e.popup(target, e.side, e.align, e.px, e.py)
 	}
+
+	e.set_side  = e.update
+	e.set_align = e.update
+	e.set_kind  = e.update
+	e.set_px    = e.update
+	e.set_py    = e.update
 
 	function set_timeout_timer() {
 		let t = e.timeout
@@ -759,13 +803,6 @@ component('x-tooltip', function(e) {
 		function(v) { e.show(v); e.update() }
 	)
 
-	e.attr_property('side'    , e.update)
-	e.attr_property('align'   , e.update)
-	e.attr_property('kind'    , e.update)
-	e.num_attr_property('px'  , e.update)
-	e.num_attr_property('py'  , e.update)
-	e.attr_property('timeout')
-
 	e.late_property('target',
 		function()  { return target },
 		function(v) { target = v; e.update() }
@@ -782,6 +819,7 @@ tooltip.reading_speed = 800 // letters-per-minute.
 component('x-button', function(e) {
 
 	serializable_widget(e)
+	selectable_widget(e)
 	focusable_widget(e)
 	editable_widget(e)
 	cssgrid_item_widget(e)
@@ -792,9 +830,8 @@ component('x-button', function(e) {
 	e.text_div = span({class: 'x-button-text'})
 	e.add(e.icon_div, e.text_div)
 
-	e.get_text = function()  { return e.text_div.html }
-	e.set_text = function(s) { e.text_div.set(s) }
-	e.prop('text', {default: 'OK'})
+	e.set_text = function(s) { e.text_div.set(s, 'pre-wrap') }
+	e.prop('text', {store: 'var', default: 'OK'})
 
 	e.set_icon = function(v) {
 		if (typeof v == 'string')
@@ -850,6 +887,8 @@ component('x-button', function(e) {
 
 	e.set_widget_editing = function(v) {
 		e.text_div.contenteditable = v
+		if (!v)
+			e.text = e.text_div.innerText
 	}
 
 	e.on('pointerdown', function(ev) {
@@ -896,17 +935,7 @@ component('x-checkbox', function(e) {
 	// model
 
 	e.init = function() {
-		e.init_nav()
 		e.class('center', !!e.center)
-	}
-
-	e.attach = function() {
-		e.init_val()
-		e.bind_nav(true)
-	}
-
-	e.detach = function() {
-		e.bind_nav(false)
 	}
 
 	let get_checked = function() {
@@ -919,9 +948,8 @@ component('x-checkbox', function(e) {
 
 	// view
 
-	e.get_text = function()  { return e.text_div.html }
-	e.set_text = function(s) { e.text_div.set(s) }
-	e.prop('text')
+	e.set_text = function(s) { e.text_div.set(s, 'pre-wrap') }
+	e.prop('text', {store: 'var', default: 'Check me!'})
 
 	e.update_val = function() {
 		let v = e.checked
@@ -977,6 +1005,8 @@ component('x-checkbox', function(e) {
 
 	e.set_widget_editing = function(v) {
 		e.text_div.contenteditable = v
+		if (!v)
+			e.text = e.text_div.innerText
 	}
 
 	e.on('pointerdown', function(ev) {
@@ -1014,7 +1044,6 @@ component('x-radiogroup', function(e) {
 	e.items = []
 
 	e.init = function() {
-		e.init_nav()
 		for (let item of e.items) {
 			if (typeof item == 'string' || item instanceof Node)
 				item = {text: item}
@@ -1030,15 +1059,6 @@ component('x-radiogroup', function(e) {
 			idiv.on('keydown', idiv_keydown)
 			e.add(idiv)
 		}
-	}
-
-	e.attach = function() {
-		e.init_val()
-		e.bind_nav(true)
-	}
-
-	e.detach = function() {
-		e.bind_nav(false)
 	}
 
 	let sel_item
@@ -1098,11 +1118,15 @@ function input_widget(e) {
 	}
 
 	e.class('with-inner-label', true)
-	e.bool_attr_property('nolabel', update_inner_label)
+	e.prop('nolabel', {attr: 'nolabel', type: 'bool'})
+	e.set_nolabel = update_inner_label
 
-	e.init_field = function() {
+	let update = e.update
+	e.update = function() {
+		update()
 		update_inner_label()
-		e.inner_label_div.set(e.field.text)
+		if (e.field)
+			e.inner_label_div.set(e.field.text)
 	}
 
 }
@@ -1119,26 +1143,13 @@ component('x-input', function(e) {
 	e.input.set_input_filter() // must be set as first event handler!
 	e.add(e.input, e.inner_label_div)
 
-	e.init = function() {
-		e.init_nav()
-	}
-
-	e.attach = function() {
-		e.init_val()
-		e.bind_nav(true)
-	}
-
-	e.detach = function() {
-		e.bind_nav(false)
-	}
-
 	function update_state(s) {
 		e.input.class('empty', s == '')
 		e.inner_label_div.class('empty', s == '')
 	}
 
 	e.from_text = function(s) { return e.field.from_text(s) }
-	e.to_text = function(v) { return e.field.to_text(v) }
+	e.to_text = function(v) { return e.field ? e.field.to_text(v) : '' }
 
 	e.update_val = function(v, ev) {
 		if (ev && ev.input == e && e.typing)
@@ -1272,7 +1283,6 @@ component('x-spin-input', function(e) {
 	e.down = div({class: 'x-spin-input-button fa'})
 
 	e.field_type = 'number'
-	update(e.field_prop_map, {field_type: 'type'})
 
 	let init_input = e.init
 	e.init = function() {
@@ -1417,20 +1427,11 @@ component('x-slider', function(e) {
 	val_widget(e)
 
 	e.field_type = 'number'
-	update(e.field_prop_map, {field_type: 'type'})
 
-	e.init = function() {
-		e.init_nav()
-		e.class('animated', e.field.multiple_of >= 5) // TODO: that's not the point of this.
-	}
-
-	e.attach = function() {
-		e.init_val()
-		e.bind_nav(true)
-	}
-
-	e.detach = function() {
-		e.bind_nav(false)
+	let update = e.update
+	e.update = function() {
+		update()
+		e.class('animated', e.field && e.field.multiple_of >= 5) // TODO: that's not the point of this.
 	}
 
 	function progress_for(v) {
@@ -1536,8 +1537,8 @@ component('x-slider', function(e) {
 
 component('x-dropdown', function(e) {
 
-	// view
-
+	val_widget(e)
+	input_widget(e)
 	focusable_widget(e)
 
 	e.classes = 'x-widget x-input x-dropdown'
@@ -1547,18 +1548,7 @@ component('x-dropdown', function(e) {
 	e.inner_label_div = div({class: 'x-input-inner-label x-dropdown-inner-label'})
 	e.add(e.val_div, e.button, e.inner_label_div)
 
-	val_widget(e)
-	input_widget(e)
-
-	let init_nav = e.init_nav
-	e.init_nav = function() {
-		init_nav()
-		if (e.nav !== true)
-			e.picker.rebind_val(e.nav, e.col)
-	}
-
 	e.init = function() {
-		e.init_nav()
 		e.picker.on('val_picked', picker_val_picked)
 		e.picker.on('keydown', picker_keydown)
 	}
@@ -1570,15 +1560,12 @@ component('x-dropdown', function(e) {
 	}
 
 	e.attach = function() {
-		e.init_val()
-		e.bind_nav(true)
 		bind_document(true)
 	}
 
 	e.detach = function() {
 		e.close()
 		bind_document(false)
-		e.bind_nav(false)
 	}
 
 	// val updating
@@ -1995,8 +1982,10 @@ component('x-menu', function(e) {
 
 component('x-widget-placeholder', function(e) {
 
-	cssgrid_item_widget(e)
 	serializable_widget(e)
+	selectable_widget(e)
+	cssgrid_item_widget(e)
+
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
 
@@ -2067,8 +2056,10 @@ component('x-widget-placeholder', function(e) {
 
 component('x-pagelist', function(e) {
 
+	selectable_widget(e)
 	editable_widget(e)
 	cssgrid_item_widget(e)
+
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
 	serializable_widget(e)
@@ -2091,7 +2082,7 @@ component('x-pagelist', function(e) {
 		let idiv = div({class: 'x-pagelist-item', tabindex: 0}, tdiv, xbutton)
 		idiv.text_div = tdiv
 		idiv.xbutton = xbutton
-		tdiv.set(item.text)
+		tdiv.set(item.text, 'pre-wrap')
 		tdiv.title = item.text
 		idiv.on('pointerdown', idiv_pointerdown)
 		idiv.on('dblclick'   , idiv_dblclick)
@@ -2305,6 +2296,8 @@ component('x-pagelist', function(e) {
 	}
 
 	e.set_widget_editing = function(v) {
+		if (!v)
+			tdiv_input()
 		e.update()
 	}
 
@@ -2330,7 +2323,7 @@ component('x-pagelist', function(e) {
 	}
 
 	function tdiv_input() {
-		e.items[e.selected_index].text = e.selected_item.text_div.textContent
+		e.items[e.selected_index].text = e.selected_item.text_div.innerText
 		e.update()
 	}
 
@@ -2381,6 +2374,7 @@ component('x-pagelist', function(e) {
 component('x-split', function(e) {
 
 	serializable_widget(e)
+	selectable_widget(e)
 	cssgrid_item_widget(e)
 
 	e.align_x = 'stretch'
@@ -2838,6 +2832,7 @@ component('x-toolbox', function(e) {
 component('x-richtext', function(e) {
 
 	serializable_widget(e)
+	selectable_widget(e)
 	editable_widget(e)
 	cssgrid_item_widget(e)
 
@@ -2845,8 +2840,8 @@ component('x-richtext', function(e) {
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
 
-	e.content_div = div({class: 'x-richedit-content'})
-	e.add(e.content_div)
+	e.content_div = div({class: 'x-richedit-content'}, tag('slot', {}))
+	e.attachShadow({mode: 'open'}).appendChild(e.content_div)
 
 	// content property
 
@@ -2998,11 +2993,10 @@ function richtext_widget_editing(e) {
 
 	e.content_div.on('keydown', function(ev) {
 		if (ev.key === 'Enter')
-			if (document.queryCommandValue('formatBlock') === 'blockquote') {
+			if (document.queryCommandValue('formatBlock') == 'blockquote')
 				after(0, function() { exec('formatBlock', '<p>') })
-			else if (document.queryCommandValue('formatBlock') === 'pre')
-				after(0, function() { print('here'); exec('formatBlock', '<br>') })
-		}
+			else if (document.queryCommandValue('formatBlock') == 'pre')
+				after(0, function() { exec('formatBlock', '<br>') })
 	})
 
 	e.content_div.on('pointerdown', function(ev) {

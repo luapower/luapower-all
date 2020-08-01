@@ -77,6 +77,7 @@ prop_inspector = component('x-prop-inspector', function(e) {
 	function bind(on) {
 		document.on('selected_widgets_changed', selected_widgets_changed, on)
 		document.on('prop_changed', prop_changed, on)
+		document.on('focusin', focus_changed, on)
 	}
 	e.on('attach', function() { bind(true) })
 	e.on('detach', function() { bind(false) })
@@ -85,7 +86,7 @@ prop_inspector = component('x-prop-inspector', function(e) {
 
 	function init_widgets() {
 		widgets = selected_widgets
-		if (!selected_widgets.size && focused_widget())
+		if (!selected_widgets.size && focused_widget() && focused_widget().can_select_widget)
 			widgets = new Set([focused_widget()])
 	}
 
@@ -101,8 +102,21 @@ prop_inspector = component('x-prop-inspector', function(e) {
 		init_rowset()
 	}
 
+	let barrier
+	function focus_changed() {
+		if (barrier) return
+		if (selected_widgets.size)
+			return
+		let fe = focused_widget()
+		if (!fe || !fe.can_select_widget)
+			return
+		barrier = true
+		init_widgets()
+		init_rowset()
+		barrier = false
+	}
+
 	function prop_changed(k, v, v0, ev) {
-		return
 		let widget = ev.target
 		if (!widgets.has(widget))
 			return

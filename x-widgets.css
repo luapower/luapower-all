@@ -91,6 +91,14 @@
 	outline: 0px solid transparent;
 }
 
+.x-widget.disabled {
+	opacity: .5;
+}
+
+.x-widget.disabled * {
+	cursor: default;
+}
+
 /* item states ------------------------------------------------------------ */
 
 .x-item.disabled { color: #999; }

@@ -49,8 +49,7 @@ component('x-grid', function(e) {
 		horiz = !v
 		e.class('x-hgrid',  horiz)
 		e.class('x-vgrid', !horiz)
-		e.init_fields()
-		e.init_rows()
+		e.update({fields: true, rows: true, focus: true})
 	}
 	e.prop('vertical', {type: 'bool'})
 
@@ -61,21 +60,15 @@ component('x-grid', function(e) {
 	e.progress_bar = div({class: 'x-grid-progress-bar'})
 	e.add(e.header, e.progress_bar, e.cells_view)
 
-	e.init = function() {
-		e.rowset_widget_init()
-	}
-
 	function bind(on) {
 		document.on('layout_changed', layout_changed, on)
 	}
 
 	e.attach = function() {
-		e.rowset_widget_attach()
 		bind(true)
 	}
 
 	e.detach = function() {
-		e.rowset_widget_detach()
 		bind(false)
 	}
 
@@ -278,7 +271,7 @@ component('x-grid', function(e) {
 
 	function update_header_w(w) { // vgrid
 		e.header_w = max(0, w)
-		update_sizes()
+		e.update({sizes: true})
 	}
 
 	e.scroll_to_cell = function(ri, fi) {
@@ -329,14 +322,8 @@ component('x-grid', function(e) {
 			let h1 = r.h
 			if (w1 == 0 && h1 == 0)
 				return // hidden
-			if (h1 !== h0 || w1 !== w0) {
-				let last_vrn = vrn
-				update_sizes()
-				if (vrn != last_vrn) {
-					init_cells()
-					update_viewport()
-				}
-			}
+			if (h1 !== h0 || w1 !== w0)
+				e.update({sizes: true})
 			w0 = w1
 			h0 = h1
 		}
@@ -350,8 +337,8 @@ component('x-grid', function(e) {
 
 	// rendering --------------------------------------------------------------
 
-	e.init_fields = function() {
-		if (!e.isConnected)
+	function update_fields() {
+		if (!e.attached)
 			return
 		e.header.clear()
 		for (let fi = 0; fi < e.fields.length; fi++) {
@@ -411,9 +398,12 @@ component('x-grid', function(e) {
 			rs.set_val(this.focused_row, f0, checked)
 			rs.filtered_count = (rs.filtered_count || 0) + (checked ? -1 : 1)
 			dd.update_val()
-			e.init_rows_array()
-			e.init_rows()
-			e.sort()
+
+			// TODO:
+
+			//e.init_rows_array()
+			//e.init_rows()
+			//e.sort()
 		}
 
 		dd.picker.on('keydown', function(key) {
@@ -445,10 +435,6 @@ component('x-grid', function(e) {
 			hcell.sort_icon_pri.set(pri > 1 ? pri : '')
 		}
 	}
-
-	e.on('sort_order_changed', function() {
-		update_sort_icons()
-	})
 
 	function init_cells(moving) {
 		e.cells.clear()
@@ -540,7 +526,7 @@ component('x-grid', function(e) {
 		cell.show()
 	}
 
-	function update_cells() {
+	function update_cells_not_moving() {
 		for (let ri = vri1; ri < vri2; ri++) {
 			for (let fi = 0; fi < e.fields.length; fi++) {
 				let cell = e.cells.at[(ri - vri1) * e.fields.length + fi]
@@ -551,46 +537,19 @@ component('x-grid', function(e) {
 		}
 	}
 
+	function update_cells() {
+		if (hit.state == 'row_moving')
+			update_cells_moving()
+		else
+			update_cells_not_moving()
+	}
+
 	e.cells_view.on('scroll', function() {
 		let last_vri1 = vri1
 		update_scroll()
 		if (vri1 != last_vri1)
-			update_viewport()
-	})
-
-	function update_viewport() {
-		if (hit.state == 'row_moving')
-			update_cells_moving()
-		else
 			update_cells()
-	}
-
-	function unfocus_cell(cell) {
-		cell.class('focused', false)
-		cell.class('editing', false)
-		cell.class('row-focused', false)
-	}
-
-	function focus_cell(cell, fi, focused_fi, editing) {
-		let focused = !e.can_focus_cells || fi == focused_fi
-		cell.class('focused', focused)
-		cell.class('editing', focused && editing)
-		cell.class('row-focused', true)
-	}
-
-	function set_field_visibility(field, view_fi, on) {
-		if (on)
-			if (view_fi != null)
-				e.fields.insert(view_fi, field)
-			else
-				e.fields.push(field)
-		else
-			e.fields.remove_value(field)
-		e.init_fields()
-		e.init_rows()
-		e.init_val()
-		e.init_focused_cell()
-	}
+	})
 
 	// resize guides ----------------------------------------------------------
 
@@ -639,7 +598,7 @@ component('x-grid', function(e) {
 		function(v) {
 			header_visible = !!v
 			e.header.show(!!v)
-			e.init_rows()
+			e.update({rows: true})
 		}
 	)
 
@@ -651,8 +610,7 @@ component('x-grid', function(e) {
 		function(v) {
 			filters_visible = !!v
 			e.header.class('with-filters', !!v)
-			e.init_fields()
-			e.init_rows()
+			e.update({rows: true})
 		}
 	)
 
@@ -694,16 +652,23 @@ component('x-grid', function(e) {
 
 	// responding to rowset changes -------------------------------------------
 
-	e.init_rows = function() {
-		if (!e.isConnected)
+	e.update = function(opt) {
+		if (!e.attached)
 			return
-		update_sizes()
-		init_cells()
-		update_viewport()
-	}
-
-	e.update_cell_focus = function() {
-		update_viewport()
+		if (opt.fields)
+			update_fields()
+		if (opt.sort_order)
+			update_sort_icons()
+		let rows = opt.rows
+		if (opt.sizes) {
+			let last_vrn = vrn
+			update_sizes()
+			rows = rows || last_vrn != vrn
+		}
+		if (rows)
+			init_cells()
+		if (rows || opt.row_contents || opt.focus)
+			update_cells()
 	}
 
 	e.update_cell_state = function(ri, fi, prop, val) {
@@ -817,12 +782,7 @@ component('x-grid', function(e) {
 				e.cell_w = max(20, mx - hit.mx)
 				let sx = hit.ri * e.cell_w - hit.dx
 				e.cells_view.scrollLeft = sx
-				let last_vrn = vrn
-				update_sizes()
-				if (vrn != last_vrn)
-					e.init_rows()
-				else
-					update_viewport()
+				e.update({sizes: true})
 			}
 
 		}
@@ -1224,7 +1184,7 @@ component('x-grid', function(e) {
 			e.move_row(moved_rows, hit_ri, hit_parent_row)
 
 			e.focused_row_index = hit_ri
-			e.init_rows()
+			e.update()
 		}
 
 		// post-init
@@ -1300,20 +1260,21 @@ component('x-grid', function(e) {
 			let focused_field  = e.focused_field
 			let selected_field = e.selected_field
 
+			// TODO: encap this
+
 			let insert_fi = over_fi - (over_fi > hit.fi ? 1 : 0)
 			let field = e.fields.remove(hit.fi)
 			e.fields.insert(insert_fi, field)
 
-			e.fields_array_changed()
 			e.focused_field_index  = e.field_index(focused_field)
 			e.selected_field_index = e.field_index(selected_field)
 			for (let [row, a] of e.selected_rows)
 				if (isarray(a))
 					a.insert(insert_fi, a.remove(hit.fi))
 
-			e.init_fields()
+			update_fields()
 			update_sizes()
-			update_viewport()
+			update_cells()
 		}
 	}
 
@@ -1392,7 +1353,7 @@ component('x-grid', function(e) {
 			return
 		if (hit.state == 'header_resizing') {
 			e.class('col-resizing', false)
-			e.init_rows()
+			e.update()
 		} else if (hit.state == 'col_resizing') {
 			mu_col_resize()
 		} else if (hit.state == 'col_dragging') {
@@ -1673,7 +1634,7 @@ component('x-grid', function(e) {
 
 			if (fi != null) {
 				function hide_field(item) {
-					set_field_visibility(item.field, null, false)
+					e.show_field(item.field, null, false)
 				}
 				let field = e.fields[fi]
 				let hide_field_text = span(); hide_field_text.set(field.text)
@@ -1690,7 +1651,7 @@ component('x-grid', function(e) {
 			})
 
 			function show_field(item) {
-				set_field_visibility(item.field, fi, true)
+				e.show_field(item.field, fi, true)
 			}
 			let items_added
 			if (e.rowset)
@@ -1709,6 +1670,8 @@ component('x-grid', function(e) {
 					text: S('all_fields_shown', 'All fields are shown'),
 					enabled: false,
 				})
+
+			items.last.separator = true
 
 			if (e.rowset.parent_field) {
 				items.push({

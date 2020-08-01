@@ -1,10 +1,11 @@
 
-Data-driven web components in pure JavaScript.
+Model-driven live-editable web components in pure JavaScript.
 
 ## Overview
 
-Better [check out the demo](http://luapower.com/x-widgets-demo.html)
-before anything, which also includes some quick-reference documentation.
+[Check out the demo](http://luapower.com/x-widgets-demo.html) before anything
+(but note that it may be broken in some days until the first stable version
+is released.)
 
 Also see the [TODO list](https://github.com/luapower/x-widgets/blob/master/x-widgets-todo.txt)
 because this is still in active development.
@@ -23,6 +24,42 @@ So what this means is: none of that responsive stuff, keyboard is king,
 no touchy the screen, and no megabytes of polyfills to implement half a
 browser because you want to squeeze that last drop of the market or deliver
 a few more ads.
+
+## Components
+
+The highlight of the library is the virtual [grid widget][x-widgets-grid]
+which can load, scroll, sort and filter 100K items instantly on any modern
+computer (or phone), can act as a tree-grid or as a vertical grid, has
+inline editing, drag & drop moving of columns and rows and tons of other
+features (not to mention, far, far less code than any js library of similar
+capabilities, if you're into that sort of thing).
+
+Accompanying that there's a listbox widget which is not virtual (so it can't
+hold as many items as the grid efficiently), not out-of-the-box editable,
+but the items can be custom-rendered to variable widths and heights and you
+can still have drag & drop moving, multiple selection, sorting, etc.
+
+Next there's an assortment of singe-value widgets to use for forms. You tie
+these up to a navigation component (grid or listbox) and they show and edit
+the data at whatever the focused row is on that component.
+
+Then there's a bunch of layouting widgets like pagelist, splitter and
+a css-grid. The beauty with these is that you can Ctrl+(Shift+)click on
+any of those and they temporarily enter a "design mode" which allows you
+to tweak the layout of your application while it's running. Press Esc
+or click outside and it goes back to normal mode. The widgets include
+full built-in customizable (de)serialization to help with making those
+changes persistent. There's also an object inspector and a widget tree,
+the building blocks of a designer UI.
+
+All navigation widgets as well as the single-value widgets are model-driven
+(we used to call these data-driven way back when wearing a t-shirt over
+a long sleeve was cool). The data is never in the widget. Instead, the data
+stays in a so-called rowset (a non-visual object holding a two-dimensional
+structure of rows and columns). One or more widgets are then bound to the
+rowset so changes on a cell made by one widget are reflected instantly by
+other widgets (aka 2-way binding). The rowset then gathers the changes made
+to one or more rows/cells and can push them to a server (aka 3-way binding).
 
 ## Browser Compatibility
 

@@ -18,34 +18,23 @@ component('x-calendar', function(e) {
 	e.sel_month = list_dropdown({
 		classes: 'x-calendar-sel-month',
 		items: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-		format: format_month,
+		nav: cell_nav({format: format_month}),
 		listbox: {
 			format_item: format_month,
 		},
 	})
 	e.sel_year = spin_input({
 		classes: 'x-calendar-sel-year',
-		min: 100,
-		max: 3000,
+		nav: cell_nav({
+			min: 100,
+			max: 3000,
+		}),
 		button_style: 'left-right',
 	})
 	e.header = div({class: 'x-calendar-header'},
 		e.sel_day, e.sel_day_suffix, e.sel_month, e.sel_year)
 	e.weekview = H.table({class: 'x-calendar-weekview'})
 	e.add(e.header, e.weekview)
-
-	e.init = function() {
-		e.init_nav()
-	}
-
-	e.attach = function() {
-		e.init_val()
-		e.bind_nav(true)
-	}
-
-	e.detach = function() {
-		e.bind_nav(false)
-	}
 
 	e.update_val = function(v) {
 		t = day(v)

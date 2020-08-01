@@ -65,11 +65,6 @@ h2 {
 	position: relative;
 }
 
-#help {
-	tab-size: 3;
-	-moz-tab-size: 3;
-}
-
 #main {
 	height: 100%;
 	overflow: auto;
@@ -146,19 +141,15 @@ h2 {
 				</tr>
 			</table>
 		</td>
-		<td class="lp lb"><h3>#help</h3></td>
 	</tr>
 	<tr>
 		<td valign=top width=160 id=demo_list_ct>
 		</td>
-		<td class="main_td lb lp" valign=top width=34% height=100%>
+		<td class="main_td lb lp" valign=top width=40% height=100%>
 			<div id=main></div>
 		</td>
 		<td valign=top class="lb" id=code_td>
 			<aceeditor id=code></aceeditor>
-		</td>
-		<td class="lb lp" valign=top width=25%>
-			<pre id=help></pre>
 		</td>
 	</tr>
 </table>
@@ -167,19 +158,6 @@ h2 {
 <!--------------------------------------------------------------------------->
 
 <template id=button_demo>
-<help>
-
-btn = button({
-	text     : string|element
-	icon     : 'class1 ...'
-	primary  : true // make it stand out
-	action   : () => when_clicked
-})
-
-btn.click()
-
-</help>
-
 <script>
 
 main.add(
@@ -206,39 +184,22 @@ main.add(
 <!--------------------------------------------------------------------------->
 
 <template id=checkbox_demo>
-<help>
-
-cb = checkbox({
-	text            : string|element
-	align           : 'left' // |right
-	center          : false  // |true
-	checked_val     : true   // |anything
-	unchecked_val   : false  // |anything
-	checked         : false  // |true
-	validate        : (v) => error_string|anything_else
-})
-
-cb.checked   (r/w) true|false
-cb.value     (r/w) checked_val|unchecked_val
-
-cb.toggle()
-
-</help>
-
 <script>
 
 main.add(checkbox({
 	text: 'Wassup homie',
-	val: 'wrong',
-	validate: function(v) {
-		return typeof(v) == 'boolean' || 'Value not a boolean'
-	}
+	nav: cell_nav({
+		val: 'wrong',
+		validate: function(v) {
+			return typeof(v) == 'boolean' || 'Value not a boolean'
+		},
+	}),
 }))
 
 c2 = checkbox({
 	text: H('Yo wasup<br>I am multiline and right-aligned.'),
 	align: 'right',
-	checked: true,
+	nav: cell_nav({val: true}),
 })
 
 c2.on('value_changed', function(v) { print(v, this.checked) })
@@ -251,18 +212,6 @@ main.add(c2)
 <!--------------------------------------------------------------------------->
 
 <template id=radiogroup_demo>
-<help>
-
-rg = radiogroup({
-	items    : [text|element, ...]
-	value    : index_in_items_array
-	validate : (v) => error_string|anything_else
-})
-
-rg.value    (r/w) index_in_items_array
-
-</help>
-
 <script>
 
 main.add(
@@ -272,7 +221,9 @@ main.add(
 			'Option 2',
 			H('Option 3<br>Multiple lines'),
 		],
-		val: 1,
+		nav: cell_nav({
+			val: 1,
+		}),
 	}),
 	radiogroup({
 		align: 'right',
@@ -281,8 +232,12 @@ main.add(
 			'Option 2',
 			H('Option 3<br>Multiple lines long text'),
 		],
-		val: 1/0,
-		validate: function(v) { return v >= 0 && v < 3 || 'Selected option out of range' },
+		nav: cell_nav({
+			val: 1/0,
+			validate: function(v) {
+				return v >= 0 && v < 3 || 'Selected option out of range'
+			},
+		}),
 	})
 )
 
@@ -293,24 +248,6 @@ main.add(
 <!--------------------------------------------------------------------------->
 
 <template id=tooltip_demo>
-<help>
-
-tooltip({
-	side    : 'bottom' // |[inner-]top|left|right|center
-	align   : 'center' // |start|end
-	kind    : nothing  // |info|error
-	target  : widget
-	px      : 0        // x-offset from widget side
-	py      : 0        // y-offset from widget side
-	timeout : 'auto'   // |seconds
-	check   : (target) => true_if_should_be_visible
-	visible : true     // |false
-})
-
-tooltip.update()
-
-</help>
-
 <script>
 
 b1 = button({text: H('aaa ^ aaa<br>aaa aaa aaa v aaa aaa aaa')})
@@ -346,21 +283,6 @@ tooltip({text: H(s), side: 'left'  , align: 'end', target: b3, kind: 'error'})
 <!--------------------------------------------------------------------------->
 
 <template id=toaster_demo>
-<help>
-
-ts = toaster({
-	side    : 'bottom'  // |[inner-]top|left|right|center
-	align   : 'center'  // |start|end
-	timeout : 'auto'    // |seconds
-	spacing : 6         // |pixels
-	target  : document.body // |element
-})
-
-ts.post(text, null|'info|error', [timeout])
-
-ts.close_all()
-
-</help>
 <script>
 
 t = toaster({
@@ -380,11 +302,6 @@ t.post('Pay attention!', 'error', 3)
 <!--------------------------------------------------------------------------->
 
 <template id=notify_demo>
-<help>
-
-notify(text, null|'info|error', [timeout])
-
-</help>
 <script>
 
 notify('Did you see that?', 'info')
@@ -397,23 +314,6 @@ notify('There!', 'error', 2)
 <!--------------------------------------------------------------------------->
 
 <template id=dialog_demo>
-<help>
-
-di = dialog({
-	title   : string|element
-	content : string|element
-	footer  : 'name ... < name ... > name ...'
-	buttons : {
-		<name>: {
-			icon: 'class1 ...'
-			primary: false // |true
-		},
-	},
-})
-
-di.modal()
-
-</help>
 <script>
 
 win = dialog({
@@ -439,16 +339,6 @@ main.add(button({
 <!--------------------------------------------------------------------------->
 
 <template id=toolbox_demo>
-<help>
-
-tb = toolbox({
-	title   : string|element
-	content : string|element
-})
-
-tb.show()
-
-</help>
 <script>
 
 tb = toolbox({
@@ -478,25 +368,6 @@ main.add(b)
 <!--------------------------------------------------------------------------->
 
 <template id=menu_demo>
-<help>
-
-m = menu({
-	items: [item1, ...]
-})
-
-<item>: {
-	text      : string|element_cons
-	action    : (item) => false_for_not_closing_the_menu
-	enabled   : true  // |false
-	icon      : 'class1 ...'
-	separator : false // |true
-	items     : [item1, ...] // submenu
-	key       : '<modifier>+<key>'
-}
-
-m.popup(target, [side='bottom'], [align='left'], [px=0], [py=0])
-
-</help>
 <script>
 
 function act(item) { print(item.text) }
@@ -535,15 +406,6 @@ main.add(b)
 <!--------------------------------------------------------------------------->
 
 <template id=richtext_demo>
-<help>
-
-m = richtext({
-	...
-})
-
-m.richtext({...})
-
-</help>
 <script>
 
 r = richtext({})
@@ -558,39 +420,28 @@ main.add(r)
 <!--------------------------------------------------------------------------->
 
 <template id=input_demo>
-<help>
-
-ti = input({
-	align        : 'left'    // |right
-	mode         : 'default' // |inline|wrap|fixed
-	nolabel      : false     // |true
-	from_text    : (s) => v
-	to_text      : (v) => s
-	input_filter : (s) => true|false
-	maxlen       : N
-})
-
-ti.value   (r/w)  input_value
-
-</help>
 <script>
 
 function say_my_name(v) {
 	return v == null || v == 'Klaus' || 'You have to type in "Klaus" or leave empty.'
 }
 
+function say_my_name_long(v) {
+	return v == null || v == 'Klaus'
+		|| 'You have to type in "Klaus" or leave empty.\n' +
+			'This error message is purposefully long to show that the default error box ' +
+			'wraps decently and stays centered.'
+}
+
 main.add(H.div({}, 'type in "Klaus" to validate: ', input({
-	val: 'wrong',
-	validate: say_my_name,
+	nav: cell_nav({
+		val: 'wrong',
+		validate: say_my_name,
+	}),
 })))
 
 main.add(H.div({}, 'type in "Klaus" to validate: ', input({
-	validate: function(v) {
-		return v == null || v == 'Klaus'
-			|| 'You have to type in "Klaus" or leave empty.\n' +
-				'This error message is purposefully long to show that the default error box ' +
-				'wraps decently and stays centered.'
-	},
+	nav: cell_nav({validate: say_my_name_long}),
 })))
 
 main.add(
@@ -598,11 +449,10 @@ main.add(
 		'Check out these inner labels:',
 		H.div({},
 			input({
-				field_name: "santa's_name",
-				validate: say_my_name,
+				nav: cell_nav({name: "santa's_name", validate: say_my_name}),
 			}),
 			input({
-				field_name: "devil's name",
+				nav: cell_nav({text: "devil's name"}),
 			})
 		)
 	)
@@ -614,41 +464,23 @@ main.add(
 <!--------------------------------------------------------------------------->
 
 <template id=spin_input_demo>
-<help>
-
-si = spin_input({
-	align            : 'right'      // |left
-	mode             : 'default'    // |inline|wrap|fixed
-	nolabel          : false        // |true
-	button_style     : 'plus-minus' // |up-down|left-right
-	button_placement : 'each-side'  // |left|right
-	min              : N
-	max              : N
-	multiple_of      : N
-	max_digits       : N
-	max_decimals     : N
-})
-
-si.value   (r/w)  input_value
-
-</help>
 <script>
 
 main.add(H.div({},
-	spin_input({default_val: 42}),
-	spin_input({default_val: 42, label: 'Heeey'})
+	spin_input({nav: cell_nav({val: 42})}),
+	spin_input({nav: cell_nav({val: 42, text: 'Heeey'})})
 ))
 main.add(H.div({},
-	spin_input({button_style: 'up-down', val: 42}),
-	spin_input({button_style: 'up-down', label: 'Hey hey'})
+	spin_input({button_style: 'up-down', nav: cell_nav({val: 42})}),
+	spin_input({button_style: 'up-down', nav: cell_nav({text: 'Hey hey'})})
 ))
 main.add(H.div({},
-	spin_input({button_style: 'left-right', val: 42}),
-	spin_input({button_style: 'left-right', label: 'Dis look good?'})
+	spin_input({button_style: 'left-right', nav: cell_nav({val: 42})}),
+	spin_input({button_style: 'left-right', nav: cell_nav({text: 'Dis look good?'})})
 ))
 main.add(H.div({},
-	spin_input({min: -2, max: 5, multiple_of: 1.5, button_placement: 'right', val: 1}),
-	spin_input({min: -2, max: 5, multiple_of: 1.5, button_placement: 'right', label: 'How bout dis?'}),
+	spin_input({nav: cell_nav({min: -2, max: 5, multiple_of: 1.5, val: 1}), button_placement: 'right'}),
+	spin_input({nav: cell_nav({min: -2, max: 5, multiple_of: 1.5, text: 'How bout dis?'}), button_placement: 'right'}),
 ))
 
 </script>
@@ -657,32 +489,28 @@ main.add(H.div({},
 <!--------------------------------------------------------------------------->
 
 <template id=slider_demo>
-<help>
-
-sl = slider({
-	from        : 0
-	to          : 1
-	min         : N
-	max         : N
-	multiple_of : null // N
-})
-
-sl.val       (r/w)  value in min..max range
-sl.progress  (r/w)  progress in 0..1 range
-
-</help>
 <script>
 
 main.add(H.div({},
 	'Slider 1',
 	slider({
-		validate: function(v) { return v >= .2 && v <= .8 || 'Value not between .2 and .8' },
-		val: .5,
+		nav: cell_nav({
+			val: .5,
+			validate: function(v) {
+				return v >= .2 && v <= .8 || 'Value not between .2 and .8'
+			},
+		}),
 	})))
 
 main.add(H.div({},
 	'Slider 2',
-	slider({val: 1500, from: 1000, to: 2000, multiple_of: 200, min: 1300, max: 1700}))
+	slider({
+		from: 1000, to: 2000,
+		nav: cell_nav({
+			val: 1500,
+			multiple_of: 200, min: 1300, max: 1700,
+		}),
+	}))
 )
 
 </script>
@@ -691,24 +519,6 @@ main.add(H.div({},
 <!--------------------------------------------------------------------------->
 
 <template id=listbox_demo>
-<help>
-
-lb = listbox({
-	// standalone
-	items   : [lb_item1, ...]
-	val     : item_text
-	// data-driven
-	rowset  : rowset
-	col     : field_name
-})
-
-<lb_item>: string | elem_cons | {
-	text  : string | elem_cons
-}
-
-lb.val     (r/w)  get/set selected item by its item text.
-
-</help>
 <script>
 
 lb = listbox({
@@ -745,21 +555,6 @@ main.add(lb, hlb, div({}, H('<h3>select_button</h3>'), sb))
 <!--------------------------------------------------------------------------->
 
 <template id=pagelist_demo>
-<help>
-
-pl = pagelist({
-	items: [pl_item1, ...]
-})
-
-<pl_item>: string | {
-	text             : string
-	page             : element_to_attach_to_container
-	selected_index   : N
-	can_add_items    : t|f
-	can_remove_items : t|f
-}
-
-</help>
 <script>
 
 console_page = H.div({}, 'Console page. Contains focusble element. ', input())
@@ -788,15 +583,6 @@ main.add(
 <!--------------------------------------------------------------------------->
 
 <template id=split_demo>
-<help>
-
-sp = [v|h]split({
-	1: first_element
-	2: second_element
-	resizeable: true // |false
-})
-
-</help>
 <script>
 
 sidebar = H.div({style: 'max-width: 300px; width: 200px'}, 'Sidebar')
@@ -818,17 +604,13 @@ main.add(
 <!--------------------------------------------------------------------------->
 
 <template id=cssgrid_demo>
-<help>
-
-
-</help>
 <script>
 
 cg = cssgrid({
 	items: [
-		date_dropdown({pos_x: 3, pos_y: 1, val: day(time())}),
-		input({pos_x: 2, pos_y: 2, val: 'hello1'}),
-		input({pos_x: 1, pos_y: 3, val: 'hello2'}),
+		date_dropdown ({nav: cell_nav({val: day(time())}), pos_x: 3, pos_y: 1}),
+		input         ({nav: cell_nav({val: 'hello1'}), pos_x: 2, pos_y: 2}),
+		input         ({nav: cell_nav({val: 'hello2'}), pos_x: 1, pos_y: 3}),
 	],
 })
 
@@ -844,27 +626,19 @@ main.add(cg)
 <!--------------------------------------------------------------------------->
 
 <template id=calendar_demo>
-<help>
-
-cal = calendar({
-	val       : time
-	validate  : (v) => error_string|anything_else
-	rowset    : rowset
-	col       : field_name
-})
-
-</help>
 <script>
 
-main.add(calendar())
 main.add(calendar({
-	val: day(time(), 1),
+	nav: cell_nav(),
+}))
+main.add(calendar({
 	validate: function(v) {
 		if (day(v) == day(time()))
 			return 'Can\'t have today.'
 		if (day(v) == day(time(), 1))
 			return 'Can\'t have tomorrow.'
-	}
+	},
+	nav: cell_nav({val: day(time(), 1)}),
 }))
 
 </script>
@@ -873,28 +647,6 @@ main.add(calendar({
 <!--------------------------------------------------------------------------->
 
 <template id=grid_demo>
-<help>
-
-g = grid({
-	can_edit              : true
-	can_add_rows          : true
-	can_remove_rows       : true
-	can_change_rows       : true
-
-	can_focus_cells       : true
-	auto_focus_first_cell : true
-	auto_advance_row      : true
-	save_row_on           : 'exit_edit' // |input|exit_row|false
-	insert_row_on         : 'exit_edit' // |input|exit_row|false
-	remove_row_on         : 'input'     // |false
-	can_exit_edit_on_errors : true
-	can_exit_row_on_errors  : true
-
-	rowset    : rowset
-	col       : field_name
-})
-
-</help>
 <script>
 
 var checked = () => H('<div class="fa fa-check"></div>')
@@ -967,15 +719,6 @@ d.on('row_changed', function() {
 <!--------------------------------------------------------------------------->
 
 <template id=vgrid_demo>
-<help>
-
-g = vgrid({
-	rowset        : rowset,
-	col           : field_name
-	can_move_rows : t|f
-})
-
-</help>
 <script>
 
 var checked = () => H('<div class="fa fa-check"></div>')
@@ -1037,14 +780,6 @@ d.on('row_changed', function() {
 <!--------------------------------------------------------------------------->
 
 <template id=list_dropdown_demo>
-<help>
-
-ld = list_dropdown({
-
-})
-
-
-</help>
 <script>
 
 function thousand_items() {
@@ -1080,13 +815,6 @@ main.add(
 <!--------------------------------------------------------------------------->
 
 <template id=countries_listbox_demo>
-<help>
-
-clb = countries_listbox({
-	val: 'CC', // country code
-})
-
-</help>
 <script>
 
 clb = countries_listbox({val: 'RO'})
@@ -1098,13 +826,6 @@ main.add(clb)
 <!--------------------------------------------------------------------------->
 
 <template id=country_dropdown_demo>
-<help>
-
-cd = country_dropdown({
-	val: 'CC', // country code
-})
-
-</help>
 <script>
 
 cd = country_dropdown({val: 'RO'})
@@ -1116,13 +837,6 @@ main.add(cd)
 <!--------------------------------------------------------------------------->
 
 <template id=date_dropdown_demo>
-<help>
-
-dd = date_dropdown({
-
-})
-
-</help>
 <script>
 
 d = date_dropdown({
@@ -1143,13 +857,6 @@ main.add(d)
 <!--------------------------------------------------------------------------->
 
 <template id=grid_dropdown_demo>
-<help>
-
-gd = grid_dropdown({
-
-})
-
-</help>
 <script>
 
 r1 = rowset({
@@ -1201,9 +908,6 @@ main.add(
 <!--------------------------------------------------------------------------->
 
 <template id=dropdown_modes_demo>
-<help>
-
-</help>
 <script>
 
 function items() {
@@ -1246,9 +950,6 @@ main.add(
 <!--------------------------------------------------------------------------->
 
 <template id=inline_inputs_demo>
-<help>
-
-</help>
 <script>
 
 main.add(H.div({style: 'line-height: 3'},
@@ -1286,9 +987,6 @@ main.add(H.div({style: 'line-height: 3'},
 <!--------------------------------------------------------------------------->
 
 <template id=rowset_form_demo>
-<help>
-
-</help>
 <script>
 
 r = rowset({
@@ -1319,9 +1017,6 @@ main.add(button({
 <!--------------------------------------------------------------------------->
 
 <template id=lookup_col_demo>
-<help>
-
-</help>
 <script>
 
 fruits = rowset({
@@ -1361,9 +1056,6 @@ main.add(grid({w: 200, h: 200, rowset: r}))
 <!--------------------------------------------------------------------------->
 
 <template id=ajax_demo>
-<help>
-
-</help>
 <script>
 
 pre = tag('pre')
@@ -1385,9 +1077,6 @@ let req = ajax({
 <!--------------------------------------------------------------------------->
 
 <template id=ajax_json_demo>
-<help>
-
-</help>
 <script>
 
 pre = tag('pre')
@@ -1409,9 +1098,6 @@ let req = ajax({
 <!--------------------------------------------------------------------------->
 
 <template id=data_grid_demo>
-<help>
-
-</help>
 <script>
 
 function starts_with_a(s) {
@@ -1454,9 +1140,6 @@ d.load()
 <!--------------------------------------------------------------------------->
 
 <template id=query_demo>
-<help>
-
-</help>
 <script>
 
 d = global_rowset('test_query')
@@ -1507,9 +1190,8 @@ $('template').forEach(function(e) {
 		return
 	let name = id.replace('_demo', '')
 	let t = window[name+'_demo'].content
-	let h = t.$('help')[0]; h = h && h.innerHTML.trim() || ''
 	let s = t.$('script')[0]; s = s && s.innerHTML.trim() || ''
-	demos.push({text: name, help: h, code: s})
+	demos.push({text: name, code: s})
 })
 
 demo_list = listbox({items: demos, attrs: {id: 'demo_list'}})
@@ -1519,7 +1201,6 @@ demo_list.on('focused_row_changed', function() {
 	ace_editor.getSession().setValue(demo.code)
 	ace_editor.initial_script = demo.code
 	run_script()
-	help.innerHTML = demo.help
 })
 
 run_button.on('click', function() {
@@ -1531,9 +1212,8 @@ reload_button.on('click', function() {
 	run_script()
 })
 
-demo_list.focus_cell(17)
-
 demo_list_ct.add(demo_list)
+demo_list.focus_cell(18)
 
 lights_button.on('click', function() {
 	let dark = !document.body.hasclass('x-dark')

@@ -1,6 +1,7 @@
 
 require'xrowset'
 local path = require'path'
+local ppjson = require'prettycjson' --TODO: this is broken.
 
 local rowsets = virtual_rowset(function(rs)
 	function rs:select_rows(res, param_values)

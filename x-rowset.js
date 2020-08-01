@@ -111,7 +111,7 @@ function widget_multiuser_mixin(e) {
 	function user_attached() {
 		refcount++
 		if (refcount == 1) {
-			e.isConnected = true
+			e.attached = true
 			e.attach()
 		}
 	}
@@ -120,7 +120,7 @@ function widget_multiuser_mixin(e) {
 		refcount--
 		assert(refcount >= 0)
 		if (refcount == 0) {
-			e.isConnected = false
+			e.attached = false
 			e.detach()
 		}
 	}
@@ -208,6 +208,7 @@ rowset = function(...options) {
 	d.attach = function() {
 		bind_lookup_rowsets(true)
 		bind_param_nav(true)
+		d.load()
 	}
 
 	d.detach = function() {
@@ -695,7 +696,7 @@ rowset = function(...options) {
 	}
 
 	d.on_validate_val = function(col, validate, on) {
-		d.on('validate_'+col, validate, on)
+		d.on('validate_'+d.field(col).name, validate, on)
 	}
 
 	d.validate_row = function(row) {
@@ -989,7 +990,7 @@ rowset = function(...options) {
 			d.param_nav = rowset_nav({rowset: params_rowset})
 		}
 
-		if (d.isConnected)
+		if (d.attached)
 			bind_param_nav(true)
 	}
 

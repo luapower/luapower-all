@@ -5,6 +5,14 @@
 
 */
 
+// types ---------------------------------------------------------------------
+
+function isobject(e) {
+	return e != null && typeof e == 'object'
+}
+
+isarray = Array.isArray
+
 // logic ---------------------------------------------------------------------
 
 // `||` operator that considers `0` and `''` to be truth values.
@@ -121,8 +129,20 @@ method(Object, 'getPropertyDescriptor', function(key) {
 function alias(cls, new_name, old_name) {
 	let proto = cls.prototype || cls
 	let d = proto.getPropertyDescriptor(old_name)
-	assert(d, 'Property {0}.{1} does not exist', cls.name, old_name)
+	assert(d, '{0}.{1} does not exist', cls.name, old_name)
 	Object.defineProperty(proto, new_name, d)
+}
+
+function override_property_setter(cls, prop, set) {
+	let proto = cls.prototype || cls
+	let d0 = proto.getPropertyDescriptor(prop)
+	assert(d0, '{0}.{1} does not exist', cls.name, prop)
+	let inherited = d0.set || noop
+	function wrapper(v) {
+		return set.call(this, inherited, v)
+	}
+	d0.set = wrapper
+	Object.defineProperty(proto, prop, d0)
 }
 
 // strings -------------------------------------------------------------------
@@ -137,7 +157,7 @@ method(String, 'subst', function(...args) {
 		return s
 	if (isarray(args[0]))
 		args = args[0]
-	if (typeof args[0] == 'object')
+	if (isobject(args[0]))
 		args = args[0]
 	return this.replace(/{(\w+)}/g, (match, s) => args[s])
 })
@@ -154,8 +174,6 @@ if (!S)
 	}
 
 // arrays --------------------------------------------------------------------
-
-isarray = Array.isArray
 
 method(Array, 'insert', function(i, v) {
 	if (i >= this.length)

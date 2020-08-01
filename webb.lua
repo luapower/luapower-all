@@ -677,6 +677,8 @@ function wwwpath(file, type)
 	if fs.is(abs_path, type) then return abs_path end
 	local abs_path = assert(path.combine('webb-www', file))
 	if fs.is(abs_path, type) then return abs_path end
+	local abs_path = assert(path.combine('.', file))
+	if fs.is(abs_path, type) then return abs_path end
 	return nil, file..' not found'
 end
 

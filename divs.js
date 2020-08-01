@@ -219,7 +219,7 @@ method(Element, 'overlay', function(target, attrs, content) {
 let callers = {}
 
 function passthrough_caller(e, f) {
-	if (typeof e.detail == 'object' && e.detail.args)
+	if (isobject(e.detail) && e.detail.args)
 		return f.call(this, ...e.detail.args, e)
 	else
 		return f.call(this, e)
@@ -927,12 +927,16 @@ function live_move_mixin(e) {
 }
 
 // ---------------------------------------------------------------------------
-// creating & setting up web components --------------------------------------
+// creating & setting up web components
 // ---------------------------------------------------------------------------
 
 // NOTE: the only reason for using this web components "technology" instead
 // of creating normal elements is because of connectedCallback and
-// disconnectedCallback for which there are no events in built-in elements.
+// disconnectedCallback for which there are no events in built-in elements,
+// and we use those events to tell other widgets when to bind and when to
+// unbind their observers into a widget (a proper iterable weak hash map
+// would be another way to solve this but alas, the web people could't get
+// that one right either).
 
 HTMLElement.prototype.attach = noop
 HTMLElement.prototype.detach = noop
@@ -945,47 +949,74 @@ function component(tag, cons) {
 
 	let cls = class extends HTMLElement {
 
-		constructor(...args) {
+		constructor() {
 			super()
-			this.typename = typename
-			cons(this)
-
-			// add user options, overriding any defaults and stub methods.
-			// NOTE: this also calls any property setters, but some setters
-			// cannot work on a partially configured object, so we defer
-			// setting these properties to after init() runs (which is the
-			// only reason for having a separate init() method at all).
-			let init_later = attr(this, '__init_later')
-			update(this, ...args)
-
-			// finish configuring the object, now that user options are in.
-			this.init()
-			this.initialized = true
-
-			// call the setters again, this time without the barrier.
-			this.__init_later = null
-			for (let k in init_later)
-				this[k] = init_later[k]
 		}
 
 		connectedCallback() {
+			if (this.attached)
+				return
 			if (!this.isConnected)
 				return
+			this.attached = true
+			// elements created by the browser must be initialized on first
+			// attach as they aren't allowed to create children or add
+			// attributes in the constructor.
+			this.initialize()
 			this.attach()
-			this.fire(event('attach', false)) // for popup().
+			this.fire(event('attach', false))
+			if (this.id)
+				document.fire(event('global_attached', false, this, this.id))
 		}
 
 		disconnectedCallback() {
+			if (!this.attached)
+				return
+			this.attached = false
 			this.detach()
-			this.fire(event('detach', false)) // for popup().
+			this.fire(event('detach', false))
+			if (this.id)
+				document.fire(event('global_detached', false, this, this.id))
 		}
+
+		initialize() {
+			init(this)
+		}
+
 	}
 
 	customElements.define(tag, cls)
 
-	function create(...args) {
-		return new cls(...args)
+	function init(e, ...args) {
+		e.initialize = noop
+		e.typename = typename
+		cons(e)
+
+		// add user options, overriding any defaults and stub methods.
+		// NOTE: this also calls any property setters, but some setters
+		// cannot work on a partially configured object, so we defer
+		// setting these properties to after init() runs (which is the
+		// only reason for having a separate init() method at all).
+		let init_later = attr(e, '__init_later')
+		update(e, ...args)
+
+		// finish configuring the object, now that user options are in.
+		e.init()
+		e.initialized = true
+
+		// call the setters again, this time without the barrier.
+		e.__init_later = null
+		for (let k in init_later)
+			e[k] = init_later[k]
+
 	}
+
+	function create(...args) {
+		let e = new cls()
+		init(e, ...args)
+		return e
+	}
+
 	create.class = cls
 	create.construct = cons
 
@@ -1008,7 +1039,26 @@ method(HTMLElement, 'override', function(method, func) {
 	override(this, method, func)
 })
 
+method(HTMLElement, 'property', function(prop, getter, setter) {
+	property(this, prop, {get: getter, set: setter})
+})
+
+// create a property which is guaranteed not to be set until after init() runs.
+method(HTMLElement, 'late_property', function(prop, getter, setter, default_value) {
+	setter_wrapper = setter && function(v) {
+		let init_later = this.__init_later
+		if (init_later)
+			init_later[prop] = v // defer calling the actual setter.
+		else
+			setter.call(this, v)
+	}
+	property(this, prop, {get: getter, set: setter_wrapper})
+	if (default_value !== undefined)
+		attr(this, '__init_later')[prop] = default_value
+})
+
 method(HTMLElement, 'prop', function(prop, opt) {
+
 	opt = opt || {}
 	let getter = 'get_'+prop
 	let setter = 'set_'+prop
@@ -1017,6 +1067,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 	opt.name = prop
 	if (!this[setter])
 		this[setter] = noop
+
 	if (opt.store == 'var') {
 		let v = opt.default
 		function get() {
@@ -1125,80 +1176,59 @@ method(HTMLElement, 'prop', function(prop, opt) {
 		if (opt.default !== undefined)
 			set.call(this, opt.default)
 	}
+
+	if (opt.bind) {
+		let resolve = opt.resolve || resolve_global
+		let NAME = prop
+		let REF = repl(opt.bind, true, NAME)
+		let e = this
+		function global_changed(te, name, last_name) {
+			// NOTE: changing the name from something to nothing
+			// will unbind dependants forever.
+			if (e[NAME] == last_name)
+				e[NAME] = name
+		}
+		function global_attached(te, name) {
+			if (e[NAME] == name)
+				e[REF] = te
+		}
+		function global_detached(te, name) {
+			if (e[REF] == te)
+				e[REF] = null
+		}
+		function bind(on) {
+			document.on('global_changed', global_changed, on)
+			document.on('global_attached', global_attached, on)
+			document.on('global_detached', global_detached, on)
+		}
+		function attach() {
+			e[REF] = resolve(e[NAME])
+			bind(true)
+		}
+		function detach() {
+			e[REF] = null
+			bind(false)
+		}
+		function prop_changed(k, name, last_name) {
+			if (k != NAME) return
+			if (e.attached)
+				e[REF] = resolve(name)
+			if ((name != null) != (last_name != null)) {
+				this.on('attach', attach, name != null)
+				this.on('detach', detach, name != null)
+			}
+		}
+		if (e[NAME] != null)
+			prop_changed(NAME, e[NAME])
+		this.on('prop_changed', prop_changed)
+	}
+
 	this.property(prop, get, set)
+
 	attr(this, 'props')[prop] = opt
 })
 
-// web component properties --------------------------------------------------
-
-// TODO: remove this (turn all into props)!
-
-method(HTMLElement, 'property', function(prop, getter, setter) {
-	property(this, prop, {get: getter, set: setter})
-})
-
-// create a property which is guaranteed not to be set until after init() runs.
-method(HTMLElement, 'late_property', function(prop, getter, setter, default_value) {
-	setter_wrapper = setter && function(v) {
-		let init_later = this.__init_later
-		if (init_later)
-			init_later[prop] = v // defer calling the actual setter.
-		else
-			setter.call(this, v)
-	}
-	property(this, prop, {get: getter, set: setter_wrapper})
-	if (default_value !== undefined)
-		attr(this, '__init_later')[prop] = default_value
-})
-
-function noop_setter(v) {
-	return v
+function resolve_global(name) {
+	let ref = window[name]
+	return ref && ref.attached ? ref : null
 }
-
-// create a property that represents a html attribute.
-// NOTE: a property `foo_bar` is created for an attribute `foo-bar`.
-// NOTE: attr properties are not late properties so that their value
-// is available to init()!
-// NOTE: you need to call `e.setattr(<name>, <default_val>)` on your
-// constructor or else you won't be able to do css based on the attribute!
-method(HTMLElement, 'attr_property', function(name, setter = noop_setter, type) {
-	name = name.replace('_', '-')
-	if (type == 'bool') {
-		function get() {
-			return this.hasAttribute(name)
-		}
-		function set(v) {
-			if (v)
-				this.setAttribute(name, '')
-			else
-				this.removeAttribute(name)
-			setter.call(this, v)
-		}
-	} else if (type == 'number') {
-		function get() {
-			return num(this.getAttribute(name))
-		}
-		function set(v) {
-			this.setAttribute(name, v+'')
-			setter.call(this, v)
-		}
-	} else {
-		function get() {
-			return this.getAttribute(name)
-		}
-		function set(v) {
-			this.setAttribute(name, v)
-			setter.call(this, v)
-		}
-	}
-	this.property(name.replace('-', '_'), get, set)
-})
-
-method(HTMLElement, 'bool_attr_property', function(name, setter) {
-	this.attr_property(name, setter, 'bool')
-})
-
-method(HTMLElement, 'num_attr_property', function(name, setter) {
-	this.attr_property(name, setter, 'number')
-})
-

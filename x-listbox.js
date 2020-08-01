@@ -25,15 +25,6 @@ component('x-listbox', function(e) {
 			create_rowset_for_items()
 			update_rowset_from_items()
 		}
-		e.rowset_widget_init()
-	}
-
-	e.attach = function() {
-		e.rowset_widget_attach()
-	}
-
-	e.detach = function() {
-		e.rowset_widget_detach()
 	}
 
 	// item-based rowset ------------------------------------------------------
@@ -73,13 +64,10 @@ component('x-listbox', function(e) {
 		item.set(e.row_display_val(row))
 	}
 
-	e.init_fields = function() {
-		e.display_field = e.rowset.field(e.display_col)
-	}
-
-	e.init_rows = function() {
-		if (!e.isConnected)
+	e.update = function() {
+		if (!e.attached)
 			return
+		e.display_field = e.rowset.field(e.display_col)
 		e.clear()
 		for (let i = 0; i < e.rows.length; i++) {
 			let item = H.div({class: 'x-listbox-item x-item'})
@@ -87,16 +75,14 @@ component('x-listbox', function(e) {
 			e.add(item)
 			item.on('pointerdown', item_pointerdown)
 		}
-		e.update_cell_focus()
+		e.update_focus()
 	}
 
-	e.update_cell_val = function(ri, fi) {
+	e.update_cell_state = function(ri, fi, prop, val) {
 		e.update_item(e.at[ri], e.rows[ri])
 	}
 
-	e.update_cell_error = function(ri, fi, err) {} // stub
-
-	e.update_cell_focus = function() {
+	e.update_focus = function() {
 		for (let item of e.children) {
 			item.class('focused', e.focused_row == item.row)
 			item.class('selected', !!e.selected_rows.get(item.row))
@@ -202,7 +188,8 @@ component('x-listbox', function(e) {
 					item.x = null
 					item.y = null
 				}
-				e.update_cell_focus()
+
+				e.update_focus()
 			}
 		}
 
