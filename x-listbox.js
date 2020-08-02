@@ -65,8 +65,10 @@ component('x-listbox', function(e) {
 	}
 
 	e.update = function(opt) {
+
 		if (!e.attached)
 			return
+
 		if (opt.rows) {
 			e.display_field = e.rowset.field(e.display_col)
 			e.clear()
@@ -76,17 +78,20 @@ component('x-listbox', function(e) {
 				item.on('pointerdown', item_pointerdown)
 			}
 		}
-		if (opt.vals || opt.fields) {
+
+		if (opt.rows || opt.vals || opt.fields) {
 			for (let i = 0; i < e.rows.length; i++) {
 				e.update_item(e.at[i], e.rows[i])
 			}
 		}
+
 		if (opt.rows || opt.focus) {
 			for (let item of e.children) {
 				item.class('focused', e.focused_row == item.row)
 				item.class('selected', !!e.selected_rows.get(item.row))
 			}
 		}
+
 	}
 
 	e.update_cell_state = function(ri, fi, prop, val) {
@@ -174,26 +179,20 @@ component('x-listbox', function(e) {
 
 		function item_pointerup() {
 			if (dragging) {
+
 				clearInterval(scroll_timer)
+
 				e.class('moving', false)
-
-				let over_ri = e.move_element_stop()
-				let insert_ri = over_ri - (over_ri > move_ri1 ? move_n : 0)
-
-				let moved_rows = e.rows.splice(move_ri1, move_n)
-				e.move_row(moved_rows, insert_ri)
-
-				e.focused_row_index = insert_ri + (move_ri1 == ri1 ? 0 : move_n - 1)
-
-				for (let ri = 0; ri < e.rows.length; ri++) {
-					let item = e.at[ri]
-					e.update_item(item, e.rows[ri])
+				for (let item of e.children) {
 					item.class('moving', false)
 					item.x = null
 					item.y = null
 				}
 
-				e.update_focus()
+				let over_ri = e.move_element_stop()
+				let insert_ri = over_ri - (over_ri > move_ri1 ? move_n : 0)
+				let moved_rows = e.rows.splice(move_ri1, move_n)
+				e.move_row(moved_rows, insert_ri)
 			}
 		}
 

@@ -669,9 +669,9 @@ function val_widget(e) {
 	}
 
 	function if_enabled() { if (disabled) return false }
-	e.on('mousedown', if_enabled)
-	e.on('mouseup', if_enabled)
-	e.on('click', if_enabled)
+	e.on('pointerdown', if_enabled)
+	e.on('pointerup'  , if_enabled)
+	e.on('click'      , if_enabled)
 
 	function cell_state_changed(prop, val, ev) {
 		if (prop == 'input_val')
@@ -712,12 +712,10 @@ function val_widget(e) {
 
 	function get_val() {
 		let row = e.row
-		return row ? nav.rowset.val(row, e.field) : null
+		return row && e.field ? nav.rowset.val(row, e.field) : null
 	}
 	e.set_val = function(v, ev) {
-		let row = e.row
-		if (row)
-			nav.rowset.set_val(row, e.field, e.to_val(v), ev)
+		nav.rowset.set_val(e.row, e.field, e.to_val(v), ev)
 	}
 	e.late_property('val', get_val, e.set_val)
 
@@ -1453,7 +1451,6 @@ component('x-slider', function(e) {
 			return progress_for(e.input_val)
 		},
 		e.set_progress,
-		0
 	)
 
 	// view

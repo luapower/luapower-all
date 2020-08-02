@@ -210,7 +210,7 @@ function rowset_widget(e) {
 		e.update({
 			fields: opt.fields,
 			rows: opt.rows,
-			vals: opt.sort,
+			vals: opt.vals || opt.sort,
 			sort_order: opt.sort,
 			focus: opt.focus,
 		})
@@ -369,7 +369,7 @@ function rowset_widget(e) {
 	}
 
 	function display_vals_changed(field) {
-		e.update({vals: true})
+		reset({vals: true})
 	}
 
 	// responding to notifications from rowset --------------------------------
@@ -831,7 +831,7 @@ function rowset_widget(e) {
 	e.editor = null
 
 	e.create_editor = function(field, ...editor_options) {
-		return rs.create_editor(field, {
+		e.editor = rs.create_editor(field, {
 			nav: e,
 			col: field.name,
 		}, ...editor_options)
@@ -842,7 +842,7 @@ function rowset_widget(e) {
 			return true
 		if (!e.can_focus_cell(e.focused_row, e.focused_field, true))
 			return false
-		e.editor = e.create_editor(e.focused_field)
+		e.create_editor(e.focused_field)
 		if (!e.editor)
 			return false
 		e.update_cell_editing(e.focused_row_index, e.focused_field_index, true)
@@ -1040,7 +1040,9 @@ function rowset_widget(e) {
 		let old_parent_row = row.parent_row
 		rs.move_row(row, parent_row)
 
-		if (rs.index_field)
+		e.focused_row_index = over_ri
+
+		if (rs.index_field) {
 			if (rs.parent_field) {
 				reset_indices_for_children_of(old_parent_row)
 				if (parent_row != old_parent_row)
@@ -1050,9 +1052,11 @@ function rowset_widget(e) {
 				for (let ri = 0; ri < e.rows.length; ri++)
 					rs.set_val(e.rows[ri], rs.index_field, index++)
 			}
+			reset({rows: true})
+		} else {
+			reset({vals: true})
+		}
 
-		e.focused_row_index = over_ri
-		reset({rows: true})
 	}
 
 	// filtering --------------------------------------------------------------

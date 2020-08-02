@@ -129,9 +129,17 @@ component('x-grid', function(e) {
 		e.cells_ct.w = header_w
 	}
 
+	function update_cell_width_vert(cell, ri, fi) {
+		cell.x = cell_x(ri - vri1, fi)
+		cell.w = cell_w(fi)
+	}
+	function update_cell_widths_vert() {
+		each_cell(update_cell_width_vert)
+	}
+
 	let cells_h, cells_w, header_h, cells_view_w, cells_view_h, page_row_count, vrn
 
-	function update_sizes() {
+	function update_sizes(col_resizing) {
 
 		if (horiz) {
 
@@ -167,7 +175,7 @@ component('x-grid', function(e) {
 			vrn = floor(cells_view_h / e.cell_h) + 2
 			page_row_count = floor(cells_view_h / e.cell_h)
 
-			update_cell_widths_horiz()
+			update_cell_widths_horiz(col_resizing)
 
 		} else {
 
@@ -204,14 +212,14 @@ component('x-grid', function(e) {
 				hcell.y = cell_y(0, fi)
 			}
 
+			update_cell_widths_vert()
 		}
 
 		vrn = min(vrn, e.rows.length)
 
-		if (e.editor)
-			update_editor(e.editor)
-
+		update_editor()
 		update_scroll()
+		update_resize_guides()
 
 	}
 
@@ -291,6 +299,14 @@ component('x-grid', function(e) {
 			return
 		if (ri >= vri1 && ri < vri2)
 			return (ri - vri1) * e.fields.length + fi
+	}
+
+	function each_cell(f, ...args) {
+		for (let ri = vri1; ri < vri2; ri++)
+			for (let fi = 0; fi < e.fields.length; fi++) {
+				let cell = e.cells.at[(ri - vri1) * e.fields.length + fi]
+				f(cell, ri, fi, ...args)
+			}
 	}
 
 	function each_cell_of_col(fi, f, ...args) {
@@ -526,15 +542,13 @@ component('x-grid', function(e) {
 		cell.show()
 	}
 
+	function update_cell(cell, ri, fi) {
+		cell.x = cell_x(ri - vri1, fi)
+		cell.y = cell_y(ri - vri1, fi)
+		update_cell_content(cell, e.rows[ri], ri, fi)
+	}
 	function update_cells_not_moving() {
-		for (let ri = vri1; ri < vri2; ri++) {
-			for (let fi = 0; fi < e.fields.length; fi++) {
-				let cell = e.cells.at[(ri - vri1) * e.fields.length + fi]
-				cell.x = cell_x(ri - vri1, fi)
-				cell.y = cell_y(ri - vri1, fi)
-				update_cell_content(cell, e.rows[ri], ri, fi)
-			}
-		}
+		each_cell(update_cell)
 	}
 
 	function update_cells() {
@@ -617,31 +631,31 @@ component('x-grid', function(e) {
 	// inline editing ---------------------------------------------------------
 
 	// when: input created, column width or height changed.
-	function update_editor(editor, x, y, indent) {
+	function update_editor(x, y, indent) {
+		if (!e.editor) return
 		let ri = e.focused_row_index
 		let fi = e.focused_field_index
 		let hcell = e.header.at[fi]
 		let css = e.cells.at[0].css()
 		let iw = field_has_indent(e.fields[fi])
 			? indent_offset(or(indent, row_indent(e.rows[ri]))) : 0
-		editor.x = or(x, cell_x(ri, fi) + iw)
-		editor.y = or(y, cell_y(ri, fi))
-		editor.w = cell_w(fi) - num(css['border-right-width']) - iw
-		editor.h = e.cell_h - num(css['border-bottom-width'])
+		e.editor.x = or(x, cell_x(ri, fi) + iw)
+		e.editor.y = or(y, cell_y(ri, fi))
+		e.editor.w = cell_w(fi) - num(css['border-right-width']) - iw
+		e.editor.h = e.cell_h - num(css['border-bottom-width'])
 	}
 
 	let create_editor = e.create_editor
 	e.create_editor = function(field, ...editor_options) {
-		let editor = create_editor(field, {
+		create_editor(field, {
 			inner_label: false,
 			can_select_widget: false,
 		}, ...editor_options)
-		if (!editor)
+		if (!e.editor)
 			return
-		editor.class('grid-editor')
-		e.cells_ct.add(editor)
-		update_editor(editor)
-		return editor
+		e.editor.class('grid-editor')
+		e.cells_ct.add(e.editor)
+		update_editor()
 	}
 
 	e.update_cell_editing = function(ri, fi, editing) {
@@ -660,9 +674,9 @@ component('x-grid', function(e) {
 		if (opt.sort_order)
 			update_sort_icons()
 		let opt_rows = opt.rows
-		if (opt.fields || opt.sizes) {
+		if (opt_rows || opt.fields || opt.sizes) {
 			let last_vrn = vrn
-			update_sizes()
+			update_sizes(opt.col_resizing)
 			opt_rows = opt_rows || last_vrn != vrn
 		}
 		if (opt_rows)
@@ -772,8 +786,7 @@ component('x-grid', function(e) {
 				let r = e.cells_ct.rect()
 				let w = mx - r.x - e.header.at[hit.fi]._x - hit.x
 				set_col_w(hit.fi, w)
-				update_cell_widths_horiz(true)
-				update_resize_guides()
+				e.update({sizes: true, col_resizing: true})
 			}
 
 		} else {
@@ -936,8 +949,8 @@ component('x-grid', function(e) {
 					row == hit_parent_row && fi == tree_fi)
 			}
 
-			if (e.editor && ri != null && focused)
-				update_editor(e.editor,
+			if (ri != null && focused)
+				update_editor(
 					 horiz ? null : xy,
 					!horiz ? null : xy, hit_indent)
 		}
@@ -1208,8 +1221,10 @@ component('x-grid', function(e) {
 	function set_cell_of_col_y(cell, y) { cell.y = y }
 	e.set_movable_element_pos = function(fi, x) {
 		each_cell_of_col(fi, horiz ? set_cell_of_col_x : set_cell_of_col_y, x)
-		if (e.editor && e.focused_field_index == fi)
-			update_editor(e.editor, horiz ? x : null, !horiz ? x : null)
+		if (e.focused_field_index == fi)
+			update_editor(
+				 horiz ? x : null,
+				!horiz ? x : null)
 	}
 
 	function ht_col_drag(mx, my, hit, ev) {
