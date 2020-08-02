@@ -64,29 +64,33 @@ component('x-listbox', function(e) {
 		item.set(e.row_display_val(row))
 	}
 
-	e.update = function() {
+	e.update = function(opt) {
 		if (!e.attached)
 			return
-		e.display_field = e.rowset.field(e.display_col)
-		e.clear()
-		for (let i = 0; i < e.rows.length; i++) {
-			let item = H.div({class: 'x-listbox-item x-item'})
-			e.update_item(item, e.rows[i])
-			e.add(item)
-			item.on('pointerdown', item_pointerdown)
+		if (opt.rows) {
+			e.display_field = e.rowset.field(e.display_col)
+			e.clear()
+			for (let i = 0; i < e.rows.length; i++) {
+				let item = H.div({class: 'x-listbox-item x-item'})
+				e.add(item)
+				item.on('pointerdown', item_pointerdown)
+			}
 		}
-		e.update_focus()
+		if (opt.vals || opt.fields) {
+			for (let i = 0; i < e.rows.length; i++) {
+				e.update_item(e.at[i], e.rows[i])
+			}
+		}
+		if (opt.rows || opt.focus) {
+			for (let item of e.children) {
+				item.class('focused', e.focused_row == item.row)
+				item.class('selected', !!e.selected_rows.get(item.row))
+			}
+		}
 	}
 
 	e.update_cell_state = function(ri, fi, prop, val) {
 		e.update_item(e.at[ri], e.rows[ri])
-	}
-
-	e.update_focus = function() {
-		for (let item of e.children) {
-			item.class('focused', e.focused_row == item.row)
-			item.class('selected', !!e.selected_rows.get(item.row))
-		}
 	}
 
 	// drag-move items --------------------------------------------------------

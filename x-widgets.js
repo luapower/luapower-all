@@ -2359,12 +2359,6 @@ component('x-pagelist', function(e) {
 			}
 	}
 
-	e.select_child_widget = function(widget) {
-		for (let item of e.items)
-			if (item.page == widget)
-				select_item(item.idiv)
-	}
-
 })
 
 // ---------------------------------------------------------------------------
@@ -2543,10 +2537,6 @@ component('x-split', function(e) {
 		old_widget.parent.replace(old_widget, new_widget)
 		update_view()
 		e.fire('widget_tree_changed')
-	}
-
-	e.select_child_widget = function(widget) {
-		// TODO
 	}
 
 	e.serialize = function() {

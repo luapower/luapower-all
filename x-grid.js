@@ -337,7 +337,7 @@ component('x-grid', function(e) {
 
 	// rendering --------------------------------------------------------------
 
-	function update_fields() {
+	function create_fields() {
 		if (!e.attached)
 			return
 		e.header.clear()
@@ -359,12 +359,12 @@ component('x-grid', function(e) {
 			hcell.sort_icon = sort_icon
 			hcell.sort_icon_pri = sort_icon_pri
 			e.header.add(hcell)
-			init_filter(field, hcell)
+			create_filter(field, hcell)
 		}
 		update_sort_icons()
 	}
 
-	function init_filter(field, hcell) {
+	function create_filter(field, hcell) {
 		if (!(horiz && e.filters_visible && field.filter_by))
 			return
 		let rs = e.filter_rowset(field)
@@ -436,7 +436,7 @@ component('x-grid', function(e) {
 		}
 	}
 
-	function init_cells(moving) {
+	function create_cells(moving) {
 		e.cells.clear()
 		let n = vrn * (moving ? 2 : 1)
 		for (let i = 0; i < n; i++) {
@@ -598,7 +598,7 @@ component('x-grid', function(e) {
 		function(v) {
 			header_visible = !!v
 			e.header.show(!!v)
-			e.update({rows: true})
+			e.update({sizes: true})
 		}
 	)
 
@@ -610,7 +610,7 @@ component('x-grid', function(e) {
 		function(v) {
 			filters_visible = !!v
 			e.header.class('with-filters', !!v)
-			e.update({rows: true})
+			e.update({sizes: true})
 		}
 	)
 
@@ -656,18 +656,18 @@ component('x-grid', function(e) {
 		if (!e.attached)
 			return
 		if (opt.fields)
-			update_fields()
+			create_fields()
 		if (opt.sort_order)
 			update_sort_icons()
-		let rows = opt.rows
-		if (opt.sizes) {
+		let opt_rows = opt.rows
+		if (opt.fields || opt.sizes) {
 			let last_vrn = vrn
 			update_sizes()
-			rows = rows || last_vrn != vrn
+			opt_rows = opt_rows || last_vrn != vrn
 		}
-		if (rows)
-			init_cells()
-		if (rows || opt.row_contents || opt.focus)
+		if (opt_rows)
+			create_cells()
+		if (opt.fields || opt_rows || opt.vals || opt.focus)
 			update_cells()
 	}
 
@@ -1182,9 +1182,6 @@ component('x-grid', function(e) {
 				e.editor.class('row-moving', false)
 
 			e.move_row(moved_rows, hit_ri, hit_parent_row)
-
-			e.focused_row_index = hit_ri
-			e.update()
 		}
 
 		// post-init
@@ -1193,7 +1190,7 @@ component('x-grid', function(e) {
 		if (e.editor)
 			e.editor.class('row-moving')
 
-		init_cells(true)
+		create_cells(true)
 
 		let scroll_timer = every(.1, mm_row_move)
 
@@ -1256,26 +1253,7 @@ component('x-grid', function(e) {
 		each_cell_of_col(hit.fi, cell => cell.class('col-moving', false))
 		if (e.editor)
 			e.editor.class('col-moving', false)
-		if (over_fi != hit.fi) {
-			let focused_field  = e.focused_field
-			let selected_field = e.selected_field
-
-			// TODO: encap this
-
-			let insert_fi = over_fi - (over_fi > hit.fi ? 1 : 0)
-			let field = e.fields.remove(hit.fi)
-			e.fields.insert(insert_fi, field)
-
-			e.focused_field_index  = e.field_index(focused_field)
-			e.selected_field_index = e.field_index(selected_field)
-			for (let [row, a] of e.selected_rows)
-				if (isarray(a))
-					a.insert(insert_fi, a.remove(hit.fi))
-
-			update_fields()
-			update_sizes()
-			update_cells()
-		}
+		e.move_field(hit.fi, over_fi)
 	}
 
 	// mouse bindings ---------------------------------------------------------
@@ -1353,7 +1331,7 @@ component('x-grid', function(e) {
 			return
 		if (hit.state == 'header_resizing') {
 			e.class('col-resizing', false)
-			e.update()
+			e.update({sizes: true})
 		} else if (hit.state == 'col_resizing') {
 			mu_col_resize()
 		} else if (hit.state == 'col_dragging') {
@@ -1634,7 +1612,7 @@ component('x-grid', function(e) {
 
 			if (fi != null) {
 				function hide_field(item) {
-					e.show_field(item.field, null, false)
+					e.show_field(item.field, false)
 				}
 				let field = e.fields[fi]
 				let hide_field_text = span(); hide_field_text.set(field.text)
@@ -1651,7 +1629,7 @@ component('x-grid', function(e) {
 			})
 
 			function show_field(item) {
-				e.show_field(item.field, fi, true)
+				e.show_field(item.field, true, fi)
 			}
 			let items_added
 			if (e.rowset)

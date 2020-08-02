@@ -75,12 +75,12 @@ function rowset_widget(e) {
 
 	e.on('attach', function() {
 		bind_rowset(rs, true)
-		update_all({fields: true, rows: true, refocus: 'first'})
+		reset({fields: true, rows: true, refocus: 'first'})
 	})
 
 	e.on('detach', function() {
 		bind_rowset(rs, false)
-		update_all({fields: true, rows: true, refocus: 'none'})
+		reset({fields: true, rows: true, refocus: 'none'})
 	})
 
 	function set_rowset(rs1) {
@@ -90,7 +90,7 @@ function rowset_widget(e) {
 			bind_rowset(rs0, false)
 			bind_rowset(rs1, true)
 		}
-		update_all({fields: true, rows: true, refocus: 'first'})
+		reset({fields: true, rows: true, refocus: 'first'})
 		e.fire('rowset_changed', rs1, rs0)
 	}
 	let rs = null
@@ -143,24 +143,22 @@ function rowset_widget(e) {
 	e.focused_row_index = null
 	e.focused_field_index = null
 
-	function update_all(opt) {
+	function reset(opt) {
 
 		let was_editing = !!e.editor
 		let focus_editor = e.editor && e.editor.hasfocus
 
 		let focused_row, focused_pk
-		if (opt.refocus) {
+		if (e.rows) {
 			if (opt.refocus == 'same_row')
 				focused_row = e.focused_row
 			else if (opt.refocus == 'same_pk') {
 				let row = e.focused_row
 				focused_pk = e.rowset.pk_fields.map((field) => e.rowset.val(row, field))
-			} else
-				e.focus_cell(false, false, 0, 0, {force_exit_edit: true})
+			}
 		}
-
-		e.update_load_fail(false)
-		unbind_filter_rowsets()
+		//if (!rs)
+		//	e.focus_cell(false, false, 0, 0, {force_exit_edit: true})
 
 		if (opt.fields) {
 			fieldmap.clear()
@@ -181,6 +179,11 @@ function rowset_widget(e) {
 				}
 			} else
 				e.fields = null
+		}
+
+		if (opt.rows) {
+			e.update_load_fail(false)
+			unbind_filter_rowsets()
 		}
 
 		if (opt.rows || opt.sort) {
@@ -207,31 +210,33 @@ function rowset_widget(e) {
 		e.update({
 			fields: opt.fields,
 			rows: opt.rows,
-			row_contents: opt.row_contents || opt.sort,
+			vals: opt.sort,
 			sort_order: opt.sort,
 			focus: opt.focus,
 		})
 
-		if (rs && e.attached) {
+		if (e.rows) {
+
+			let fri = opt.refocus ? null : true
 			if (focused_pk)
 				focused_row = e.rowset.lookup(e.pk_fields, focused_pk)
-			if (focused_row) {
-				e.focused_row_index = e.row_index(focused_row)
-				e.update({focus: true})
-			} else if (opt.refocus == 'first')
-				e.focus_cell(true, true, 0, 0, {
-					must_not_move_row: !e.auto_focus_first_cell,
-					enter_edit: e.auto_edit_first_cell,
-					was_editing: was_editing,
-					focus_editor: focus_editor,
-				})
+			if (focused_row)
+				fri = e.row_index(focused_row)
+
+			e.focus_cell(fri, true, 0, 0, {
+				must_not_move_row: !e.auto_focus_first_cell,
+				force_exit_edit: true,
+				enter_edit: e.auto_edit_first_cell,
+				was_editing: was_editing,
+				focus_editor: focus_editor,
+			})
 		}
 
 	}
 
 	// changing field visibility ----------------------------------------------
 
-	e.show_field = function(field, at_fi, on) {
+	e.show_field = function(field, on, at_fi) {
 		if (on)
 			if (at_fi != null)
 				e.fields.insert(at_fi, field)
@@ -239,8 +244,32 @@ function rowset_widget(e) {
 				e.fields.push(field)
 		else
 			e.fields.remove_value(field)
+
 		fieldmap.clear()
-		update_all({fields: true})
+		e.update({fields: true})
+	}
+
+	// column moving ----------------------------------------------------------
+
+	e.move_field = function(fi, over_fi) {
+		if (fi == over_fi)
+			return
+		let focused_field  = e.focused_field
+		let selected_field = e.selected_field
+		fieldmap.clear()
+
+		let insert_fi = over_fi - (over_fi > fi ? 1 : 0)
+		let field = e.fields.remove(fi)
+		e.fields.insert(insert_fi, field)
+
+		e.focused_field_index  = e.field_index(focused_field)
+		e.selected_field_index = e.field_index(selected_field)
+
+		for (let [row, a] of e.selected_rows)
+			if (isarray(a))
+				a.insert(insert_fi, a.remove(fi))
+
+		e.update({fields: true})
 	}
 
 	// adding & removing rows -------------------------------------------------
@@ -279,7 +308,7 @@ function rowset_widget(e) {
 	// responding to structural updates ---------------------------------------
 
 	function rowset_loaded(fields_changed) {
-		update_all({rows: true, refocus: 'same_pk', fields: fields_changed})
+		reset({rows: true, fields: fields_changed, refocus: 'same_pk', })
 	}
 
 	function row_added(row, ev) {
@@ -340,7 +369,7 @@ function rowset_widget(e) {
 	}
 
 	function display_vals_changed(field) {
-		e.update({row_contents: true})
+		e.update({vals: true})
 	}
 
 	// responding to notifications from rowset --------------------------------
@@ -499,9 +528,6 @@ function rowset_widget(e) {
 	})
 
 	e.first_focusable_cell = function(ri, fi, rows, cols, options) {
-
-		if (!e.rows)
-			return [null, null]
 
 		if (ri === true) ri = e.focused_row_index
 		if (fi === true) fi = e.field_index(rs.field(e.focused_field_name))
@@ -953,12 +979,12 @@ function rowset_widget(e) {
 			order_by.set(field, dir)
 		else
 			order_by.delete(field)
-		update_all({sort: true, refocus: 'same_row'})
+		reset({sort: true, refocus: 'same_row'})
 	}
 
 	e.clear_order = function() {
 		order_by.clear()
-		update_all({sort: true, refocus: 'same_row'})
+		reset({sort: true, refocus: 'same_row'})
 	}
 
 	// row collapsing ---------------------------------------------------------
@@ -969,7 +995,7 @@ function rowset_widget(e) {
 		else
 			for (let row of rs.child_rows)
 				rs.set_collapsed(row, collapsed, recursive)
-		update_all({rows: true})
+		reset({rows: true})
 	}
 
 	e.toggle_collapsed = function(ri, recursive) {
@@ -1025,6 +1051,8 @@ function rowset_widget(e) {
 					rs.set_val(e.rows[ri], rs.index_field, index++)
 			}
 
+		e.focused_row_index = over_ri
+		reset({rows: true})
 	}
 
 	// filtering --------------------------------------------------------------
