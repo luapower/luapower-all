@@ -819,6 +819,8 @@ rowset = function(...options) {
 
 	}
 
+	d.pk_vals = (row) => d.pk_fields.map((field) => d.val(row, field))
+
 	// get/set display val ----------------------------------------------------
 
 	function bind_lookup_rowsets(on) {
@@ -1105,6 +1107,8 @@ rowset = function(...options) {
 	}
 
 	d.reset = function(res) {
+
+		d.fire('before_loaded')
 
 		d.changed_rows = null
 

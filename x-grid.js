@@ -903,7 +903,7 @@ component('x-grid', function(e) {
 		}
 		ri2 -= move_n // adjust to after removal.
 
-		let moved_rows = e.rows.splice(move_ri1, move_n)
+		let move_state = e.start_move_selected_rows()
 
 		// state
 
@@ -936,7 +936,7 @@ component('x-grid', function(e) {
 				if (moving && row && field_has_indent(e.fields[fi]))
 					indent = hit_indent
 						+ row_indent(row)
-						- row_indent(moved_rows[0])
+						- row_indent(move_state.rows[0])
 
 				if (cell.ri != ri || ri == null)
 					update_cell_content(cell, row, ri, fi, focused, indent)
@@ -966,7 +966,7 @@ component('x-grid', function(e) {
 				return 1
 			if (before_ri == ri2 - 1)
 				return 1
-			let hit_row = moved_rows[0]
+			let hit_row = move_state.rows[0]
 			let over_row = e.rows[before_ri+1]
 			if ((over_row && over_row.parent_row) == hit_row.parent_row)
 				return 1
@@ -975,7 +975,7 @@ component('x-grid', function(e) {
 
 		function update_hit_parent_row(hit_p) {
 			hit_indent = null
-			hit_parent_row = e.rows[hit_ri].parent_row
+			hit_parent_row = e.rows[hit_ri] ? e.rows[hit_ri].parent_row : null
 			if (horiz && e.tree_field && e.can_change_parent) {
 				let row1 = e.rows[hit_ri-1]
 				let row2 = e.rows[hit_ri]
@@ -1120,7 +1120,7 @@ component('x-grid', function(e) {
 					let vri = 0
 					let x = move_vri1x
 					for (let ri = move_vri1; ri < move_vri2; ri++) {
-						update_row(true, vri++, moved_rows[ri - move_ri1], ri, x, vri1x, ri == move_ri1)
+						update_row(true, vri++, move_state.rows[ri - move_ri1], ri, x, vri1x, ri == move_ri1)
 						x += w
 					}
 
@@ -1194,7 +1194,7 @@ component('x-grid', function(e) {
 			if (e.editor)
 				e.editor.class('row-moving', false)
 
-			e.move_row(moved_rows, hit_ri, hit_parent_row)
+			move_state.finish(hit_ri, hit_parent_row)
 		}
 
 		// post-init
@@ -1438,8 +1438,8 @@ component('x-grid', function(e) {
 			if (e.is_last_row_focused()) {
 				let row = e.focused_row
 				if (row.is_new && !row.cells_modified) {
-					e.remove_focused_row({refocus: true})
-					return false
+					if (e.remove_selected_rows({refocus: true}))
+						return false
 				}
 			}
 		}
@@ -1512,7 +1512,7 @@ component('x-grid', function(e) {
 
 		// delete key: delete active row
 		if (!e.editor && key == 'Delete') {
-			if (e.remove_focused_row({refocus: true}))
+			if (e.remove_selected_rows({refocus: true}))
 				return false
 		}
 
@@ -1523,7 +1523,7 @@ component('x-grid', function(e) {
 		}
 
 		if (key == 'a' && ctrl) {
-			e.select_all()
+			e.select_all_cells()
 			return false
 		}
 

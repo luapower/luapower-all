@@ -182,6 +182,12 @@ component('x-listbox', function(e) {
 
 				clearInterval(scroll_timer)
 
+				let over_ri = e.move_element_stop()
+				let insert_ri = over_ri - (over_ri > move_ri1 ? move_n : 0)
+
+				let move_state = e.start_move_selected_rows()
+				move_state.finish(insert_ri)
+
 				e.class('moving', false)
 				for (let item of e.children) {
 					item.class('moving', false)
@@ -189,10 +195,6 @@ component('x-listbox', function(e) {
 					item.y = null
 				}
 
-				let over_ri = e.move_element_stop()
-				let insert_ri = over_ri - (over_ri > move_ri1 ? move_n : 0)
-				let moved_rows = e.rows.splice(move_ri1, move_n)
-				e.move_row(moved_rows, insert_ri)
 			}
 		}
 
@@ -218,7 +220,7 @@ component('x-listbox', function(e) {
 		return forward ? e.last : e.first
 	}
 
-	e.on('keydown', function(key, shift) {
+	e.on('keydown', function(key, shift, ctrl) {
 		let rows
 		switch (key) {
 			case 'ArrowUp'   : rows = -1; break
@@ -253,7 +255,7 @@ component('x-listbox', function(e) {
 		}
 
 		if (key == 'a' && ctrl) {
-			e.select_all()
+			e.select_all_cells()
 			return false
 		}
 
