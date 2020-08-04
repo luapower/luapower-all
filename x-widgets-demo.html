@@ -798,14 +798,18 @@ main.add(
 			'Bangos',
 			'Something Else Entirely',
 		],
-		validate: function(v) { return v != 'Mananas' || 'Can\'t have mananas.' },
-		val: 'Mananas',
+		nav: cell_nav({
+			val: 'Mananas',
+			validate: function(v) {
+				return v != 'Mananas' || 'Can\'t have mananas.'
+			},
+		}),
 	}),
 
 	list_dropdown({
 		field_name: 'Here we are again',
 		items: thousand_items(),
-		val: 'not-in-list',
+		nav: cell_nav({val: 'not-in-list'}),
 	}),
 )
 
@@ -817,8 +821,9 @@ main.add(
 <template id=countries_listbox_demo>
 <script>
 
-clb = countries_listbox({val: 'RO'})
+clb = countries_listbox({})
 main.add(clb)
+//TODO: clb.val: 'RO'
 
 </script>
 </template>
@@ -828,7 +833,7 @@ main.add(clb)
 <template id=country_dropdown_demo>
 <script>
 
-cd = country_dropdown({val: 'RO'})
+cd = country_dropdown({nav: cell_nav({val: 'RO'})})
 main.add(cd)
 
 </script>
@@ -1213,7 +1218,7 @@ reload_button.on('click', function() {
 })
 
 demo_list_ct.add(demo_list)
-demo_list.focus_cell(18)
+demo_list.focus_cell(22)
 
 lights_button.on('click', function() {
 	let dark = !document.body.hasclass('x-dark')

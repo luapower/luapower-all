@@ -385,7 +385,7 @@ component('x-grid', function(e) {
 			return
 		let rs = e.filter_rowset(field)
 		let dd = grid_dropdown({
-			lookup_rowset : rs,
+			lookup_rowset : e.rowset,
 			lookup_col    : 1,
 			classes       : 'x-grid-filter-dropdown',
 			mode          : 'fixed',
@@ -616,7 +616,7 @@ component('x-grid', function(e) {
 		}
 	)
 
-	let filters_visible = false
+	let filters_visible = true
 	e.property('filters_visible',
 		function() {
 			return filters_visible
@@ -1546,7 +1546,7 @@ component('x-grid', function(e) {
 			e.quicksearch(c, e.focused_field)
 	})
 
-	e.property('ctrl_click_used', () => e.multiple_selection)
+	e.property('ctrl_click_used', () => e.can_select_multiple)
 
 	// column context menu ----------------------------------------------------
 

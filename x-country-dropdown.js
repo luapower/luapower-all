@@ -265,7 +265,6 @@ global_rowset.countries = rowset({
 function countries_listbox(...opt) {
 	return listbox({
 		rowset: global_rowset('countries'),
-		val_col: 'country_code',
 		row_display_val: function(row) {
 			let rs = this.rowset
 			return div({},
@@ -276,9 +275,10 @@ function countries_listbox(...opt) {
 }
 
 function country_dropdown(...opt) {
+	let lb = countries_listbox()
 	return list_dropdown({
-		lookup_rowset: global_rowset('countries'),
+		lookup_rowset: lb.rowset,
 		lookup_col: 'country_code',
-		picker: countries_listbox(),
+		picker: lb,
 	}, ...opt)
 }

@@ -611,19 +611,19 @@ function val_widget(e) {
 	}
 
 	e.on('attach', function() {
-		bind_nav(nav, col, nav.rowset, true)
+		bind_nav(nav, col, nav && nav.rowset, true)
 		e.update()
 	})
 
 	e.on('detach', function() {
-		bind_nav(nav, col, nav.rowset, false)
+		bind_nav(nav, col, nav && nav.rowset, false)
 		e.update()
 	})
 
 	function set_nav_col(nav0, col0) {
 		if (e.attached) {
-			bind_nav(nav0, col0, nav0.rowset, false)
-			bind_nav(nav, col, nav.rowset, true)
+			bind_nav(nav0, col0, nav0 && nav0.rowset, false)
+			bind_nav(nav, col, nav && nav.rowset, true)
 		}
 		e.update()
 	}
@@ -1556,14 +1556,16 @@ component('x-dropdown', function(e) {
 		document.on('stopped_event', document_stopped_event, on)
 	}
 
-	e.attach = function() {
+	e.on('attach', function() {
 		bind_document(true)
-	}
+		e.picker.hide()
+		e.picker.popup(e, 'bottom', e.align)
+	})
 
-	e.detach = function() {
+	e.on('detach', function() {
 		e.close()
 		bind_document(false)
-	}
+	})
 
 	// val updating
 
@@ -1606,11 +1608,11 @@ component('x-dropdown', function(e) {
 			if (open) {
 				e.cancel_val = e.input_val
 				e.picker.min_w = e.rect().w
-				e.picker.popup(e, 'bottom', e.align)
+				e.picker.show()
 				e.fire('opened')
 			} else {
 				e.cancel_val = null
-				e.picker.popup(false)
+				e.picker.hide()
 				e.fire('closed')
 				if (!focus)
 					e.fire('lost_focus') // grid editor protocol

@@ -455,6 +455,10 @@ rowset = function(...options) {
 		}
 	}
 
+	d.must_sort = function(order_by) {
+		return !!(d.parent_field || d.index_field || order_by.size)
+	}
+
 	// order_by: [[field1,'desc'|'asc'],...]
 	d.comparator = function(order_by) {
 
@@ -475,27 +479,29 @@ rowset = function(...options) {
 			let i = field.index
 			cmps[i] = field_comparator(field)
 			let r = dir == 'desc' ? -1 : 1
-			// invalid rows come first
-			s.push('{')
-			s.push('  let v1 = r1.row_error == null')
-			s.push('  let v2 = r2.row_error == null')
-			s.push('  if (v1 < v2) return -1')
-			s.push('  if (v1 > v2) return  1')
-			s.push('}')
-			// invalid vals come after
-			s.push('{')
-			s.push('  let v1 = !(r1.error && r1.error['+i+'] != null)')
-			s.push('  let v2 = !(r2.error && r2.error['+i+'] != null)')
-			s.push('  if (v1 < v2) return -1')
-			s.push('  if (v1 > v2) return  1')
-			s.push('}')
-			// modified rows come after
-			s.push('{')
-			s.push('  let v1 = !r1.cells_modified')
-			s.push('  let v2 = !r2.cells_modified')
-			s.push('  if (v1 < v2) return -1')
-			s.push('  if (v1 > v2) return  1')
-			s.push('}')
+			if (field != d.index_field) {
+				// invalid rows come first
+				s.push('{')
+				s.push('  let v1 = r1.row_error == null')
+				s.push('  let v2 = r2.row_error == null')
+				s.push('  if (v1 < v2) return -1')
+				s.push('  if (v1 > v2) return  1')
+				s.push('}')
+				// invalid vals come after
+				s.push('{')
+				s.push('  let v1 = !(r1.error && r1.error['+i+'] != null)')
+				s.push('  let v2 = !(r2.error && r2.error['+i+'] != null)')
+				s.push('  if (v1 < v2) return -1')
+				s.push('  if (v1 > v2) return  1')
+				s.push('}')
+				// modified rows come after
+				s.push('{')
+				s.push('  let v1 = !r1.cells_modified')
+				s.push('  let v2 = !r2.cells_modified')
+				s.push('  if (v1 < v2) return -1')
+				s.push('  if (v1 > v2) return  1')
+				s.push('}')
+			}
 			// compare vals using the rowset comparator
 			s.push('{')
 			s.push('let cmp = cmps['+i+']')

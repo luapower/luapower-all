@@ -30,7 +30,7 @@ function rowset_widget(e) {
 	e.can_exit_edit_on_errors = true // allow exiting edit mode on validation errors
 	e.can_exit_row_on_errors = false // allow changing row on validation errors
 	e.exit_edit_on_lost_focus = false // exit edit mode when losing focus
-	e.multiple_selection = true
+	e.can_select_multiple = true
 	e.can_select_non_siblings = true
 
 	// prop('can_edit'               , {type: 'bool'})
@@ -47,8 +47,6 @@ function rowset_widget(e) {
 	// prop('can_exit_edit_on_errors', {type: 'bool'})
 	// prop('can_exit_row_on_errors' , {type: 'bool'})
 	// prop('exit_edit_on_lost_focus', {type: 'bool'})
-
-	//val_widget(e)
 
 	// rowset binding ---------------------------------------------------------
 
@@ -183,8 +181,8 @@ function rowset_widget(e) {
 		if (opt.rows || opt.sort) {
 			rowmap.clear()
 			if (rs && e.attached) {
-				let initial_order = !(rs.parent_field || order_by.size)
-				if (opt.rows || initial_order) {
+				let must_sort = e.rowset.must_sort(order_by)
+				if (opt.rows || (opt.sort && !must_sort)) {
 					e.rows = []
 					let i = 0
 					let passes = rs.filter_rowsets_filter(e.filter_rowsets)
@@ -192,7 +190,7 @@ function rowset_widget(e) {
 						if (!row.parent_collapsed && passes(row))
 							e.rows.push(row)
 				}
-				if (!initial_order) {
+				if (must_sort) {
 					let cmp = rs.comparator(order_by)
 					e.rows.sort(cmp)
 				}
@@ -646,8 +644,8 @@ function rowset_widget(e) {
 		let enter_edit = (ev && ev.enter_edit) || (was_editing && e.stay_in_edit_mode)
 		let editable = (ev && ev.editable) || enter_edit
 		let force_exit_edit = (ev && ev.force_exit_edit)
-		let expand_selection = ev && ev.expand_selection && e.multiple_selection
-		let invert_selection = ev && ev.invert_selection && e.multiple_selection
+		let expand_selection = ev && ev.expand_selection && e.can_select_multiple
+		let invert_selection = ev && ev.invert_selection && e.can_select_multiple
 
 		let opt = update({editable: editable}, ev)
 		;[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, opt)
@@ -679,10 +677,6 @@ function rowset_widget(e) {
 			e.focused_field_name = e.fields[fi].name
 
 		let row = e.rows[ri]
-
-		// TODO: value widget
-		// let val = row && e.val_field ? rs.val(row, e.val_field) : null
-		// e.set_val(val, update({input: e}, ev))
 
 		let sel_rows_changed
 		if (ev && ev.preserve_selection) {
@@ -769,7 +763,7 @@ function rowset_widget(e) {
 
 		if (!(ev && ev.make_visible == false))
 			if (e.focused_row_index != null)
-				e.scroll_to_cell(e.focused_row_index, e.focused_cell_index)
+				e.scroll_to_cell(e.focused_row_index, e.focused_field_index)
 
 		return true
 	}
@@ -842,7 +836,10 @@ function rowset_widget(e) {
 		let row = rs.lookup(e.val_field, v)
 		let ri = e.row_index(row)
 		e.focus_cell(ri, true, 0, 0,
-			update({must_not_move_row: true, unfocus_if_not_found: true}, ev))
+			update({
+				must_not_move_row: true,
+				unfocus_if_not_found: true,
+			}, ev))
 	}
 
 	// editing ----------------------------------------------------------------

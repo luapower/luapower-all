@@ -271,7 +271,7 @@ component('x-listbox', function(e) {
 			e.quicksearch(c, e.display_field)
 	})
 
-	e.property('ctrl_click_used', () => e.multiple_selection)
+	e.property('ctrl_click_used', () => e.can_select_multiple)
 
 })
 
@@ -288,10 +288,9 @@ component('x-list-dropdown', function(e) {
 	dropdown.construct(e)
 
 	let display_val = e.display_val
-
 	e.display_val = function() {
 		let lr = e.picker.rowset
-		let lf = e.picker.val_field
+		let lf = lr.field(e.lookup_col)
 		let row = lf && lr.lookup(lf, e.input_val)
 		if (row)
 			return e.picker.row_display_val(row)
@@ -301,14 +300,35 @@ component('x-list-dropdown', function(e) {
 
 	init = e.init
 	e.init = function() {
+
 		e.picker = e.picker || listbox(update({
 			items: e.items,
 			rowset: e.lookup_rowset,
-			val_col: e.lookup_col,
 			display_col: e.display_col,
-			auto_focus_first_cell: false,
-			can_move_items: false, // can't capture mouse.
 		}, e.listbox))
+
+		e.picker.auto_focus_first_cell = false
+		e.picker.can_move_items = false // can't capture mouse.
+		e.picker.can_select_multiple = false
+
+		e.on('attach', function() {
+			let lookup_field = e.picker.rowset.field(e.lookup_col || 0)
+			let row = e.picker.rowset.lookup(lookup_field, e.input_val)
+			let ri = e.picker.row_index(row)
+			e.picker.focus_cell(ri, null, 0, 0, {
+				must_not_move_row: true,
+				unfocus_if_not_found: true,
+			})
+		})
+
+		e.picker.on('focused_row_changed', function(row) {
+			if (!e.attached)
+				return
+			let lookup_field = e.picker.rowset.field(e.lookup_col || 0)
+			let val = row ? e.picker.rowset.val(row, lookup_field) : null
+			e.set_val(val)
+		})
+
 		init()
 	}
 
@@ -325,6 +345,6 @@ component('x-select-button', function(e) {
 	e.orientation = 'horizontal'
 	e.can_move_items = false
 	e.auto_focus_first_cell = false
-	e.multiple_selection = false
+	e.can_select_multiple = false
 
 })
