@@ -311,7 +311,7 @@ component('x-list-dropdown', function(e) {
 		e.picker.can_move_items = false // can't capture mouse.
 		e.picker.can_select_multiple = false
 
-		e.on('attach', function() {
+		function update_picker() {
 			let lookup_field = e.picker.rowset.field(e.lookup_col || 0)
 			let row = e.picker.rowset.lookup(lookup_field, e.input_val)
 			let ri = e.picker.row_index(row)
@@ -319,6 +319,12 @@ component('x-list-dropdown', function(e) {
 				must_not_move_row: true,
 				unfocus_if_not_found: true,
 			})
+		}
+
+		e.on('val_changed', function(v, v0, ev) {
+			if (!e.picker.attached)
+				return
+			update_picker()
 		})
 
 		e.picker.on('focused_row_changed', function(row) {
@@ -326,7 +332,7 @@ component('x-list-dropdown', function(e) {
 				return
 			let lookup_field = e.picker.rowset.field(e.lookup_col || 0)
 			let val = row ? e.picker.rowset.val(row, lookup_field) : null
-			e.set_val(val)
+			e.set_val(val, {input: e})
 		})
 
 		init()

@@ -631,14 +631,17 @@ main.add(cg)
 main.add(calendar({
 	nav: cell_nav(),
 }))
+
 main.add(calendar({
-	validate: function(v) {
-		if (day(v) == day(time()))
-			return 'Can\'t have today.'
-		if (day(v) == day(time(), 1))
-			return 'Can\'t have tomorrow.'
-	},
-	nav: cell_nav({val: day(time(), 1)}),
+	nav: cell_nav({
+		val: day(time(), 1),
+		validate: function(v) {
+			if (day(v) == day(time()))
+				return 'Can\'t have today.'
+			if (day(v) == day(time(), 1))
+				return 'Can\'t have tomorrow.'
+		},
+	}),
 }))
 
 </script>
@@ -845,13 +848,15 @@ main.add(cd)
 <script>
 
 d = date_dropdown({
-	val: time(),
-	validate: function(v) {
-		if (day(v) == day(time()))
-			return 'Can\'t have today.'
-		if (day(v) == day(time(), 1))
-			return 'Can\'t have tomorrow.'
-	}
+	nav: cell_nav({
+		val: time(),
+		validate: function(v) {
+			if (day(v) == day(time()))
+				return 'Can\'t have today.'
+			if (day(v) == day(time(), 1))
+				return 'Can\'t have tomorrow.'
+		},
+	}),
 })
 
 main.add(d)
@@ -1199,7 +1204,11 @@ $('template').forEach(function(e) {
 	demos.push({text: name, code: s})
 })
 
-demo_list = listbox({items: demos, attrs: {id: 'demo_list'}})
+demo_list = listbox({
+	items: demos,
+	attrs: {id: 'demo_list'},
+	auto_focus_first_cell: false,
+})
 
 demo_list.on('focused_row_changed', function() {
 	let demo = this.focused_item
@@ -1218,7 +1227,10 @@ reload_button.on('click', function() {
 })
 
 demo_list_ct.add(demo_list)
-demo_list.focus_cell(22)
+
+window.on('load', function() {
+	demo_list.focus_cell(23)
+})
 
 lights_button.on('click', function() {
 	let dark = !document.body.hasclass('x-dark')

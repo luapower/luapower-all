@@ -220,6 +220,8 @@ property(Array, 'last', {get: function() { return this[this.length-1] } })
 
 // hash maps -----------------------------------------------------------------
 
+empty = {}
+
 keys = Object.keys
 
 // like Object.assign() but skips assigning `undefined` values.

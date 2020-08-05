@@ -628,13 +628,12 @@ function val_widget(e) {
 		e.update()
 	}
 
-	function set_nav(nav1) {
-		let nav0 = nav
+	let nav = null
+	e.set_nav = function(nav1, nav0) {
 		nav = nav1
 		set_nav_col(nav0, col)
 	}
-	let nav = null
-	e.property('nav', () => nav, set_nav)
+	e.prop('nav', {store: 'var', private: true})
 
 	e.prop('nav_name', {store: 'var', bind: 'nav'})
 
@@ -2039,13 +2038,13 @@ component('x-widget-placeholder', function(e) {
 		}
 	}
 
-	e.attach = function() {
+	e.on('attach', function() {
 		widgets = stretched_widgets
 		let pe = e.parent_widget
 		if (pe && pe.accepts_form_widgets)
 			widgets = [].concat(widgets, form_widgets)
 		create_widget_buttons(widgets)
-	}
+	})
 
 })
 
@@ -2147,9 +2146,9 @@ component('x-pagelist', function(e) {
 	e.prop('can_remove_items', {store: 'var', type: 'bool', default: false})
 	e.prop('can_move_items'  , {store: 'var', type: 'bool', default: true})
 
-	e.attach = function() {
+	e.on('attach', function() {
 		e.selected_index = or(e.selected_index, 0)
-	}
+	})
 
 	function select_item(idiv, focus_page, enter_editing) {
 		if (e.selected_item != idiv) {
@@ -2605,9 +2604,9 @@ component('x-toaster', function(e) {
 			t.target = false
 	}
 
-	e.detach = function() {
+	e.on('detach', function() {
 		e.close_all()
-	}
+	})
 
 })
 

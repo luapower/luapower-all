@@ -533,29 +533,6 @@ method(Element, 'make_visible', function() {
 	this.parent.scroll(...this.make_visible_scroll_offset())
 })
 
-// moving an element out of layout while preserving its position & size ------
-
-method(Element, 'pop_out', function(new_parent) {
-	new_parent = or(new_parent, document.body)
-
-	let cs = this.css()
-	let cr = this.rect()
-	let pr = new_parent.rect()
-	let ps = this.css()
-
-	assert(cs['box-sizing'] == 'border-box')
-	assert(ps['box-sizing'] == 'border-box')
-	assert(ps.position == 'relative' || ps.position == 'absolute')
-
-	this.style.display = 'absolute'
-	this.style['grid-area'] = '1 / 1'
-	this.x = cr.x - pr.x + ps['padding-left']
-	this.y = cr.y - pr.y + ps['padding-top' ]
-	this.w = cr.w
-	this.h = cr.h
-
-})
-
 // popup pattern -------------------------------------------------------------
 
 // NOTE: why is this so complicated? because the forever almost-there-but-
@@ -637,7 +614,7 @@ let popup_state = function(e) {
 				target.on('detach', target_detached)
 			}
 		}
-		if (target.isConnected)
+		if (target.isConnected || target.attached)
 			target_attached()
 	}
 
@@ -933,14 +910,11 @@ function live_move_mixin(e) {
 // NOTE: the only reason for using this web components "technology" instead
 // of creating normal elements is because of connectedCallback and
 // disconnectedCallback for which there are no events in built-in elements,
-// and we use those events to tell other widgets when to bind and when to
-// unbind their observers into a widget (a proper iterable weak hash map
-// would be another way to solve this but alas, the web people could't get
-// that one right either).
+// and we use those events to solve the so-called "lapsed listener problem"
+// (a proper iterable weak hash map would be a better way to solve this but
+// alas, the web people could't get that one right either).
 
-HTMLElement.prototype.attach = noop
-HTMLElement.prototype.detach = noop
-HTMLElement.prototype.init   = noop
+HTMLElement.prototype.init = noop
 
 // component(tag, cons) -> create({option: value}) -> element.
 function component(tag, cons) {
@@ -958,29 +932,37 @@ function component(tag, cons) {
 				return
 			if (!this.isConnected)
 				return
-			this.attached = true
 			// elements created by the browser must be initialized on first
 			// attach as they aren't allowed to create children or add
 			// attributes in the constructor.
 			this.initialize()
 			this.attach()
+		}
+
+		disconnectedCallback() {
+			this.detach()
+		}
+
+		initialize() {
+			init(this)
+		}
+
+		attach() {
+			if (this.attached)
+				return
+			this.attached = true
 			this.fire(event('attach', false))
 			if (this.id)
 				document.fire(event('global_attached', false, this, this.id))
 		}
 
-		disconnectedCallback() {
+		detach() {
 			if (!this.attached)
 				return
 			this.attached = false
-			this.detach()
 			this.fire(event('detach', false))
 			if (this.id)
 				document.fire(event('global_detached', false, this, this.id))
-		}
-
-		initialize() {
-			init(this)
 		}
 
 	}
@@ -1059,7 +1041,7 @@ method(HTMLElement, 'late_property', function(prop, getter, setter, default_valu
 
 method(HTMLElement, 'prop', function(prop, opt) {
 
-	opt = opt || {}
+	opt = opt || empty
 	let getter = 'get_'+prop
 	let setter = 'set_'+prop
 	let type = opt.type
@@ -1225,7 +1207,8 @@ method(HTMLElement, 'prop', function(prop, opt) {
 
 	this.property(prop, get, set)
 
-	attr(this, 'props')[prop] = opt
+	if (!opt.private)
+		attr(this, 'props')[prop] = opt
 })
 
 function resolve_global(name) {

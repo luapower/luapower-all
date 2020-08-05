@@ -64,13 +64,13 @@ component('x-grid', function(e) {
 		document.on('layout_changed', layout_changed, on)
 	}
 
-	e.attach = function() {
+	e.on('attach', function() {
 		bind(true)
-	}
+	})
 
-	e.detach = function() {
+	e.on('detach', function() {
 		bind(false)
-	}
+	})
 
 	// geometry ---------------------------------------------------------------
 
@@ -616,7 +616,7 @@ component('x-grid', function(e) {
 		}
 	)
 
-	let filters_visible = true
+	let filters_visible = false
 	e.property('filters_visible',
 		function() {
 			return filters_visible

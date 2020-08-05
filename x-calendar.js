@@ -36,6 +36,9 @@ component('x-calendar', function(e) {
 	e.weekview = H.table({class: 'x-calendar-weekview'})
 	e.add(e.header, e.weekview)
 
+	e.sel_year.attach()
+	e.sel_month.attach()
+
 	e.update_val = function(v) {
 		t = day(v)
 		update_weekview(t, 6)
@@ -191,8 +194,17 @@ component('x-calendar', function(e) {
 
 })
 
+// ---------------------------------------------------------------------------
+// date dropdown
+// ---------------------------------------------------------------------------
+
 component('x-date-dropdown', function(e) {
 	e.field_type = 'date'
 	e.picker = calendar()
+	e.on('prop_changed', function(k, v) {
+		if (k == 'nav')
+			e.picker.nav = v
+	})
 	dropdown.construct(e)
 })
+
