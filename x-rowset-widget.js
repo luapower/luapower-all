@@ -87,11 +87,9 @@ function rowset_widget(e) {
 		reset({fields: true, rows: true})
 	})
 
-	function set_rowset(rs1) {
-		if (rs1 == rs)
-			return
+	let rs = null
+	e.set_rowset = function(rs1, rs0) {
 		force_unfocus_focused_cell()
-		let rs0 = rs
 		rs = rs1
 		if (e.attached) {
 			bind_rowset(rs0, false)
@@ -100,10 +98,22 @@ function rowset_widget(e) {
 		reset({fields: true, rows: true, refocus: true})
 		e.fire('rowset_changed', rs1, rs0)
 	}
-	let rs = null
-	e.property('rowset', () => rs, set_rowset)
+	e.prop('rowset', {store: 'var', private: true})
 
 	e.prop('rowset_name', {store: 'var', bind: 'rowset', resolve: global_rowset})
+
+	// props ------------------------------------------------------------------
+
+	e.set_val_col = function(v) {
+		e.val_field = e.rowset.field(v)
+	}
+	e.prop('val_col', {store: 'var'})
+
+	e.set_tree_col = function(v) {
+		e.tree_field = e.rowset.field(v)
+		reset({rows: true})
+	}
+	e.prop('tree_col', {store: 'var'})
 
 	// row -> row_index mapping -----------------------------------------------
 
@@ -156,8 +166,6 @@ function rowset_widget(e) {
 			fieldmap.clear()
 			if (rs && e.attached) {
 				e.fields = []
-				e.val_field = rs.field(e.val_col)
-				e.tree_field = rs.field(e.tree_col)
 				if (e.cols) {
 					for (let col of e.cols.split(' ')) {
 						let field = rs.field(col)
@@ -677,6 +685,10 @@ function rowset_widget(e) {
 			e.focused_field_name = e.fields[fi].name
 
 		let row = e.rows[ri]
+
+		//TODO:
+		//let val = row && e.val_field ? e.rowset.val(row, e.val_field) : null
+		//e.set_val(val, update({input: e}, ev))
 
 		let sel_rows_changed
 		if (ev && ev.preserve_selection) {
