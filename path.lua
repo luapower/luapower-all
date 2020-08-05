@@ -175,7 +175,7 @@ function path.endsep(s, pl, sep, default_sep)
 	end
 end
 
---detect or set the a path's separator (for Windows paths only).
+--detect or set a path's separator (for Windows paths only).
 --NOTE: setting '\' on a UNIX path may result in an invalid path because
 --`\` is a valid character in UNIX filenames!
 local function set_sep(p, win, sep, default_sep, empty_names)
@@ -506,12 +506,14 @@ function path.filename(s, pl, repl, break_on_err)
 	end
 
 	function subcheck(patt, err, msg)
-		local user_repl = repl
-		function repl(s, err)
-			local s, repl_count = s:gsub(patt, function(c)
-				return user_repl(c, err) --returning nil/false means no repl.
-			end)
-			return repl_count > 0 and s
+		if repl then
+			local user_repl = repl
+			function repl(s, err)
+				local s, repl_count = s:gsub(patt, function(c)
+					return user_repl(c, err) --returning nil/false means no repl.
+				end)
+				return repl_count > 0 and s
+			end
 		end
 		return check(err, msg)
 	end

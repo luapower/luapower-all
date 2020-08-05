@@ -850,6 +850,7 @@ main.add(cd)
 d = date_dropdown({
 	nav: cell_nav({
 		val: time(),
+		type: 'date',
 		validate: function(v) {
 			if (day(v) == day(time()))
 				return 'Can\'t have today.'

@@ -535,19 +535,19 @@ method(Element, 'make_visible', function() {
 
 // popup pattern -------------------------------------------------------------
 
-// NOTE: why is this so complicated? because the forever almost-there-but-
-// just-not-quite model of the web doesn't have the notion of a global z-index
-// (they'd have to keep two parallel trees, one for painting and one for
-// layouting and they just don't wanna I suppose) so we can't have relatively
-// positioned popups that are also painted last i.e. on top of everything,
-// so we have to choose between popups that are well-positioned but possibly
-// clipped or obscured by other elements, or popups that stay on top but
-// have to be manually positioned and kept in sync with the position of their
-// target. We chose the latter and try to auto-update the popup position the
-// best we can, but there will be cases where you'll have to call popup()
-// to update the popup's position manually. We simply don't have an observer
-// for tracking changes to an element's position relative to another element
-// (or to document.body, which would be enough for our case here).
+// Why is this so complicated? Because the forever almost-there-but-just-not-quite
+// model of the web doesn't have the notion of a global z-index so we can't
+// have relatively positioned popups that are also painted last i.e. on top
+// of everything, so we have to choose between popups that are well-positioned
+// but possibly clipped or obscured by other elements, or popups that stay
+// on top but have to be manually positioned and kept in sync with the position
+// of their target. We chose the latter since we have a lot of implicit
+// "stacking contexts" (i.e. abstraction leaks of the graphics engine) and we
+// try to auto-update the popup position the best we can, but there will be
+// cases where you'll have to call popup() to update the popup's position
+// manually. We simply don't have an observer for tracking changes to an
+// element's position relative to another element (or to document.body, which
+// would be enough for our case here).
 
 // `popup_target_changed` event allows changing/animating popup's visibility
 // based on target's hover state or focused state.
