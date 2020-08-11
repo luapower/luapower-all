@@ -501,8 +501,8 @@ function scroll_to_view_rect(x, y, w, h, pw, ph, sx, sy) {
 	let max_sx = -(x + w - pw)
 	let max_sy = -(y + h - ph)
 	return [
-		min(max(sx, min_sx), max_sx),
-		min(max(sy, min_sy), max_sy)
+		clamp(sx, min_sx, max_sx),
+		clamp(sy, min_sy, max_sy)
 	]
 }
 
@@ -511,6 +511,7 @@ method(Element, 'scroll_to_view_rect_offset', function(sx0, sy0, x, y, w, h) {
 	let ph  = this.clientHeight
 	sx0 = or(sx0, this.scrollLeft)
 	sy0 = or(sy0, this.scrollTop )
+	let e = this
 	let [sx, sy] = scroll_to_view_rect(x, y, w, h, pw, ph, -sx0, -sy0)
 	return [-sx, -sy]
 })
@@ -549,7 +550,7 @@ method(Element, 'make_visible', function() {
 // element's position relative to another element (or to document.body, which
 // would be enough for our case here).
 
-// `popup_target_changed` event allows changing/animating popup's visibility
+// `popup_target_updated` event allows changing/animating popup's visibility
 // based on target's hover state or focused state.
 
 {
@@ -595,7 +596,7 @@ let popup_state = function(e) {
 		align   = or(align1 , align)
 		px      = or(px1, px) || 0
 		py      = or(py1, py) || 0
-		target1 = or(target1, target)
+		target1 = or(repl(target1, null, target), target)
 		if (target1 != target) {
 			if (target)
 				free()
@@ -604,7 +605,8 @@ let popup_state = function(e) {
 				init()
 			e.popup_target = target
 		}
-		update()
+		if (target)
+			update(true)
 	}
 
 	function init() {
@@ -675,15 +677,42 @@ let popup_state = function(e) {
 		e.fire('popup_target_detached')
 	}
 
-	function target_changed() {
-		if (e.popup_target_changed)
-			e.popup_target_changed(target)
-		e.fire('popup_target_changed', target)
+	function target_updated() {
+		if (e.popup_target_updated)
+			e.popup_target_updated(target)
+		e.fire('popup_target_updated', target)
 	}
 
-	function update() {
-		if (!target || !target.isConnected)
+	function force_attached(e, v) {
+		if (e.attached != null)
+			e.attached = v
+		for (let ce of e.children)
+			force_attached(ce, v)
+	}
+
+	function is_top_popup() {
+		let last = document.body.last
+		while (1) {
+			if (e == last)
+				return true
+			if (last.__popup_state) {
+				return false
+			}
+			last = last.prev
+		}
+	}
+
+	function update(from_user) {
+		if (!(target && target.isConnected))
 			return
+
+		// move to top if the update was user-triggered not layout-triggered.
+		if (from_user === true && e.parent == document.body && !is_top_popup()) {
+			force_attached(e, false)
+			e.remove()
+			force_attached(e, true)
+			document.body.add(e)
+		}
 
 		let tr = target.rect()
 		let er = e.rect()
@@ -724,7 +753,7 @@ let popup_state = function(e) {
 		e.x = window.scrollX + x0
 		e.y = window.scrollY + y0
 
-		target_changed()
+		target_updated()
 	}
 
 	return s
@@ -925,6 +954,7 @@ function component(tag, cons) {
 
 		constructor() {
 			super()
+			this.attached = false
 		}
 
 		connectedCallback() {
@@ -1122,7 +1152,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 		}
 	} else if (opt.style) {
 		let style = opt.style
-		let format = opt.style_format || function(v) { return v }
+		let format = opt.style_format || return_arg
 		let parse  = opt.style_parse  || type == 'number' && num || function(v) { return v }
 		if (opt.default != null && !this.style[style])
 			this.style[style] = format(opt.default)
