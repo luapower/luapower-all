@@ -274,11 +274,9 @@ function countries_listbox(...opt) {
 	}, ...opt)
 }
 
-function country_dropdown(...opt) {
-	let lb = countries_listbox()
-	return list_dropdown({
-		lookup_rowset: lb.rowset,
-		lookup_col: 'country_code',
-		picker: lb,
-	}, ...opt)
-}
+component('x-country-dropdown', function(e) {
+	e.picker = countries_listbox()
+	list_dropdown.construct()
+	e.lookup_rowset = e.picker.rowset
+	e.lookup_col = 'country_code'
+})

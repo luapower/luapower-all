@@ -118,7 +118,9 @@ local function field_defs_from_query_result_cols(cols, extra_defs, update_table)
 				field.min = range[1 + (col.unsigned and 2 or 0)]
 				field.max = range[2 + (col.unsigned and 2 or 0)]
 			end
-			field.multiple_of = 1 / 10^col.decimals
+			if col.type ~= C.MYSQL_TYPE_FLOAT and col.type ~= C.MYSQL_TYPE_DOUBLE then
+				field.multiple_of = 1 / 10^col.decimals
+			end
 		elseif not type then
 			field.maxlen = col.length * (mysql_charsize[col.charsetnr] or 1)
 		end

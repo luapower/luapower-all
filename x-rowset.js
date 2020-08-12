@@ -54,8 +54,8 @@
 	vlookup:
 		lookup_rowset  : rowset to look up values of this field into
 		lookup_col     : field in lookup_rowset that matches this field
-		display_col    : field in lookup_rowset to use as display_value of this field.
-		lookup_failed_display_value : f(v) -> s; what to use when lookup fails.
+		display_col    : field in lookup_rowset to use as display_val of this field.
+		lookup_failed_display_val : f(v) -> s; what to use when lookup fails.
 
 	sorting:
 		sortable       : allow sorting (true).
@@ -874,6 +874,15 @@ rowset = function(...options) {
 			return field.format(v, row)
 	}
 
+	d.text_val = function(row, field) {
+		let v = d.display_val(row, field)
+		if (v instanceof Node)
+			return v.textContent
+		if (typeof v != 'string')
+			return ''
+		return v
+	}
+
 	// add/remove/move rows ---------------------------------------------------
 
 	function create_row() {
@@ -1330,7 +1339,7 @@ function global_rowset(name, ...options) {
 	if (typeof name == 'string') {
 		d = global_rowset[name]
 		if (!d) {
-			d = rowset({url: 'rowset.json/'+name}, ...options)
+			d = rowset({url: 'rowset.json/'+name, name: name}, ...options)
 			global_rowset[name] = d
 		}
 	}

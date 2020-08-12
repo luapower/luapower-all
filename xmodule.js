@@ -86,7 +86,7 @@ prop_inspector = component('x-prop-inspector', function(e) {
 
 	function init_widgets() {
 		widgets = selected_widgets
-		if (!selected_widgets.size && focused_widget() && focused_widget().can_select_widget)
+		if (!selected_widgets.size && focused_widget() && !up_widget_which(focused_widget(), e => !e.can_select_widget))
 			widgets = new Set([focused_widget()])
 	}
 
@@ -121,6 +121,8 @@ prop_inspector = component('x-prop-inspector', function(e) {
 		if (!widgets.has(widget))
 			return
 		let field = e.rowset.field(k)
+		if (!field)
+			return
 		e.focus_cell(0, e.field_index(field))
 		e.rowset.reset_val(e.focused_row, field, v)
 	}
@@ -143,12 +145,13 @@ prop_inspector = component('x-prop-inspector', function(e) {
 		let props = {}
 		let prop_vals = {}
 
-		for (let e of widgets)
+		for (let e of widgets) {
 			for (let prop in e.props) {
 				prop_counts[prop] = (prop_counts[prop] || 0) + 1
 				props[prop] = e.props[prop]
 				prop_vals[prop] = prop in prop_vals && prop_vals[prop] !== e[prop] ? undefined : e[prop]
 			}
+		}
 
 		for (let prop in prop_counts)
 			if (prop_counts[prop] == widgets.size) {
@@ -157,6 +160,10 @@ prop_inspector = component('x-prop-inspector', function(e) {
 			}
 
 		e.rowset.reset(res)
+
+		e.title_text = ([...widgets].map(e => e.typename)).join(' ')
+
+		e.fire('property_inspector_changed')
 	}
 
 	// prevent unselecting all widgets by default on document.pointerdown.
@@ -235,16 +242,14 @@ widget_tree = component('x-widget-tree', function(e) {
 		barrier = false
 	})
 
-	function selected_widgets_changed(widgets) {
-		if (barrier) return
-		barrier = true
+	function select_widgets(widgets) {
 		let rows = new Map()
 		for (let ce of widgets) {
 			let row = rs.lookup(rs.field(0), ce)
 			rows.set(row, true)
 		}
-		let ce = [...widgets].pop()
-		let row = rs.lookup(rs.field(0), ce)
+		let focused_widget = [...widgets].pop()
+		let row = rs.lookup(rs.field(0), focused_widget)
 		let ri = e.row_index(row)
 		e.focus_cell(ri, null, 0, 0, {
 			selected_rows: rows,
@@ -252,6 +257,12 @@ widget_tree = component('x-widget-tree', function(e) {
 			unfocus_if_not_found: true,
 			dont_select_widgets: true,
 		})
+	}
+
+	function selected_widgets_changed() {
+		if (barrier) return
+		barrier = true
+		select_widgets(selected_widgets)
 		barrier = false
 	}
 
@@ -259,9 +270,21 @@ widget_tree = component('x-widget-tree', function(e) {
 		rs.reset({rows: widget_tree_rows()})
 	}
 
+	/* TODO: not sure what to do here...
+	function focus_changed() {
+		if (selected_widgets.size)
+			return
+		let fe = focused_widget()
+		if (!fe || !fe.can_select_widget)
+			return
+		//select_widgets(new Set([fe]))
+	}
+	*/
+
 	function bind(on) {
 		document.on('widget_tree_changed', widget_tree_changed, on)
 		document.on('selected_widgets_changed', selected_widgets_changed, on)
+		//document.on('focusin', focus_changed, on)
 	}
 	e.on('attach', function() { bind(true) })
 	e.on('detach', function() { bind(false) })
@@ -273,18 +296,23 @@ widget_tree = component('x-widget-tree', function(e) {
 function properties_toolbox(tb_opt, insp_opt) {
 	let pg = prop_inspector(insp_opt)
 	let tb = toolbox(update({
-		title: 'properties',
+		text: 'properties',
 		content: pg,
+		can_select_widget: false,
 	}, tb_opt))
 	tb.inspector = pg
+	pg.on('property_inspector_changed', function() {
+		tb.text = pg.title_text + ' properties'
+	})
 	return tb
 }
 
 function widget_tree_toolbox(tb_opt, wt_opt) {
 	let wt = widget_tree(wt_opt)
 	let tb = toolbox(update({
-		title: 'widget tree',
+		text: 'widget tree',
 		content: wt,
+		can_select_widget: false,
 	}, tb_opt))
 	tb.tree = wt
 	return tb

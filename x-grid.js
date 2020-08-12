@@ -139,7 +139,7 @@ component('x-grid', function(e) {
 
 	let cells_h, cells_w, header_h, cells_view_w, cells_view_h, page_row_count, vrn
 
-	function update_sizes(col_resizing) {
+	function update_sizes() {
 
 		if (horiz) {
 
@@ -174,8 +174,6 @@ component('x-grid', function(e) {
 			e.cells_ct.h = max(1, cells_h) // need at least 1px to show scrollbar.
 			vrn = floor(cells_view_h / e.cell_h) + 2
 			page_row_count = floor(cells_view_h / e.cell_h)
-
-			update_cell_widths_horiz(col_resizing)
 
 		} else {
 
@@ -212,15 +210,20 @@ component('x-grid', function(e) {
 				hcell.y = cell_y(0, fi)
 			}
 
-			update_cell_widths_vert()
 		}
 
 		vrn = min(vrn, e.rows.length)
 
+	}
+
+	function update_cell_sizes(col_resizing) {
+		if (horiz)
+			update_cell_widths_horiz(col_resizing)
+		else
+			update_cell_widths_vert()
 		update_editor()
 		update_scroll()
 		update_resize_guides()
-
 	}
 
 	let vri1, vri2
@@ -354,8 +357,6 @@ component('x-grid', function(e) {
 	// rendering --------------------------------------------------------------
 
 	function create_fields() {
-		if (!e.attached)
-			return
 		e.header.clear()
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let field = e.fields[fi]
@@ -377,7 +378,6 @@ component('x-grid', function(e) {
 			e.header.add(hcell)
 			create_filter(field, hcell)
 		}
-		update_sort_icons()
 	}
 
 	function create_filter(field, hcell) {
@@ -414,12 +414,6 @@ component('x-grid', function(e) {
 			rs.set_val(this.focused_row, f0, checked)
 			rs.filtered_count = (rs.filtered_count || 0) + (checked ? -1 : 1)
 			dd.update_val()
-
-			// TODO:
-
-			//e.init_rows_array()
-			//e.init_rows()
-			//e.sort()
 		}
 
 		dd.picker.on('keydown', function(key) {
@@ -432,8 +426,6 @@ component('x-grid', function(e) {
 	}
 
 	function update_sort_icons() {
-		if (!e.isConnected)
-			return
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let field = e.fields[fi]
 			let hcell = e.header.at[fi]
@@ -666,21 +658,28 @@ component('x-grid', function(e) {
 
 	// responding to rowset changes -------------------------------------------
 
+	let inh_update = e.update
 	e.update = function(opt) {
+		inh_update(opt)
+		if (!opt)
+			return
 		if (!e.attached)
 			return
 		if (opt.fields)
 			create_fields()
-		if (opt.sort_order)
+		if (opt.fields || opt.sort_order)
 			update_sort_icons()
 		let opt_rows = opt.rows
-		if (opt_rows || opt.fields || opt.sizes) {
+		let opt_sizes = opt_rows || opt.fields || opt.sizes
+		if (opt_sizes) {
 			let last_vrn = vrn
-			update_sizes(opt.col_resizing)
+			update_sizes()
 			opt_rows = opt_rows || last_vrn != vrn
 		}
 		if (opt_rows)
 			create_cells()
+		if (opt_sizes)
+			update_cell_sizes(opt.col_resizing)
 		if (opt.fields || opt_rows || opt.vals || opt.focus)
 			update_cells()
 	}
@@ -1505,10 +1504,9 @@ component('x-grid', function(e) {
 		}
 
 		// insert key: insert row
-		if (key == 'Insert') {
-			e.insert_row(true, true)
-			return false
-		}
+		if (key == 'Insert')
+			if (e.insert_row(true, true))
+				return false
 
 		// delete key: delete active row
 		if (!e.editor && key == 'Delete') {

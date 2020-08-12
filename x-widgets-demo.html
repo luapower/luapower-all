@@ -317,7 +317,7 @@ notify('There!', 'error', 2)
 <script>
 
 win = dialog({
-	title: 'I\'m playing the title',
+	text: 'I\'m playing the title',
 	content: div({}, 'I\'m just here for the demo.'),
 	footer: 'some-button < yes no > apply:ok cancel',
 	buttons: {
@@ -342,7 +342,7 @@ main.add(button({
 <script>
 
 tb = toolbox({
-	title: 'Imma toolbox',
+	text: 'Imma toolbox',
 	xxx: 'yyy',
 	content: div({}, 'I\'m just here for the demo.'),
 	x: 400,
@@ -408,7 +408,7 @@ main.add(b)
 <template id=richtext_demo>
 <script>
 
-r = richtext({})
+r = richtext({content: 'hey'})
 
 r.widget_editing = true
 
@@ -527,7 +527,8 @@ lb = listbox({
 		'Bananas',
 		'Something Else Entirely',
 	],
-	val: 'Bananas',
+	val_col: 0,
+	nav: cell_nav({val: 'Bananas'}),
 })
 
 hlb = hlistbox({
@@ -885,10 +886,10 @@ r1 = rowset({
 
 main.add(
 	grid_dropdown({
-		val: 4,
 		lookup_rowset: r1,
 		lookup_col: 'id',
 		display_col: 'name',
+		nav: cell_nav({val: 4}),
 	})
 )
 
@@ -906,10 +907,10 @@ r2 = rowset({
 
 main.add(
 	grid_dropdown({
-		val: 42,
 		lookup_rowset: r2,
 		lookup_col: 'id',
 		display_col: 'name',
+		nav: cell_nav({val: 42}),
 	})
 )
 
@@ -1209,12 +1210,20 @@ demo_list = listbox({
 	items: demos,
 	attrs: {id: 'demo_list'},
 	auto_focus_first_cell: false,
+	item_typename: 'richtext',
 })
+
+demo_list.create_item = function() {
+	return richtext({content: 'hey'})
+}
+
+demo_list.rowset.can_add_rows = true
 
 demo_list.on('focused_row_changed', function() {
 	let demo = this.focused_item
-	ace_editor.getSession().setValue(demo.code)
-	ace_editor.initial_script = demo.code
+	let code = isobject(demo) && demo.code || ''
+	ace_editor.getSession().setValue(code)
+	ace_editor.initial_script = code
 	run_script()
 })
 

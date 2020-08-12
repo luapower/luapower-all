@@ -102,3 +102,10 @@ function rowset.loan_limit()
 		select_all = 'select * from loan_limit',
 	}:respond()
 end
+
+function rowset.product()
+	query'use ifn_fin'
+	return sql_rowset{
+		select_all = 'select * from product',
+	}:respond()
+end

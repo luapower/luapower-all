@@ -16,41 +16,77 @@ component('x-listbox', function(e) {
 
 	e.prop('orientation', {attr: 'orientation', type: 'enum', enum_values: ['vertical', 'horizontal'], default: 'vertical'})
 	e.prop('can_move_items', {store: 'var', type: 'bool', default: true})
+	e.prop('item_typename', {store: 'var', default: 'richtext'})
 
 	e.display_col = 0
 
 	e.init = function() {
 		if(e.items) {
 			assert(!e.rowset)
-			create_rowset_for_items()
-			update_rowset_from_items()
+			create_rowset_from_items()
 		}
 	}
 
 	// item-based rowset ------------------------------------------------------
 
-	function create_rowset_for_items() {
-		e.rowset = rowset({
-			fields: [{format: function(v) { return e.format_item(v) } }],
-			rows: [],
-		})
-		e.display_field = e.rowset.field(0)
+	function setup_item(item) {
+		item.classes = 'x-listbox-item x-item'
+		item.on('pointerdown', item_pointerdown)
 	}
 
-	function update_rowset_from_items() {
-		e.rowset.rows = new Set()
-		for (let item of e.items) {
-			e.rowset.rows.add([item])
+	function create_rowset_from_items() {
+		function row_added(row) {
+			let item = e.create_item()
+			item.ctrl_click_used = true
+			setup_item(item)
+			row[0] = item
 		}
+		let rs = rowset({
+			fields: [{format: e.format_item}],
+			rows: [],
+		})
+		rs.on('row_added', row_added)
+		e.display_field = rs.field(0)
+		rs.rows = new Set()
+		for (let item of e.items) {
+			if (isobject(item) && item.typename)
+				item = component.create(item)
+			if (item instanceof HTMLElement)
+				setup_item(item)
+			rs.rows.add([item])
+		}
+		e.rowset = rs
+	}
+
+	e.create_item = function() {
+		return component.create({typename: e.item_typename})
 	}
 
 	e.format_item = function(item) {
-		return (typeof item == 'string' || item instanceof Node) ? item : item.text
+		return isobject(item) ? item.text : item
 	}
 
 	e.property('focused_item', function() {
 		return e.focused_row ? e.focused_row[0] : null
 	})
+
+	e.child_widgets = function() {
+		let widgets = []
+		for (let ce of e.children)
+			if (ce.typename)
+				widgets.push(ce)
+		return widgets
+	}
+
+	e.serialize = function() {
+		let t = e.serialize_fields()
+		if (e.items) {
+			t.items = []
+			for (let ce of e.child_widgets)
+				t.items.push(ce.serialize())
+		}
+		return t
+	}
 
 	// responding to rowset changes -------------------------------------------
 
@@ -60,37 +96,44 @@ component('x-listbox', function(e) {
 	}
 
 	e.update_item = function(item, row) { // stub
-		item.row = row
+		if (item.typename)
+			return
 		item.set(e.row_display_val(row))
 	}
 
+	let inh_update = e.update
 	e.update = function(opt) {
-
+		inh_update(opt)
+		if (!opt)
+			return
 		if (!e.attached)
 			return
 
 		if (opt.rows) {
-			e.display_field = e.rowset.field(e.display_col)
+			e.display_field = e.rowset && e.rowset.field(e.display_col)
 			e.clear()
-			for (let i = 0; i < e.rows.length; i++) {
-				let item = H.div({class: 'x-listbox-item x-item'})
+			for (let row of e.rows) {
+				let item
+				if (e.items && row[0] instanceof HTMLElement) {
+					item = row[0]
+				} else {
+					item = H.div({})
+					setup_item(item)
+				}
 				e.add(item)
-				item.on('pointerdown', item_pointerdown)
 			}
 		}
 
-		if (opt.rows || opt.vals || opt.fields) {
-			for (let i = 0; i < e.rows.length; i++) {
+		if (opt.rows || opt.vals || opt.fields)
+			for (let i = 0; i < e.rows.length; i++)
 				e.update_item(e.at[i], e.rows[i])
-			}
-		}
 
-		if (opt.rows || opt.focus) {
-			for (let item of e.children) {
-				item.class('focused', e.focused_row == item.row)
-				item.class('selected', !!e.selected_rows.get(item.row))
+		if (opt.rows || opt.focus)
+			for (let i = 0; i < e.rows.length; i++) {
+				let item = e.at[i]
+				item.class('focused', e.focused_row_index == i)
+				item.class('selected', !!e.selected_rows.get(e.rows[i]))
 			}
-		}
 
 	}
 
@@ -114,6 +157,11 @@ component('x-listbox', function(e) {
 	}
 
 	function item_pointerdown(ev, mx, my) {
+
+		if (ev.ctrlKey && ev.shiftKey) {
+			e.focus_cell(false, false)
+			return // enter editing / select widget
+		}
 
 		e.focus()
 
@@ -259,6 +307,11 @@ component('x-listbox', function(e) {
 			return false
 		}
 
+		// insert key: insert row
+		if (key == 'Insert')
+			if (e.insert_row(true, true))
+				return false
+
 	})
 
 	e.scroll_to_cell = function(ri, fi) {
@@ -287,52 +340,98 @@ component('x-list-dropdown', function(e) {
 
 	dropdown.construct(e)
 
-	let display_val = e.display_val
+	e.set_lookup_rowset = function(v) { e.picker.rowset = v }
+	e.set_lookup_col    = function(v) {  }
+	e.set_display_col   = function(v) { e.picker.display_col = v }
+
+	e.prop('lookup_rowset'     , {store: 'var', private: true})
+	e.prop('lookup_rowset_name', {store: 'var', bind: 'lookup_rowset', resolve: global_rowset})
+	e.prop('lookup_col'        , {store: 'var', noinit: true})
+	e.prop('display_col'       , {store: 'var', noinit: true})
+
+	let inh_display_val = e.display_val
 	e.display_val = function() {
-		let lr = e.picker.rowset
-		let lf = lr.field(e.lookup_col)
-		let row = lf && lr.lookup(lf, e.input_val)
+		let lf = e.lookup_field
+		let row = lf && e.lookup_rowset.lookup(lf, e.input_val)
 		if (row)
 			return e.picker.row_display_val(row)
 		else
-			return display_val()
+			return inh_display_val()
 	}
+
+	e.on('prop_changed', function(k, v) {
+		if (!e.picker) return
+		if (k == 'nav') e.picker.nav = v
+		if (k == 'col') e.picker.col = v
+	})
+
+	e.set_lookup_rowset = function() {
+		lookup_rowset_changed()
+		bind_lookup_rowset(true)
+	}
+
+	function lookup_rowset_changed() {
+		if (e.items) {
+			//e.lookup_rowset = e.picker.rowset
+		} else {
+			let lr = e.attached && e.lookup_rowset
+			e.lookup_field  = lr && lr.field(e.lookup_col)
+			e.display_field = lr && lr.field(e.display_col || lr.name_col)
+			e.picker.rowset = lr
+		}
+		lookup_values_changed()
+	}
+
+	function lookup_values_changed() {
+		e.update()
+	}
+
+	function bind_lookup_rowset(on) {
+		let lr = e.lookup_rowset
+		if (!lr) return
+		lr.on('loaded'      , lookup_rowset_changed, on)
+		lr.on('row_added'   , lookup_values_changed, on)
+		lr.on('row_removed' , lookup_values_changed, on)
+		lr.on('input_val_changed_for_'+e.lookup_col, lookup_values_changed, on)
+		lr.on('input_val_changed_for_'+(e.display_col || lr.name_col), lookup_values_changed, on)
+	}
+
+	e.on('attach', function() {
+		lookup_rowset_changed()
+		bind_lookup_rowset(true)
+	})
+
+	e.on('detach', function() {
+		bind_lookup_rowset(false)
+		lookup_rowset_changed()
+	})
 
 	init = e.init
 	e.init = function() {
+
+		if (e.items) {
+			e.lookup_col = 0
+			e.display_col = 0
+		}
 
 		e.picker = e.picker || listbox(update({
 			items: e.items,
 			rowset: e.lookup_rowset,
 			display_col: e.display_col,
+			nav: e.nav,
+			col: e.col,
+			val_col: e.lookup_col,
 		}, e.listbox))
+
+		if (e.items)
+			e.lookup_rowset = e.picker.rowset
 
 		e.picker.auto_focus_first_cell = false
 		e.picker.can_move_items = false // can't capture mouse.
 		e.picker.can_select_multiple = false
 
-		function update_picker() {
-			let lookup_field = e.picker.rowset.field(e.lookup_col || 0)
-			let row = e.picker.rowset.lookup(lookup_field, e.input_val)
-			let ri = e.picker.row_index(row)
-			e.picker.focus_cell(ri, null, 0, 0, {
-				must_not_move_row: true,
-				unfocus_if_not_found: true,
-			})
-		}
-
-		e.on('val_changed', function(v, v0, ev) {
-			if (!e.picker.attached)
-				return
-			update_picker()
-		})
-
-		e.picker.on('focused_row_changed', function(row) {
-			if (!e.attached)
-				return
-			let lookup_field = e.picker.rowset.field(e.lookup_col || 0)
-			let val = row ? e.picker.rowset.val(row, lookup_field) : null
-			e.set_val(val, {input: e})
+		e.on('opened', function() {
+			e.picker.scroll(0, 0) // because toggling `display: none` screws the scrolling.
 		})
 
 		init()

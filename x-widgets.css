@@ -444,10 +444,6 @@
 	text-align: right;
 }
 
-.x-markbox.center {
-	justify-content: center;
-}
-
 .x-markbox[align=left]  > .x-markbox-text:not(:empty) { padding-left : .5em; }
 .x-markbox[align=right] > .x-markbox-text:not(:empty) { padding-right: .5em; }
 
@@ -872,6 +868,10 @@
 	position: relative; /* for item moving */
 }
 
+.x-item.x-listbox-item { /* fighting specificity */
+	overflow: visible;
+}
+
 .x-listbox-item.moving {
 	z-index: 1;
 	opacity: .7;
@@ -884,6 +884,7 @@
 .x-widget.x-listbox.picker {
 	max-height: 300px;
 	overflow: auto;
+	resize: both;
 }
 
 /* select-button ---------------------------------------------------------- */
@@ -1850,7 +1851,7 @@
 
 /* grid as picker */
 
-.x-grid.picker {
+.x-widget.x-grid.picker {
 	margin: 0;
 	min-height: 40px;
 	max-height: 300px;
@@ -1858,7 +1859,7 @@
 	resize: both;
 }
 
-.x-grid.picker > .x-grid-cells-view {
+.x-widget.x-grid.picker > .x-grid-cells-view {
 	overflow-y: scroll;        /* required: show vert-scrollbars always when a picker */
 }
 
