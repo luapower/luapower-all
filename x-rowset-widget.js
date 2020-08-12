@@ -708,8 +708,8 @@ function rowset_widget(e) {
 
 		let row = e.rows[ri]
 
-		if (e.val_field) {
-			let val = row && rs.val(row, e.val_field)
+		if (e.val_field && row) {
+			let val = rs.val(row, e.val_field)
 			e.set_val(val, update({input: e}, ev))
 		}
 

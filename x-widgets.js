@@ -2407,8 +2407,8 @@ component('x-split', function(e) {
 
 		e[1] = component.create(e[1] || widget_placeholder())
 		e[2] = component.create(e[2] || widget_placeholder())
-		e.pane1.set(e[1])
-		e.pane2.set(e[2])
+		if (!e[1].parent) e.pane1.set(e[1])
+		if (!e[2].parent) e.pane2.set(e[2])
 
 		horiz = e.orientation == 'horizontal'
 		left = e.fixed_side == 'first'
