@@ -365,9 +365,11 @@ component('x-list-dropdown', function(e) {
 		if (k == 'col') e.picker.col = v
 	})
 
-	e.set_lookup_rowset = function() {
+	e.set_lookup_rowset = function(lr1, lr0) {
+		bind_lookup_rowset(lr0, false)
+		if (e.attached)
+			bind_lookup_rowset(lr1, true)
 		lookup_rowset_changed()
-		bind_lookup_rowset(true)
 	}
 
 	function lookup_rowset_changed() {
@@ -386,23 +388,21 @@ component('x-list-dropdown', function(e) {
 		e.update()
 	}
 
-	function bind_lookup_rowset(on) {
-		let lr = e.lookup_rowset
+	function bind_lookup_rowset(lr, on) {
 		if (!lr) return
-		lr.on('loaded'      , lookup_rowset_changed, on)
-		lr.on('row_added'   , lookup_values_changed, on)
-		lr.on('row_removed' , lookup_values_changed, on)
-		lr.on('input_val_changed_for_'+e.lookup_col, lookup_values_changed, on)
-		lr.on('input_val_changed_for_'+(e.display_col || lr.name_col), lookup_values_changed, on)
+		lr.on('loaded'           , lookup_rowset_changed, on)
+		lr.on('row_added'        , lookup_values_changed, on)
+		lr.on('row_removed'      , lookup_values_changed, on)
+		lr.on('input_val_changed', lookup_values_changed, on)
 	}
 
 	e.on('attach', function() {
 		lookup_rowset_changed()
-		bind_lookup_rowset(true)
+		bind_lookup_rowset(e.lookup_rowset, true)
 	})
 
 	e.on('detach', function() {
-		bind_lookup_rowset(false)
+		bind_lookup_rowset(e.lookup_rowset, false)
 		lookup_rowset_changed()
 	})
 

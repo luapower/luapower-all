@@ -613,7 +613,7 @@ function val_widget(e, always_enabled) {
 			rs.bind_user_widget(e, on)
 			rs.on('cell_state_changed', rowset_cell_state_changed, on)
 		} else {
-			nav.on('rowset_changed', rowset_changed)
+			nav.on('rowset_changed', rowset_changed, on)
 			nav.on('focused_row_changed', something_changed, on)
 			nav.on('focused_row_cell_state_changed_for_'+col, cell_state_changed, on)
 			rs.on('display_vals_changed_for_'+col, something_changed, on)
