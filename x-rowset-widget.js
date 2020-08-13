@@ -1,10 +1,10 @@
 
 // ---------------------------------------------------------------------------
-// rowset_widget mixin
+// nav widget mixin
 // ---------------------------------------------------------------------------
 
 /*
-	rowset widgets must implement:
+	nav widgets must implement:
 		update(opt)
 		update_cell_state(ri, fi, prop, val, ev)
 		update_row_state(ri, prop, val, ev)
@@ -12,9 +12,11 @@
 		scroll_to_cell(ri, [fi])
 */
 
-function rowset_widget(e) {
+function nav_widget(e) {
 
 	val_widget(e, true)
+
+	e.is_nav = true // for global resolver
 
 	e.can_edit = true
 	e.can_add_rows = true
@@ -98,10 +100,9 @@ function rowset_widget(e) {
 			bind_rowset(rs1, true)
 		}
 		reset({fields: true, rows: true, refocus: 'val'})
-		e.fire('rowset_changed', rs1, rs0)
 	}
 	e.prop('rowset', {store: 'var', private: true})
-	e.prop('rowset_name', {store: 'var', bind: 'rowset', resolve: global_rowset})
+	e.prop('rowset_name', {store: 'var', bind: 'rowset', type: 'rowset', resolve: global_rowset})
 
 	// field props ------------------------------------------------------------
 
@@ -109,6 +110,7 @@ function rowset_widget(e) {
 		e.update()
 	}
 	e.prop('val_col', {store: 'var'})
+	e.property('val_field', () => rs && e.val_col && rs.field(e.val_col) || null)
 
 	e.set_tree_col = function(v) {
 		reset({cols: true, rows: true})
@@ -164,10 +166,8 @@ function rowset_widget(e) {
 
 		if (opt.cols || opt.fields) {
 			if (rs && e.attached) {
-				e.val_field  = rs.field(e.val_col)
 				e.tree_field = rs.field(e.tree_col)
 			} else {
-				e.val_field  = null
 				e.tree_field = null
 			}
 		}
@@ -249,17 +249,6 @@ function rowset_widget(e) {
 
 	}
 
-	let val_widget_update = e.update
-	e.update = function(opt) {
-		if (!opt) {
-			if (e.attached) {
-				e.val_field = rs && rs.field(e.val_col)
-			} else
-				e.val_field = null
-			val_widget_update()
-		}
-	}
-
 	// changing field visibility ----------------------------------------------
 
 	e.show_field = function(field, on, at_fi) {
@@ -305,7 +294,7 @@ function rowset_widget(e) {
 			return false
 		let at_row = at_focused_row && e.focused_row
 		let parent_row = at_row ? at_row.parent_row : null
-		let row = rs.add_row(update({
+		let row = rs.add_row(null, update({
 			row_index: at_row && e.focused_row_index,
 			focus_it: focus_it,
 			parent_row: parent_row,
@@ -346,7 +335,8 @@ function rowset_widget(e) {
 		function rowset_loaded(fields_changed) {
 			reset({
 				rows: true, fields: fields_changed,
-				refocus: 'pk', refocus_pk: focused_pk_vals,
+				refocus: focused_pk_vals ? 'pk' : 'val',
+				refocus_pk: focused_pk_vals,
 				was_editing: was_editing,
 				focus_editor: focus_editor,
 			})
@@ -873,6 +863,7 @@ function rowset_widget(e) {
 		e.focus_cell(ri, true, 0, 0,
 			update({
 				must_not_move_row: true,
+				must_not_move_col: true,
 				unfocus_if_not_found: true,
 			}, ev))
 	}

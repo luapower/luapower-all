@@ -228,7 +228,7 @@ keys = Object.keys
 function update(dt, ...args) {
 	for (let arg of args)
 		if (arg != null)
-			for (k in arg)
+			for (let k in arg)
 				if (arg[k] !== undefined)
 					dt[k] = arg[k]
 	return dt
@@ -244,6 +244,20 @@ function array_attr(t, k) {
 	let v = t[k]
 	if (!v) { v = []; t[k] = v }
 	return v
+}
+
+// TOOD: multi-arg memoize.
+function memoize(f) {
+	let t = new Map()
+	return function(x) {
+		if (t.has(x))
+			return t.get(x)
+		else {
+			let y = f(x)
+			t.set(x, y)
+			return y
+		}
+	}
 }
 
 // events --------------------------------------------------------------------
@@ -282,7 +296,7 @@ function events_mixin(o) {
 	o.fire = function(topic, ...args) {
 		var a = obs.get(topic)
 		if (!a) return
-		for (f of a) {
+		for (let f of a) {
 			let ret = f.call(o, ...args)
 			if (ret !== undefined)
 				return ret

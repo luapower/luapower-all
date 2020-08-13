@@ -5,7 +5,7 @@
 
 component('x-listbox', function(e) {
 
-	rowset_widget(e)
+	nav_widget(e)
 	focusable_widget(e)
 
 	e.can_focus_cells = false
@@ -91,8 +91,10 @@ component('x-listbox', function(e) {
 	// responding to rowset changes -------------------------------------------
 
 	e.row_display_val = function(row) { // stub
-		if (e.display_field)
-			return e.rowset.display_val(row, e.display_field)
+		e.display_field = e.rowset && e.rowset.field(e.display_col)
+		if (!e.display_field)
+			return 'no display field'
+		return e.rowset.display_val(row, e.display_field)
 	}
 
 	e.update_item = function(item, row) { // stub
@@ -101,16 +103,16 @@ component('x-listbox', function(e) {
 		item.set(e.row_display_val(row))
 	}
 
-	let inh_update = e.update
+	let val_widget_update = e.update
 	e.update = function(opt) {
-		inh_update(opt)
-		if (!opt)
+		if (!opt) {
+			val_widget_update()
 			return
+		}
 		if (!e.attached)
 			return
 
 		if (opt.rows) {
-			e.display_field = e.rowset && e.rowset.field(e.display_col)
 			e.clear()
 			for (let row of e.rows) {
 				let item
@@ -338,73 +340,8 @@ hlistbox = function(...options) {
 
 component('x-list-dropdown', function(e) {
 
-	dropdown.construct(e)
-
-	e.set_lookup_rowset = function(v) { e.picker.rowset = v }
-	e.set_lookup_col    = function(v) {  }
-	e.set_display_col   = function(v) { e.picker.display_col = v }
-
-	e.prop('lookup_rowset'     , {store: 'var', private: true})
-	e.prop('lookup_rowset_name', {store: 'var', bind: 'lookup_rowset', resolve: global_rowset})
-	e.prop('lookup_col'        , {store: 'var', noinit: true})
-	e.prop('display_col'       , {store: 'var', noinit: true})
-
-	let inh_display_val = e.display_val
-	e.display_val = function() {
-		let lf = e.lookup_field
-		let row = lf && e.lookup_rowset.lookup(lf, e.input_val)
-		if (row)
-			return e.picker.row_display_val(row)
-		else
-			return inh_display_val()
-	}
-
-	e.on('prop_changed', function(k, v) {
-		if (!e.picker) return
-		if (k == 'nav') e.picker.nav = v
-		if (k == 'col') e.picker.col = v
-	})
-
-	e.set_lookup_rowset = function(lr1, lr0) {
-		bind_lookup_rowset(lr0, false)
-		if (e.attached)
-			bind_lookup_rowset(lr1, true)
-		lookup_rowset_changed()
-	}
-
-	function lookup_rowset_changed() {
-		if (e.items) {
-			//e.lookup_rowset = e.picker.rowset
-		} else {
-			let lr = e.attached && e.lookup_rowset
-			e.lookup_field  = lr && lr.field(e.lookup_col)
-			e.display_field = lr && lr.field(e.display_col || lr.name_col)
-			e.picker.rowset = lr
-		}
-		lookup_values_changed()
-	}
-
-	function lookup_values_changed() {
-		e.update()
-	}
-
-	function bind_lookup_rowset(lr, on) {
-		if (!lr) return
-		lr.on('loaded'           , lookup_rowset_changed, on)
-		lr.on('row_added'        , lookup_values_changed, on)
-		lr.on('row_removed'      , lookup_values_changed, on)
-		lr.on('input_val_changed', lookup_values_changed, on)
-	}
-
-	e.on('attach', function() {
-		lookup_rowset_changed()
-		bind_lookup_rowset(e.lookup_rowset, true)
-	})
-
-	e.on('detach', function() {
-		bind_lookup_rowset(e.lookup_rowset, false)
-		lookup_rowset_changed()
-	})
+	lookup_dropdown_widget(e)
+	e.classes = 'x-list-dropdown'
 
 	init = e.init
 	e.init = function() {
@@ -422,6 +359,8 @@ component('x-list-dropdown', function(e) {
 			col: e.col,
 			val_col: e.lookup_col,
 		}, e.listbox))
+
+		e.picker.dropdown = e
 
 		if (e.items)
 			e.lookup_rowset = e.picker.rowset

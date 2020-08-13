@@ -8,6 +8,7 @@ local rowsets = virtual_rowset(function(rs)
 		res.fields = {
 			{name = 'name'},
 		}
+		res.pk = {'name'}
 		res.rows = {}
 		for name, rs in sortedpairs(rowset) do
 			add(res.rows, {name})

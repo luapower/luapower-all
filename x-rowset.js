@@ -257,6 +257,10 @@ rowset = function(...options) {
 	}
 
 	d.lookup = function(field, v) {
+		if (isarray(field)) {
+			field = field[0]
+			// TODO: multi-key indexing
+		}
 		if (!field.lookup)
 			field.lookup = lookup_function(field, true)
 		return field.lookup(v)
@@ -885,21 +889,16 @@ rowset = function(...options) {
 
 	// add/remove/move rows ---------------------------------------------------
 
-	function create_row() {
-		let row = []
-		// add server_default values or null
-		for (let field of d.fields) {
-			let val = field.server_default
-			row.push(val != null ? val : null)
-		}
-		row.is_new = true
-		return row
-	}
-
-	d.add_row = function(ev) {
+	d.add_row = function(values, ev) {
 		if (!d.can_add_rows)
 			return
-		let row = create_row()
+		let row = []
+		// add server_default values or null
+		for (let i = 0; i < d.fields.length; i++) {
+			let field = d.fields[i]
+			row[i] = or(or(values && values[field.name], field.server_default), null)
+		}
+		row.is_new = true
 		d.rows.add(row)
 
 		if (d.parent_field) {

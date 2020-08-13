@@ -5,7 +5,7 @@
 
 component('x-grid', function(e) {
 
-	rowset_widget(e)
+	nav_widget(e)
 	focusable_widget(e)
 
 	e.align_x = 'stretch'
@@ -658,11 +658,12 @@ component('x-grid', function(e) {
 
 	// responding to rowset changes -------------------------------------------
 
-	let inh_update = e.update
+	let val_widget_update = e.update
 	e.update = function(opt) {
-		inh_update(opt)
-		if (!opt)
+		if (!opt) {
+			val_widget_update()
 			return
+		}
 		if (!e.attached)
 			return
 		if (opt.fields)
@@ -719,6 +720,13 @@ component('x-grid', function(e) {
 
 	e.pick_val = function() {
 		e.fire('val_picked', {input: e})
+	}
+
+	e.row_display_val = function(row) { // stub
+		e.display_field = e.rowset && e.rowset.field(e.display_col)
+		if (!e.display_field)
+			return 'no display field'
+		return e.rowset.display_val(row, e.display_field)
 	}
 
 	// vgrid header resizing --------------------------------------------------
@@ -1688,24 +1696,23 @@ component('x-grid', function(e) {
 
 })
 
-// vgrid ---------------------------------------------------------------------
-
-vgrid = function(...options) {
-	return grid({vertical: true}, ...options)
-}
-
-// grid_dropdown -------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// grid_dropdown
+// ---------------------------------------------------------------------------
 
 component('x-grid-dropdown', function(e) {
 
-	e.class('x-grid-dropdown')
-	dropdown.construct(e)
+	lookup_dropdown_widget(e)
+	e.classes = 'x-grid-dropdown'
 
 	init = e.init
 	e.init = function() {
 		e.picker = grid(update({
 			rowset: e.lookup_rowset,
+			nav: e.nav,
+			col: e.col,
 			val_col: e.lookup_col,
+			display_col: e.display_col,
 			can_edit: false,
 			can_focus_cells: false,
 			auto_focus_first_cell: false,

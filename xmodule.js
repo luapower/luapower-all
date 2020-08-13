@@ -3,26 +3,84 @@
 // rowset types
 // ---------------------------------------------------------------------------
 
-rowset.types.rowset = {}
+// globals rowset
+
+global_widgets_rowset = function(type, exclude_e) {
+
+	let rs = rowset({
+		fields: [{name: 'name'}],
+		can_add_rows: true,
+		can_remove_rows: true,
+	})
+
+	function global_changed(te, name, last_name) {
+		if (last_name && name) {
+			let field = rs.fields[0]
+			let row = rs.lookup(field, last_name)
+			rs.set_val(row, field, name)
+		} else {
+			global_detached(te, last_name)
+			global_attached(te, name)
+		}
+	}
+
+	function global_attached(te, name) {
+		if (!name)
+			return
+		rs.add_row({name: name})
+	}
+
+	function global_detached(te, name) {
+		if (!name)
+			return
+		let row = rs.lookup(rs.fields[0], name)
+		if (row)
+			rs.remove_row(row, {forever: true})
+	}
+
+	document.on('global_changed' , global_changed )
+	document.on('global_attached', global_attached)
+	document.on('global_detached', global_detached)
+
+	let resolve = global_widget_resolver(type)
+	for (let e of $('[id]')) {
+		e = e != exclude_e && resolve(e.id)
+		if (e)
+			global_attached(e, e.id)
+	}
+
+	return rs
+}
+
+// rowsets rowset
 
 rowsets_rowset = global_rowset('rowsets')
 rowsets_rowset.load()
+
+// rowset
+
+rowset.types.rowset = {}
 
 rowset.types.rowset.editor = function(...options) {
 	return list_dropdown(update({
 		nolabel: true,
 		lookup_rowset: rowsets_rowset,
+		lookup_col: 'name',
 	}, ...options))
 }
 
-rowset.types.rowset_field = {}
+// col
 
-rowset.types.rowset_field.editor = function(...options) {
+rowset.types.col = {}
+
+/*
+rowset.types.col.editor = function(...options) {
+	let rs = rowset({
+		fields: [{name: 'name'}],
+	})
 	let e = list_dropdown(update({
 		nolabel: true,
-		lookup_rowset: rowset({
-			fields: [{name: 'name'}],
-		}),
+		lookup_rowset: rs,
 	}, ...options))
 	let rs_field = e.nav.rowset.field(this.rowset_col)
 	let rs_name = e.nav.rowset.value(e.nav.focused_row, rs_field)
@@ -37,6 +95,21 @@ rowset.types.rowset_field.editor = function(...options) {
 		rs.load_fields()
 	}
 	return e
+}
+*/
+
+// nav
+
+rowset.types.nav = {}
+
+rowset.types.nav.editor = function(...options) {
+	let opt = update({
+		nolabel: true,
+		lookup_col: 'name',
+		display_col: 'name',
+	}, ...options)
+	opt.lookup_rowset = global_widgets_rowset('nav')
+	return list_dropdown(opt)
 }
 
 // ---------------------------------------------------------------------------

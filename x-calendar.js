@@ -40,7 +40,7 @@ component('x-calendar', function(e) {
 	e.sel_month.attach()
 
 	e.update_val = function(v) {
-		t = day(v)
+		let t = day(v)
 		update_weekview(t, 6)
 		let y = year_of(t)
 		let n = floor(1 + days(t - month(t)))
@@ -201,10 +201,6 @@ component('x-calendar', function(e) {
 component('x-date-dropdown', function(e) {
 	e.field_type = 'date'
 	e.picker = calendar()
-	e.on('prop_changed', function(k, v) {
-		if (k == 'nav')
-			e.picker.nav = v
-	})
 	dropdown.construct(e)
 })
 

@@ -105,6 +105,7 @@ function selectable_widget(e) {
 	attr(e, 'props').id = {name: 'id'}
 
 	override_property_setter(e, 'id', function(inherited, id) {
+		if (!id) id = ''
 		let id0 = e.id
 		inherited.call(this, id)
 		if (id === id0)
@@ -233,7 +234,7 @@ function selectable_widget(e) {
 
 	e.on('detach', function() { e.widget_selected = false })
 
-	e.on('pointerup', function(ev) {
+	e.on('pointerdown', function(ev) {
 		if (e.widget_selected)
 			return false // prevent dropdown from opening.
 	})
@@ -641,18 +642,19 @@ function val_widget(e, always_enabled) {
 
 	let nav
 	e.set_nav = function(nav1, nav0) {
+		assert(nav1 != e)
 		nav = nav1
 		set_nav_col(nav1, nav0, col, col)
 	}
 	e.prop('nav', {store: 'var', private: true})
-	e.prop('nav_name', {store: 'var', bind: 'nav'})
+	e.prop('nav_name', {store: 'var', bind: 'nav', type: 'nav'})
 
 	let col = 0
 	e.set_col = function(col1, col0) {
 		col = col1
 		set_nav_col(nav, nav, col1, col0)
 	}
-	e.prop('col', {store: 'var'})
+	e.prop('col', {store: 'var', type: 'col', col_rowset: () => e.nav && e.nav.rowset})
 
 	// field & val ------------------------------------------------------------
 
@@ -1560,6 +1562,20 @@ component('x-dropdown', function(e) {
 	e.inner_label_div = div({class: 'x-input-inner-label x-dropdown-inner-label'})
 	e.add(e.val_div, e.button, e.inner_label_div)
 
+	let inh_set_nav = e.set_nav
+	e.set_nav = function(v, v0) {
+		inh_set_nav(v, v0)
+		if (e.picker)
+			e.picker.nav = v
+	}
+
+	let inh_set_col = e.set_col
+	e.set_col = function(v, v0) {
+		inh_set_col(v, v0)
+		if (e.picker)
+			e.picker.col = v
+	}
+
 	e.init = function() {
 		e.picker.class('picker', true)
 		e.picker.can_select_widget = false
@@ -1665,11 +1681,11 @@ component('x-dropdown', function(e) {
 
 	// keyboard & mouse binding
 
-	e.on('pointerdown', function() {
-		return false // prevent selection by dbl-clicking.
-	})
+	//e.on('pointerdown', function() {
+	//	return false // prevent selection by dbl-clicking.
+	//})
 
-	e.on('pointerup', function() {
+	e.on('pointerdown', function() {
 		e.toggle(true)
 		return false
 	})
@@ -1684,6 +1700,10 @@ component('x-dropdown', function(e) {
 				e.picker.pick_near_val(key == 'ArrowDown' ? 1 : -1, {input: e})
 				return false
 			}
+		}
+		if (key == 'Delete') {
+			e.val = null
+			return false
 		}
 	})
 
@@ -1733,6 +1753,82 @@ component('x-dropdown', function(e) {
 	})
 
 })
+
+// ---------------------------------------------------------------------------
+// lookup dropdown mixin
+// ---------------------------------------------------------------------------
+
+function lookup_dropdown_widget(e) {
+
+	dropdown.construct(e)
+
+	e.set_lookup_col = function(v) {
+		lookup_values_changed()
+	}
+
+	e.set_display_col = function(v) {
+		if (e.picker)
+			e.picker.display_col = v
+	}
+
+	e.prop('lookup_rowset'     , {store: 'var', private: true})
+	e.prop('lookup_rowset_name', {store: 'var', bind: 'lookup_rowset', type: 'rowset', resolve: global_rowset})
+	e.prop('lookup_col'        , {store: 'var'})
+	e.prop('display_col'       , {store: 'var'})
+
+	let inh_display_val = e.display_val
+	e.display_val = function() {
+		let lf = e.lookup_field
+		let row = lf && e.lookup_rowset.lookup(lf, e.input_val)
+		if (row)
+			return e.picker.row_display_val(row)
+		else
+			return inh_display_val()
+	}
+
+	e.set_lookup_rowset = function(lr1, lr0) {
+		bind_lookup_rowset(lr0, false)
+		if (e.attached)
+			bind_lookup_rowset(lr1, true)
+		lookup_rowset_changed()
+		if (e.picker)
+			e.picker.rowset = lr1
+	}
+
+	function lookup_rowset_changed() {
+		let lr = e.attached && e.lookup_rowset || null
+		e.lookup_field  = lr && (e.lookup_col
+			? lr.field(e.lookup_col)
+			: (lr.pk_fields.length ? lr.pk_fields : null))
+		e.display_field = lr && lr.field(e.display_col || lr.name_col)
+		if (e.picker)
+			e.picker.rowset = lr
+		lookup_values_changed()
+	}
+
+	function lookup_values_changed() {
+		e.update()
+	}
+
+	function bind_lookup_rowset(lr, on) {
+		if (!lr) return
+		lr.on('loaded'           , lookup_rowset_changed, on)
+		lr.on('row_added'        , lookup_values_changed, on)
+		lr.on('row_removed'      , lookup_values_changed, on)
+		lr.on('input_val_changed', lookup_values_changed, on)
+	}
+
+	e.on('attach', function() {
+		bind_lookup_rowset(e.lookup_rowset, true)
+		lookup_rowset_changed()
+	})
+
+	e.on('detach', function() {
+		bind_lookup_rowset(e.lookup_rowset, false)
+		lookup_rowset_changed()
+	})
+
+}
 
 // ---------------------------------------------------------------------------
 // menu
@@ -2623,7 +2719,7 @@ component('x-toaster', function(e) {
 	}
 
 	e.close_all = function() {
-		for (t of e.tooltips)
+		for (let t of e.tooltips)
 			t.target = false
 	}
 
@@ -2825,7 +2921,7 @@ component('x-toolbox', function(e) {
 		})
 	})
 
-	e.xbutton.on('pointerup', function() {
+	e.xbutton.on('pointerdown', function() {
 		e.hide()
 		return false
 	})
@@ -2851,8 +2947,7 @@ component('x-richtext', function(e) {
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
 
-	e.content_div = div({class: 'x-richedit-content'}) // , tag('slot', {}))
-	//e.attachShadow({mode: 'open'}).appendChild(e.content_div)
+	e.content_div = div({class: 'x-richedit-content'})
 	e.add(e.content_div)
 
 	// content property

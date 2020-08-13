@@ -456,7 +456,7 @@ method(HTMLInputElement, 'set_input_filter', function() {
 		}
 	}
 	let events = ['input', 'keydown', 'keyup', 'select', 'contextmenu', 'drop']
-	for (e of events)
+	for (let e of events)
 		this.on('raw:'+e, filter)
 })
 
@@ -563,7 +563,7 @@ let popup_timer = function() {
 	let frequency = .25
 
 	function tick() {
-		for (f of handlers)
+		for (let f of handlers)
 			f()
 	}
 
@@ -1190,7 +1190,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 	}
 
 	if (opt.bind) {
-		let resolve = opt.resolve || resolve_global
+		let resolve = opt.resolve || global_widget_resolver(opt.type)
 		let NAME = prop
 		let REF = repl(opt.bind, true, NAME)
 		let e = this
@@ -1209,7 +1209,7 @@ method(HTMLElement, 'prop', function(prop, opt) {
 				e[REF] = null
 		}
 		function bind(on) {
-			document.on('global_changed', global_changed, on)
+			document.on('global_changed' , global_changed, on)
 			document.on('global_attached', global_attached, on)
 			document.on('global_detached', global_detached, on)
 		}
@@ -1241,7 +1241,11 @@ method(HTMLElement, 'prop', function(prop, opt) {
 		attr(this, 'props')[prop] = opt
 })
 
-function resolve_global(name) {
-	let ref = window[name]
-	return ref && ref.attached ? ref : null
-}
+global_widget_resolver = memoize(function(type) {
+	let is_type = 'is_'+type
+	return function(name) {
+		let e = window[name]
+		return isobject(e) && e.attached && e[is_type] && e.can_select_widget ? e : null
+	}
+})
+
