@@ -27,21 +27,21 @@ component('x-grid', function(e) {
 	e.quick_edit = false        // quick edit (vs. quick-search) when pressing a key
 
 	// mouse behavior
-	e.can_sort_rows = true
-	e.can_reorder_fields = true
-	e.enter_edit_on_click = false
-	e.enter_edit_on_click_focused = true
-	e.exit_edit_on_escape = true
-	e.exit_edit_on_enter = true
-	e.focus_cell_on_click_header = false
-	e.can_move_rows = false
-	e.can_change_parent = true
+	e.prop('can_sort_rows'               , {store: 'var', default: true})
+	e.prop('can_reorder_fields'          , {store: 'var', default: true})
+	e.prop('enter_edit_on_click'         , {store: 'var', default: false})
+	e.prop('enter_edit_on_click_focused' , {store: 'var', default: true})
+	e.prop('exit_edit_on_escape'         , {store: 'var', default: true})
+	e.prop('exit_edit_on_enter'          , {store: 'var', default: true})
+	e.prop('focus_cell_on_click_header'  , {store: 'var', default: false})
+	e.prop('can_move_rows'               , {store: 'var', default: false})
+	e.prop('can_change_parent'           , {store: 'var', default: true})
 
 	// context menu features
-	e.enable_context_menu = true
-	e.can_change_header_visibility = false
-	e.can_change_filters_visibility = true
-	e.can_change_fields_visibility = true
+	e.prop('enable_context_menu'           , {store: 'var', default: true})
+	e.prop('can_change_header_visibility'  , {store: 'var', default: false})
+	e.prop('can_change_filters_visibility' , {store: 'var', default: true})
+	e.prop('can_change_fields_visibility'  , {store: 'var', default: true})
 
 	let horiz = true
 	e.get_vertical = function() { return !horiz }
@@ -364,7 +364,7 @@ component('x-grid', function(e) {
 			let sort_icon_pri = H.span({class: 'x-grid-header-sort-icon-pri'})
 			let e1 = H.td({class: 'x-grid-header-title-td'})
 			e1.set(field.text)
-			e1.title = e1.textContent
+			e1.title = field.hint || e1.textContent
 			let e2 = H.td({class: 'x-grid-header-sort-icon-td'}, sort_icon, sort_icon_pri)
 			if (horiz && field.align == 'right')
 				[e1, e2] = [e2, e1]
@@ -524,7 +524,7 @@ component('x-grid', function(e) {
 		row_focused = or(row_focused, e.focused_row_index == ri)
 		let cell_focused = row_focused && (!e.can_focus_cells || fi == e.focused_field_index)
 		let sel_fields = e.selected_rows.get(row)
-		let selected = (isarray(sel_fields) ? sel_fields[fi] : sel_fields) || false
+		let selected = (isobject(sel_fields) ? sel_fields.has(field) : sel_fields) || false
 		let editing = !!e.editor
 		cell.class('focused', cell_focused)
 		cell.class('editing', cell_focused && editing)
@@ -814,7 +814,7 @@ component('x-grid', function(e) {
 			mu_col_resize = null
 			e.class('col-resizing', false)
 			remove_resize_guides()
-			update_sizes()
+			e.update({sizes: true})
 		}
 
 	}
@@ -846,8 +846,10 @@ component('x-grid', function(e) {
 
 		if (e.focus_cell(cell.ri, cell.fi, 0, 0, {
 			must_not_move_row: true,
-			enter_edit: !over_indent && e.can_edit && (e.enter_edit_on_click
-				|| (e.enter_edit_on_click_focused && already_on_it)),
+			enter_edit: !over_indent && e.can_edit
+				&& !ev.ctrlKey && !ev.shiftKey
+				&& (e.enter_edit_on_click
+					|| (e.enter_edit_on_click_focused && already_on_it)),
 			focus_editor: true,
 			editor_state: 'select_all',
 			expand_selection: ev.shiftKey,
@@ -1323,14 +1325,15 @@ component('x-grid', function(e) {
 		}
 	}
 
-	e.on('pointermove', pointermove)
+	function pointerdown(ev, mx, my) {
 
-	e.on('pointerdown', function(ev, mx, my) {
 		if (!hit.state)
 			pointermove(mx, my, ev)
 		if (!hit.state)
 			return
+
 		e.focus()
+
 		if (hit.state == 'header_resize') {
 			hit.state = 'header_resizing'
 			e.class('col-resizing')
@@ -1345,8 +1348,12 @@ component('x-grid', function(e) {
 			md_row_drag(ev, mx, my)
 		} else
 			assert(false)
+
+		if (ev.which == 3)
+			return false // no dragging with right-click.
+
 		return 'capture'
-	})
+	}
 
 	function pointerup(mx, my, ev) {
 		if (!hit.state)
@@ -1357,10 +1364,14 @@ component('x-grid', function(e) {
 		} else if (hit.state == 'col_resizing') {
 			mu_col_resize()
 		} else if (hit.state == 'col_dragging') {
-			if (e.can_sort_rows)
-				e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
-			else if (e.focus_cell_on_click_header)
-				e.focus_cell(true, hit.fi)
+			if (ev.ctrlKey) {
+				e.select_all_cells(hit.fi)
+			} else {
+				if (e.can_sort_rows)
+					e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
+				else if (e.focus_cell_on_click_header)
+					e.focus_cell(true, hit.fi)
+			}
 		} else if (hit.state == 'col_moving') {
 			mu_col_move()
 		} else if (hit.state == 'row_moving') {
@@ -1370,8 +1381,11 @@ component('x-grid', function(e) {
 		return false
 	}
 
-	e.on('pointerup', pointerup)
-	e.on('pointerleave', pointerup)
+	e.on('pointermove'     , pointermove)
+	e.on('pointerdown'     , pointerdown)
+	e.on('pointerup'       , pointerup)
+	e.on('pointerleave'    , pointerup)
+	e.on('rightpointerdown', pointerdown)
 
 	e.on('contextmenu', function(ev) {
 		let cell = ev.target.closest('.x-grid-header-cell') || ev.target.closest('.x-grid-cell')
@@ -1456,8 +1470,8 @@ component('x-grid', function(e) {
 		switch (key) {
 			case up_arrow    : rows = -1; break
 			case down_arrow  : rows =  1; break
-			case 'PageUp'    : rows = -page_row_count; break
-			case 'PageDown'  : rows =  page_row_count; break
+			case 'PageUp'    : rows = -(ctrl ? 1/0 : page_row_count); break
+			case 'PageDown'  : rows =  (ctrl ? 1/0 : page_row_count); break
 			case 'Home'      : rows = -1/0; break
 			case 'End'       : rows =  1/0; break
 		}
@@ -1516,10 +1530,18 @@ component('x-grid', function(e) {
 			if (e.insert_row(true, true))
 				return false
 
-		// delete key: delete active row
 		if (!e.editor && key == 'Delete') {
-			if (e.remove_selected_rows({refocus: true}))
+
+			// ctrl+delete: delete active row
+			if (ctrl && e.remove_selected_rows({refocus: true}))
 				return false
+
+			// delete: set selected cells to null.
+			if (!ctrl) {
+				e.set_null_selected_cells()
+				return false
+			}
+
 		}
 
 		if (!e.editor && key == ' ') {
@@ -1528,7 +1550,7 @@ component('x-grid', function(e) {
 			return false
 		}
 
-		if (key == 'a' && ctrl) {
+		if (ctrl && key == 'a') {
 			e.select_all_cells()
 			return false
 		}
@@ -1596,6 +1618,25 @@ component('x-grid', function(e) {
 			enabled: !!(e.rowset && e.rowset.changed_rows),
 			action: function() {
 				e.rowset.revert()
+			},
+			separator: true,
+		})
+
+		items.push({
+			text: S('remove_selected_rows', 'Remove selected rows'),
+			icon: 'fa fa-trash',
+			enabled: e.selected_rows.size && e.can_remove_row(),
+			action: function() {
+				e.remove_selected_rows()
+			},
+		})
+
+		items.push({
+			text: S('set_null_selected_cells', 'Set selected cells to null'),
+			icon: 'fa fa-eraser',
+			enabled: e.selected_rows.size && e.can_change_val(),
+			action: function() {
+				e.set_null_selected_cells()
 			},
 			separator: true,
 		})
@@ -1672,19 +1713,19 @@ component('x-grid', function(e) {
 
 			items.last.separator = true
 
-			if (e.rowset.parent_field) {
-				items.push({
-					text: S('expand_all', 'Expand all'),
-					enabled: horiz && e.tree_field,
-					action: function() { e.set_collapsed(null, false, true) },
-				})
-				items.push({
-					text: S('collapse_all', 'Collapse all'),
-					enabled: horiz && e.tree_field,
-					action: function() { e.set_collapsed(null, true, true) },
-				})
-			}
+		}
 
+		if (e.rowset.parent_field) {
+			items.push({
+				text: S('expand_all', 'Expand all'),
+				enabled: horiz && e.tree_field,
+				action: function() { e.set_collapsed(null, false, true) },
+			})
+			items.push({
+				text: S('collapse_all', 'Collapse all'),
+				enabled: horiz && e.tree_field,
+				action: function() { e.set_collapsed(null, true, true) },
+			})
 		}
 
 		context_menu = menu({items: items})

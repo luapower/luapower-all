@@ -66,6 +66,7 @@ rowset.types.rowset.editor = function(...options) {
 		nolabel: true,
 		lookup_rowset: rowsets_rowset,
 		lookup_col: 'name',
+		mode: 'fixed',
 	}, ...options))
 }
 
@@ -81,6 +82,7 @@ rowset.types.col.editor = function(...options) {
 	let e = list_dropdown(update({
 		nolabel: true,
 		lookup_rowset: rs,
+		mode: 'fixed',
 	}, ...options))
 	let rs_field = e.nav.rowset.field(this.rowset_col)
 	let rs_name = e.nav.rowset.value(e.nav.focused_row, rs_field)
@@ -107,6 +109,7 @@ rowset.types.nav.editor = function(...options) {
 		nolabel: true,
 		lookup_col: 'name',
 		display_col: 'name',
+		mode: 'fixed',
 	}, ...options)
 	opt.lookup_rowset = global_widgets_rowset('nav')
 	return list_dropdown(opt)

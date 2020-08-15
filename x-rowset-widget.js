@@ -18,39 +18,24 @@ function nav_widget(e) {
 
 	e.is_nav = true // for global resolver
 
-	e.can_edit = true
-	e.can_add_rows = true
-	e.can_remove_rows = true
-	e.can_change_rows = true
+	e.prop('can_edit'        , {store: 'var', default: true})
+	e.prop('can_add_rows'    , {store: 'var', default: true})
+	e.prop('can_remove_rows' , {store: 'var', default: true})
+	e.prop('can_change_rows' , {store: 'var', default: true})
 
-	e.can_focus_cells = true         // can focus individual cells vs entire rows.
-	e.auto_focus_first_cell = true   // focus first cell automatically on loading.
-	e.auto_edit_first_cell = false   // automatically enter edit mode on loading.
-	e.stay_in_edit_mode = true       // re-enter edit mode after navigating
-	e.auto_advance_row = true        // jump row on horiz. navigation limits
-	e.save_row_on = 'exit_edit'      // save row on 'input'|'exit_edit'|'exit_row'|false
-	e.insert_row_on = 'exit_edit'    // insert row on 'input'|'exit_edit'|'exit_row'|false
-	e.remove_row_on = 'input'        // remove row on 'input'|'exit_row'|false
-	e.can_exit_edit_on_errors = true // allow exiting edit mode on validation errors
-	e.can_exit_row_on_errors = false // allow changing row on validation errors
-	e.exit_edit_on_lost_focus = false // exit edit mode when losing focus
-	e.can_select_multiple = true
-	e.can_select_non_siblings = true
-
-	// prop('can_edit'               , {type: 'bool'})
-	// prop('can_add_rows'           , {type: 'bool'})
-	// prop('can_remove_rows'        , {type: 'bool'})
-	// prop('can_change_rows'        , {type: 'bool'})
-	// prop('can_focus_cells'        , {type: 'bool'})
-	// prop('auto_focus_first_cell'  , {type: 'bool'})
-	// prop('auto_edit_first_cell'   , {type: 'bool'})
-	// prop('auto_advance_row'       , {type: 'bool'})
-	// prop('save_row_on'            , {type: 'enum', enum_values: ['input', 'exit_edit', 'exit_row', false]})
-	// prop('insert_row_on'          , {type: 'enum', enum_values: ['input', 'exit_edit', 'exit_row', false]})
-	// prop('remove_row_on'          , {type: 'enum', enum_values: ['input', 'exit_row', false]})
-	// prop('can_exit_edit_on_errors', {type: 'bool'})
-	// prop('can_exit_row_on_errors' , {type: 'bool'})
-	// prop('exit_edit_on_lost_focus', {type: 'bool'})
+	e.prop('can_focus_cells'         , {store: 'var', default: true , hint: 'can focus individual cells vs entire rows'})
+	e.prop('auto_focus_first_cell'   , {store: 'var', default: true , hint: 'focus first cell automatically on loading'})
+	e.prop('auto_edit_first_cell'    , {store: 'var', default: false, hint: 'automatically enter edit mode on loading'})
+	e.prop('stay_in_edit_mode'       , {store: 'var', default: true , hint: 're-enter edit mode after navigating'})
+	e.prop('auto_advance_row'        , {store: 'var', default: true , hint: 'jump row on horiz. navigation limits'})
+	e.prop('save_row_on'             , {store: 'var', default: 'exit_edit', enum_values: ['input', 'exit_edit', 'exit_row', false]})
+	e.prop('insert_row_on'           , {store: 'var', default: 'exit_edit', enum_values: ['input', 'exit_edit', 'exit_row', false]})
+	e.prop('remove_row_on'           , {store: 'var', default: 'input'    , enum_values: ['input', 'exit_row', false]})
+	e.prop('can_exit_edit_on_errors' , {store: 'var', default: true  , hint: 'allow exiting edit mode on validation errors'})
+	e.prop('can_exit_row_on_errors'  , {store: 'var', default: false , hint: 'allow changing row on validation errors'})
+	e.prop('exit_edit_on_lost_focus' , {store: 'var', default: false , hint: 'exit edit mode when losing focus'})
+	e.prop('can_select_multiple'     , {store: 'var', default: true  })
+	e.prop('can_select_non_siblings' , {store: 'var', default: true  })
 
 	// rowset binding ---------------------------------------------------------
 
@@ -280,10 +265,6 @@ function nav_widget(e) {
 		e.focused_field_index  = e.field_index(focused_field)
 		e.selected_field_index = e.field_index(selected_field)
 
-		for (let [row, a] of e.selected_rows)
-			if (isarray(a))
-				a.insert(insert_fi, a.remove(fi))
-
 		e.update({fields: true})
 	}
 
@@ -304,22 +285,29 @@ function nav_widget(e) {
 		return row
 	}
 
+	e.can_remove_row = function(ri) {
+		return (
+			e.can_edit && e.can_remove_rows
+			&& !!rs && rs.can_edit && rs.can_remove_rows
+			&& (ri == null || d.can_remove_row(e.rows[ri]))
+		)
+	}
+
 	e.remove_row = function(ri, ev) {
-		if (!e.can_edit || !e.can_remove_rows)
-			return false
-		let row = rs.remove_row(e.rows[ri], update({
-			row_index: ri,
-		}, ev))
-		if (e.save_row_on && e.remove_row_on == 'input')
+		if (!e.can_remove_row(ri))
+			return
+		let row = rs.remove_row(e.rows[ri], update({row_index: ri}, ev))
+		if (row && e.save_row_on && e.remove_row_on == 'input')
 			e.save(row)
 		return row
 	}
 
 	e.remove_selected_rows = function(ev) {
+		let result = true
 		for (let [row] of e.selected_rows)
 			if (!e.remove_row(e.row_index(row), ev))
-				return false
-		return true
+				result = false
+		return result
 	}
 
 	// responding to structural updates ---------------------------------------
@@ -719,28 +707,33 @@ function nav_widget(e) {
 				for (let ri = ri1; ri <= ri2; ri++) {
 					let row = e.rows[ri]
 					if (e.can_select_cell(row)) {
-						let a = []
-						for (let fi = fi1; fi <= fi2; fi++)
-							if (e.can_select_cell(row, e.fields[fi])) {
-								a[fi] = true
+						let sel_fields = new Set()
+						for (let fi = fi1; fi <= fi2; fi++) {
+							let field = e.fields[fi]
+							if (e.can_select_cell(row, field)) {
+								sel_fields.add(field)
 								sel_rows_changed = true
 							}
-						if (a.length)
-							e.selected_rows.set(row, a)
+						}
+						if (sel_fields.size)
+							e.selected_rows.set(row, sel_fields)
 						else
 							e.selected_rows.delete(row)
 					}
 				}
 			} else {
-				let a = e.selected_rows.get(row) || []
+				let sel_fields = e.selected_rows.get(row) || new Set()
 				if (!invert_selection) {
 					e.selected_rows.clear()
-					a = []
+					sel_fields = new Set()
 				}
-				a[fi] = !a[fi]
-				let n = 0; a.map(t => n += t)
-				if (n && row)
-					e.selected_rows.set(row, a)
+				let field = e.fields[fi]
+				if (sel_fields.has(field))
+					sel_fields.delete(field)
+				else
+					sel_fields.add(field)
+				if (sel_fields.size && row)
+					e.selected_rows.set(row, sel_fields)
 				else
 					e.selected_rows.delete(row)
 				sel_rows_changed = true
@@ -817,30 +810,31 @@ function nav_widget(e) {
 		let sel_rows_size_before = e.selected_rows.size
 		clear_selection()
 		if (e.focused_row) {
-			let a = true
+			let sel_fields = true
 			if (e.can_focus_cells && e.focused_field) {
-				a = []
-				a[e.focused_field_index] = true
+				sel_fields = new Set()
+				sel_fields.add(e.focused_field_index)
 			}
-			e.selected_rows.set(e.focused_row, a)
+			e.selected_rows.set(e.focused_row, sel_fields)
 		}
 		if (sel_rows_size_before)
 			e.fire('selected_rows_changed')
 	}
 
-	e.select_all_cells = function() {
+	e.select_all_cells = function(fi) {
 		let sel_rows_size_before = e.selected_rows.size
 		e.selected_rows.clear()
+		let of_field = e.fields[fi]
 		for (let row of e.rows)
 			if (e.can_select_cell(row)) {
-				let a = true
+				let sel_fields = true
 				if (e.can_focus_cells) {
-					a = []
-					for (let fi = 0; fi < e.fields.length; fi++)
-						if (e.can_select_cell(row, e.fields[fi]))
-							a[fi] = true
+					sel_fields = new Set()
+					for (let field of e.fields)
+						if (e.can_select_cell(row, field) && (of_field == null || field == of_field))
+							sel_fields.add(field)
 				}
-				e.selected_rows.set(row, a)
+				e.selected_rows.set(row, sel_fields)
 			}
 		e.update({focus: true})
 		if (sel_rows_size_before != e.selected_rows.size)
@@ -965,6 +959,13 @@ function nav_widget(e) {
 
 	e.save = function(row) {
 		rs.save(row)
+	}
+
+	e.set_null_selected_cells = function() {
+		for (let [row, sel_fields] of e.selected_rows)
+			for (let field of (isobject(sel_fields) ? sel_fields : e.fields))
+				if (e.can_change_val(row, field))
+					e.rowset.set_val(row, field, null)
 	}
 
 	// changing the sort order ------------------------------------------------

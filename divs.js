@@ -438,28 +438,6 @@ method(Element, 'focusables', function() {
 
 alias(HTMLInputElement, 'select', 'setSelectionRange')
 
-method(HTMLInputElement, 'set_input_filter', function() {
-	function filter(e) {
-		if (!this.input_filter || this.input_filter(this.value)) {
-			this._valid_val  = this.value
-			this._valid_sel1 = this.selectionStart
-			this._valid_sel2 = this.selectionEnd
-		} else {
-			if (this._valid_val != null) {
-				this.value = this._valid_val
-				this.setSelectionRange(this._valid_sel1, this._valid_sel2)
-			} else
-				this.value = ''
-			e.preventDefault()
-			e.stopPropagation()
-			e.stopImmediatePropagation()
-		}
-	}
-	let events = ['input', 'keydown', 'keyup', 'select', 'contextmenu', 'drop']
-	for (let e of events)
-		this.on('raw:'+e, filter)
-})
-
 property(Element, 'contenteditable', {
 	get: function() { return this.contentEditable == 'true' },
 	set: function(v) { this.contentEditable = v ? 'true' : 'false' },
@@ -1074,6 +1052,14 @@ method(HTMLElement, 'prop', function(prop, opt) {
 	opt = opt || empty
 	let getter = 'get_'+prop
 	let setter = 'set_'+prop
+	if (!opt.type) { // infer type
+		if (opt.enum_values)
+			opt.type = 'enum'
+		if (typeof opt.default == 'boolean')
+			opt.type = 'bool'
+		else if (typeof opt.default == 'number')
+			opt.type = 'number'
+	}
 	let type = opt.type
 	let noinit = opt.noinit
 	opt.name = prop

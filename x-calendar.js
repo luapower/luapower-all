@@ -39,7 +39,12 @@ component('x-calendar', function(e) {
 	e.sel_year.attach()
 	e.sel_month.attach()
 
+	function as_ts(v) {
+		return v != null && e.field && e.field.to_time ? e.field.to_time(v) : v
+	}
+
 	e.update_val = function(v) {
+		v = or(as_ts(v), time())
 		let t = day(v)
 		update_weekview(t, 6)
 		let y = year_of(t)
@@ -67,7 +72,7 @@ component('x-calendar', function(e) {
 					let m = month(d)
 					let s = d == today ? ' today' : ''
 					s = s + (m == this_month ? ' current-month' : '')
-					s = s + (d == day(e.input_val) ? ' focused selected' : '')
+					s = s + (d == day(as_ts(e.input_val)) ? ' focused selected' : '')
 					let td = H.td({class: 'x-calendar-day x-item'+s}, floor(1 + days(d - m)))
 					td.day = d
 					td.on('pointerdown', day_pointerdown)
@@ -81,8 +86,14 @@ component('x-calendar', function(e) {
 
 	// controller
 
+	function set_ts(v, ev) {
+		if (v != null && e.field.from_time)
+			v = e.field.from_time(v)
+		e.set_val(v, ev || {input: e})
+	}
+
 	function day_pointerdown() {
-		e.set_val(this.day, {input: e})
+		set_ts(this.day)
 		e.sel_month.cancel()
 		e.focus()
 		e.fire('val_picked') // picker protocol
@@ -91,22 +102,22 @@ component('x-calendar', function(e) {
 
 	e.sel_month.on('val_changed', function(v, ev) {
 		if (ev && ev.input) {
-			_d.setTime(e.input_val * 1000)
+			_d.setTime(as_ts(e.input_val) * 1000)
 			_d.setMonth(this.val)
-			e.set_val(_d.valueOf() / 1000, {input: e})
+			set_ts(_d.valueOf() / 1000)
 		}
 	})
 
 	e.sel_year.on('val_changed', function(v, ev) {
 		if (ev && ev.input) {
-			_d.setTime(e.input_val * 1000)
+			_d.setTime(as_ts(e.input_val) * 1000)
 			_d.setFullYear(this.val)
-			e.set_val(_d.valueOf() / 1000, {input: e})
+			set_ts(_d.valueOf() / 1000)
 		}
 	})
 
 	e.weekview.on('wheel', function(dy) {
-		e.set_val(day(e.input_val, 7 * dy / 100), {input: e})
+		set_ts(day(as_ts(e.input_val), 7 * dy / 100))
 		return false
 	})
 
@@ -130,24 +141,27 @@ component('x-calendar', function(e) {
 			case 'PageDown'   : m =  1; break
 		}
 		if (d) {
-			e.set_val(day(e.input_val, d), {input: e})
+			set_ts(day(as_ts(e.input_val), d))
 			return false
 		}
 		if (m) {
-			_d.setTime(e.input_val * 1000)
+			let t = as_ts(e.input_val)
+			_d.setTime(t * 1000)
 			if (shift)
-				_d.setFullYear(year_of(e.input_val) + m)
+				_d.setFullYear(year_of(t) + m)
 			else
-				_d.setMonth(month_of(e.input_val) + m)
-			e.set_val(_d.valueOf() / 1000, {input: e})
+				_d.setMonth(month_of(t) + m)
+			set_ts(_d.valueOf() / 1000)
 			return false
 		}
 		if (key == 'Home') {
-			e.set_val(shift ? year(e.input_val) : month(e.input_val), {input: e})
+			let t = as_ts(e.input_val)
+			set_ts(shift ? year(t) : month(t))
 			return false
 		}
 		if (key == 'End') {
-			e.set_val(day(shift ? year(e.input_val, 1) : month(e.input_val, 1), -1), {input: e})
+			let t = as_ts(e.input_val)
+			set_ts(day(shift ? year(t, 1) : month(t, 1), -1))
 			return false
 		}
 		if (key == 'Enter') {
@@ -188,7 +202,7 @@ component('x-calendar', function(e) {
 	}
 
 	e.pick_near_val = function(delta, ev) {
-		e.set_val(day(e.input_val, delta), ev)
+		set_ts(day(as_ts(e.input_val), delta), ev)
 		e.fire('val_picked', ev)
 	}
 

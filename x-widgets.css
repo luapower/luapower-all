@@ -447,6 +447,8 @@
 .x-markbox[align=left]  > .x-markbox-text:not(:empty) { padding-left : .5em; }
 .x-markbox[align=right] > .x-markbox-text:not(:empty) { padding-right: .5em; }
 
+.x-markbox.grid-editor { justify-content: center; }
+
 /* radiogroup ------------------------------------------------------------- */
 
 .x-radiogroup {

@@ -1149,7 +1149,6 @@ component('x-input', function(e) {
 
 	e.input = H.input({class: 'x-input-value'})
 	e.inner_label_div = div({class: 'x-input-inner-label'})
-	e.input.set_input_filter() // must be set as first event handler!
 	e.add(e.input, e.inner_label_div)
 
 	function update_state(s) {
@@ -1161,10 +1160,12 @@ component('x-input', function(e) {
 	e.to_text = function(v) { return e.field ? e.field.to_text(v) : '' }
 
 	e.update_val = function(v, ev) {
-		if (ev && ev.input == e && e.typing)
+		if (ev && ev.input == e && ev.typing)
 			return
 		let s = e.to_text(v)
-		e.input.value = s
+		let maxlen = or(e.maxlen, e.field && e.field.maxlen)
+		e.input.value = s.slice(0, maxlen)
+		e.input.attr('maxlength', maxlen)
 		update_state(s)
 	}
 
@@ -1172,10 +1173,6 @@ component('x-input', function(e) {
 		e.set_val(e.from_text(e.input.value), {input: e, typing: true})
 		update_state(e.input.value)
 	})
-
-	e.input.input_filter = function(s) {
-		return s.length <= or(e.maxlen, e.field.maxlen)
-	}
 
 	// focusing
 
@@ -1344,33 +1341,6 @@ component('x-spin-input', function(e) {
 	e.on('attach', update_buttons)
 
 	// controller
-
-	let input_filter = e.input.input_filter
-	e.input.input_filter = function(s) {
-		if (!input_filter(s))
-			return false
-		if (or(e.min, e.field.min) >= 0)
-			if (/\-/.test(s))
-				return false // no minus
-		let max_dec = or(e.max_decimals, e.field.max_decimals)
-		if (or(e.multiple_of, e.field.multiple_of) == 1)
-			max_dec = 0
-		if (max_dec == 0)
-			if (/\./.test(s))
-				return false // no dots
-		if (max_dec != null) {
-			let m = s.match(/\.(\d+)$/)
-			if (m != null && m[1].length > max_dec)
-				return false // too many decimals
-		}
-		let max_digits = or(e.max_digits, e.field.max_digits)
-		if (max_digits != null) {
-			let digits = s.replace(/[^\d]/g, '').length
-			if (digits > max_digits)
-				return false // too many digits
-		}
-		return /^[\-]?\d*\.?\d*$/.test(s) // allow digits and '.' only
-	}
 
 	e.input.on('wheel', function(dy) {
 		e.set_val(e.input_val + (dy / 100), {input: e})
@@ -1556,6 +1526,8 @@ component('x-dropdown', function(e) {
 	focusable_widget(e)
 
 	e.classes = 'x-widget x-input x-dropdown'
+
+	e.props.mode.enum_values = ['default', 'inline', 'wrap', 'fixed']
 
 	e.val_div = span({class: 'x-input-value x-dropdown-value'})
 	e.button = span({class: 'x-dropdown-button fa fa-caret-down'})

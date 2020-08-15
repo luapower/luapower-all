@@ -50,6 +50,7 @@
 		true_text      : display value for boolean true
 		false_text     : display value for boolean false
 		null_text      : display value for null
+		empty_text     : display value for ''
 
 	vlookup:
 		lookup_rowset  : rowset to look up values of this field into
@@ -583,7 +584,7 @@ rowset = function(...options) {
 		let rs_field = {}
 		for (let k of [
 			'name', 'text', 'type', 'align', 'min_w', 'max_w',
-			'format', 'true_text', 'false_text', 'null_text',
+			'format', 'true_text', 'false_text', 'null_text', 'empty_text',
 			'lookup_rowset', 'lookup_col', 'display_col', 'lookup_failed_display_val',
 			'sortable',
 		])
@@ -865,6 +866,8 @@ rowset = function(...options) {
 		let v = d.input_val(row, field)
 		if (v == null)
 			return field.null_text
+		if (v === '')
+			return field.empty_text
 		let lr = field.lookup_rowset
 		if (lr) {
 			let lf = field.lookup_field
@@ -890,7 +893,7 @@ rowset = function(...options) {
 	// add/remove/move rows ---------------------------------------------------
 
 	d.add_row = function(values, ev) {
-		if (!d.can_add_rows)
+		if (!(d.can_edit && d.can_add_rows))
 			return
 		let row = []
 		// add server_default values or null
@@ -927,7 +930,7 @@ rowset = function(...options) {
 	}
 
 	d.can_remove_row = function(row) {
-		if (!d.can_remove_rows)
+		if (!(d.can_edit && d.can_remove_rows))
 			return false
 		if (row.can_remove === false)
 			return false
@@ -1362,7 +1365,8 @@ function global_rowset(name, ...options) {
 		maxlen: 256,
 		true_text: () => H('<div class="fa fa-check"></div>'),
 		false_text: '',
-		null_text: S('null', 'null'),
+		null_text: S('null_text', ''),
+		empty_text: S('empty_text', 'empty text'),
 		lookup_failed_display_val: function(v) {
 			return this.format(v)
 		},
@@ -1385,16 +1389,14 @@ function global_rowset(name, ...options) {
 		return s !== '' ? s : null
 	}
 
-	rowset.types = {
-		number: {align: 'right', min: 0, max: 1/0, multiple_of: 1},
-		date  : {align: 'right', min: -(2**52), max: 2**52},
-		bool  : {align: 'center'},
-		enum  : {},
-	}
+	rowset.types = {}
 
 	// numbers
 
-	rowset.types.number.validate = function(val, field) {
+	let number = {align: 'right', min: 0, max: 1/0, multiple_of: 1}
+	rowset.types.number = number
+
+	number.validate = function(val, field) {
 		val = parseFloat(val)
 
 		if (typeof val != 'number' || val !== val)
@@ -1408,37 +1410,71 @@ function global_rowset(name, ...options) {
 			}
 	}
 
-	rowset.types.number.editor = function(...options) {
+	number.editor = function(...options) {
 		return spin_input(update({
 			nolabel: true,
 			button_placement: 'left',
 		}, ...options))
 	}
 
-	rowset.types.number.from_text = function(s) {
+	number.from_text = function(s) {
 		return num(s)
 	}
 
-	rowset.types.number.to_text = function(x) {
+	number.to_text = function(x) {
 		return x != null ? String(x) : ''
 	}
 
 	// dates
 
-	rowset.types.date.validate = function(val, field) {
+	let date = {align: 'right', min: -(2**52), max: 2**52}
+	rowset.types.date = date
+
+	date.validate = function(val, field) {
 		if (typeof val != 'number' || val !== val)
 			return S('error_date', 'Invalid date')
 	}
 
-	rowset.types.date.format = function(t) {
+	date.format = function(t) {
 		_d.setTime(t * 1000)
 		return _d.toLocaleString(locale, this.date_format)
 	}
 
-	rowset.types.date.date_format =
+	date.date_format =
 		{weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }
 
-	rowset.types.date.editor = function(...options) {
+	date.editor = function(...options) {
+		return date_dropdown(update({
+			nolabel: true,
+			align: 'right',
+			mode: 'fixed',
+		}, ...options))
+	}
+
+	// datetime
+
+	let datetime = {align: 'right', min: -(2**52), max: 2**52}
+	rowset.types.datetime = datetime
+
+	datetime.to_time = function(d) {
+		return Date.parse(d + ' UTC') / 1000
+	}
+
+	datetime.from_time = function(t) {
+		_d.setTime(t * 1000)
+		return _d.toISOString().slice(0, 19).replace('T', ' ')
+	}
+
+	datetime.format = function(s) {
+		let t = datetime.to_time(s)
+		_d.setTime(t * 1000)
+		return _d.toLocaleString(locale, this.date_format)
+	}
+
+	datetime.date_format =
+		{weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }
+
+	datetime.editor = function(...options) {
 		return date_dropdown(update({
 			nolabel: true,
 			align: 'right',
@@ -1448,16 +1484,19 @@ function global_rowset(name, ...options) {
 
 	// booleans
 
-	rowset.types.bool.validate = function(val, field) {
+	let bool = {align: 'center'}
+	rowset.types.bool = bool
+
+	bool.validate = function(val, field) {
 		if (typeof val != 'boolean')
 			return S('error_boolean', 'Value not true or false')
 	}
 
-	rowset.types.bool.format = function(val) {
+	bool.format = function(val) {
 		return val ? this.true_text : this.false_text
 	}
 
-	rowset.types.bool.editor = function(...options) {
+	bool.editor = function(...options) {
 		return checkbox(update({
 			center: true,
 		}, ...options))
@@ -1465,10 +1504,14 @@ function global_rowset(name, ...options) {
 
 	// enums
 
-	rowset.types.enum.editor = function(...options) {
+	let enm = {}
+	rowset.types.enum = enm
+
+	enm.editor = function(...options) {
 		return list_dropdown(update({
 			nolabel: true,
 			items: this.enum_values,
+			mode: 'fixed',
 		}, ...options))
 	}
 
