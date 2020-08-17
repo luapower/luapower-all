@@ -1567,8 +1567,6 @@ component('x-dropdown', function(e) {
 
 	e.on('attach', function() {
 		bind_document(true)
-		e.picker.hide()
-		e.picker.popup(e, 'bottom', e.align)
 	})
 
 	e.on('detach', function() {
@@ -1609,15 +1607,15 @@ component('x-dropdown', function(e) {
 
 	// opening & closing the picker
 
-	e.set_open = function(open, focus) {
+	e.set_open = function(open, focus, hidden) {
 		if (e.isopen != open) {
 			e.class('open', open)
 			e.button.switch_class('fa-caret-down', 'fa-caret-up', open)
 			if (open) {
 				e.cancel_val = e.input_val
 				e.picker.min_w = e.rect().w
-				e.picker.show(true, true)
-				e.picker.popup()
+				e.picker.show(!hidden)
+				e.picker.popup(e, 'bottom', e.align)
 				e.fire('opened')
 			} else {
 				e.cancel_val = null
@@ -1651,8 +1649,8 @@ component('x-dropdown', function(e) {
 
 	// picker protocol
 
-	function picker_val_picked() {
-		e.close(true)
+	function picker_val_picked(ev) {
+		e.close(!(ev && ev.input == e))
 	}
 
 	// grid editor protocol
@@ -1662,10 +1660,6 @@ component('x-dropdown', function(e) {
 	}
 
 	// keyboard & mouse binding
-
-	//e.on('pointerdown', function() {
-	//	return false // prevent selection by dbl-clicking.
-	//})
 
 	e.on('pointerdown', function() {
 		e.toggle(true)
@@ -1679,6 +1673,7 @@ component('x-dropdown', function(e) {
 		}
 		if (key == 'ArrowDown' || key == 'ArrowUp') {
 			if (!e.hasclass('grid-editor')) {
+				e.set_open(true, false, true)
 				e.picker.pick_near_val(key == 'ArrowDown' ? 1 : -1, {input: e})
 				return false
 			}
@@ -1708,6 +1703,7 @@ component('x-dropdown', function(e) {
 	}
 
 	e.on('wheel', function(dy) {
+			e.set_open(true, false, true)
 		e.picker.pick_near_val(dy / 100, {input: e})
 		return false
 	})

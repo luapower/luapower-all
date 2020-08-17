@@ -666,17 +666,23 @@ component('x-grid', function(e) {
 		e.editor.h = e.cell_h - bh
 
 		// set min inner width to cell's unclipped text width.
-		let cell_text_w = 0
-		let cell = e.cells.at[cell_index(ri, fi)]
-		if (cell) {
-			let cell_w = cell.style.w
-			cell.min_w = null
-			cell.w = null
-			cell_text_w = cell.rect().w - bw - iw
-			cell.w = cell_w
-			cell.min_w = cell_w
+		if (e.editor.set_text_min_w) {
+			let cell_text_w = 0
+			let cell = e.cells.at[cell_index(ri, fi)]
+			if (cell) {
+				let cell_min_w = cell.style['min-width']
+				let cell_w     = cell.style['width']
+				cell.style['min-width'] = null
+				cell.style['width'    ] = null
+
+				cell_text_w = cell.rect().w - bw - iw
+
+				cell.style['min-width'] = cell_min_w
+				cell.style['width'    ] = cell_w
+			}
+			e.editor.set_text_min_w(max(20, cell_text_w))
 		}
-		e.editor.set_text_min_w(max(50, cell_text_w))
+
 	}
 
 	let create_editor = e.create_editor
@@ -1464,7 +1470,7 @@ component('x-grid', function(e) {
 			let cols = key == left_arrow ? -1 : 1
 
 			let move = !e.editor
-				|| (e.auto_jump_cells && !shift
+				|| (e.auto_jump_cells && !shift && ctrl
 					&& (!horiz
 						|| !e.editor.editor_state
 						|| e.editor.editor_state(cols < 0 ? 'left' : 'right')))

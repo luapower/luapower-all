@@ -36,14 +36,15 @@ component('x-calendar', function(e) {
 	e.weekview = H.table({class: 'x-calendar-weekview'})
 	e.add(e.header, e.weekview)
 
-	e.sel_year.attach()
-	e.sel_month.attach()
-
 	function as_ts(v) {
 		return v != null && e.field && e.field.to_time ? e.field.to_time(v) : v
 	}
 
 	e.update_val = function(v) {
+
+		e.sel_year.attach()
+		e.sel_month.attach()
+
 		v = or(as_ts(v), time())
 		let t = day(v)
 		update_weekview(t, 6)
@@ -57,11 +58,14 @@ component('x-calendar', function(e) {
 		e.sel_year.val = y
 	}
 
+	let sel_td
 	function update_weekview(d, weeks) {
 		let today = day(time())
 		let this_month = month(d)
+		let sel_d = day(as_ts(e.input_val))
 		d = week(this_month)
 		e.weekview.clear()
+		sel_td = null
 		for (let week = 0; week <= weeks; week++) {
 			let tr = H.tr()
 			for (let weekday = 0; weekday < 7; weekday++) {
@@ -72,11 +76,12 @@ component('x-calendar', function(e) {
 					let m = month(d)
 					let s = d == today ? ' today' : ''
 					s = s + (m == this_month ? ' current-month' : '')
-					s = s + (d == day(as_ts(e.input_val)) ? ' focused selected' : '')
+					s = s + (d == sel_d ? ' focused selected' : '')
 					let td = H.td({class: 'x-calendar-day x-item'+s}, floor(1 + days(d - m)))
 					td.day = d
-					td.on('pointerdown', day_pointerdown)
 					tr.add(td)
+					if (d == sel_d)
+						sel_td = td
 					d = day(d, 1)
 				}
 			}
@@ -92,13 +97,23 @@ component('x-calendar', function(e) {
 		e.set_val(v, ev || {input: e})
 	}
 
-	function day_pointerdown() {
-		set_ts(this.day)
+	e.weekview.on('pointerdown', function(ev) {
+		if (sel_td) {
+			sel_td.class('focused', false)
+			sel_td.class('selected', false)
+		}
+		let td = ev.target
+		if (td.day == null)
+			return
 		e.sel_month.cancel()
 		e.focus()
-		e.fire('val_picked') // picker protocol
-		return false
-	}
+		td.classes = 'focused selected'
+		return this.capture_pointer(ev, null, function() {
+			set_ts(td.day)
+			e.fire('val_picked') // picker protocol
+			return false
+		})
+	})
 
 	e.sel_month.on('val_changed', function(v, ev) {
 		if (ev && ev.input) {

@@ -95,7 +95,7 @@ function nav_widget(e) {
 		e.update()
 	}
 	e.prop('val_col', {store: 'var'})
-	e.property('val_field', () => rs && e.val_col && rs.field(e.val_col) || null)
+	e.property('val_field', () => rs && e.val_col != null && rs.field(e.val_col) || null)
 
 	e.set_tree_col = function(v) {
 		reset({cols: true, rows: true})
@@ -213,7 +213,7 @@ function nav_widget(e) {
 			if (opt.refocus) {
 				let row, unfocus_if_not_found
 				if (opt.refocus == 'val' && e.val_field && e.nav && e.field) {
-					row = rs.lookup(e.val_field, e.val)
+					row = rs.lookup(e.val_field, e.input_val)
 					unfocus_if_not_found = true
 				} else if (opt.refocus == 'pk' && e.pk_fields)
 					row = rs.lookup(e.pk_fields, opt.refocus_pk)
@@ -304,9 +304,10 @@ function nav_widget(e) {
 
 	e.remove_selected_rows = function(ev) {
 		let result = true
-		for (let [row] of e.selected_rows)
+		for (let row of e.selected_rows.keys()) {
 			if (!e.remove_row(e.row_index(row), ev))
 				result = false
+		}
 		return result
 	}
 
