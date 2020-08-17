@@ -1756,8 +1756,7 @@ function lookup_dropdown_widget(e) {
 
 	let inh_display_val = e.display_val
 	e.display_val = function() {
-		let lf = e.lookup_field
-		let row = lf && e.lookup_rowset.lookup(lf, e.input_val)
+		let row = e.lookup_field && e.lookup_rowset.lookup(e.lookup_field, e.input_val)
 		if (row)
 			return e.picker.row_display_val(row)
 		else
@@ -1790,6 +1789,7 @@ function lookup_dropdown_widget(e) {
 
 	function bind_lookup_rowset(lr, on) {
 		if (!lr) return
+		lr.bind_user_widget(e, on)
 		lr.on('loaded'           , lookup_rowset_changed, on)
 		lr.on('row_added'        , lookup_values_changed, on)
 		lr.on('row_removed'      , lookup_values_changed, on)

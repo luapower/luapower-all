@@ -1454,7 +1454,7 @@ function global_rowset(name, ...options) {
 
 	// datetime
 
-	let datetime = {align: 'right', min: -(2**52), max: 2**52}
+	let datetime = {align: 'right'}
 	rowset.types.datetime = datetime
 
 	datetime.to_time = function(d) {

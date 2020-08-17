@@ -796,6 +796,7 @@ function thousand_items() {
 
 main.add(
 	list_dropdown({
+		id: 'dd1',
 		field_name: 'Here we are',
 		items: [
 			'Apples',
@@ -812,10 +813,12 @@ main.add(
 	}),
 
 	list_dropdown({
+		id: 'dd2',
 		field_name: 'Here we are again',
 		items: thousand_items(),
 		nav: cell_nav({val: 'not-in-list'}),
 	}),
+
 )
 
 </script>

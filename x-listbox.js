@@ -166,18 +166,12 @@ component('x-listbox', function(e) {
 		}
 
 		e.focus()
-
 		if (!e.focus_cell(this.index, null, 0, 0, {
 			input: e,
 			must_not_move_row: true,
 			expand_selection: ev.shiftKey,
 			invert_selection: ev.ctrlKey,
 		}))
-			return false
-
-		e.fire('val_picked', {input: e}) // picker protocol.
-
-		if (!e.can_move_items)
 			return false
 
 		let dragging, drag_mx, drag_my
@@ -227,7 +221,7 @@ component('x-listbox', function(e) {
 			}
 		}
 
-		function item_pointerup() {
+		function item_pointerup(mx, my, ev) {
 			if (dragging) {
 
 				clearInterval(scroll_timer)
@@ -245,7 +239,11 @@ component('x-listbox', function(e) {
 					item.y = null
 				}
 
+			} else if (!(ev.shiftKey || ev.ctrlKey)) {
+				e.fire('val_picked') // picker protocol
 			}
+
+			return false
 		}
 
 		return this.capture_pointer(ev, item_pointermove, item_pointerup)
@@ -366,11 +364,11 @@ component('x-list-dropdown', function(e) {
 			e.lookup_rowset = e.picker.rowset
 
 		e.picker.auto_focus_first_cell = false
-		e.picker.can_move_items = false // can't capture mouse.
 		e.picker.can_select_multiple = false
+		e.picker.can_move_items = false
 
 		e.on('opened', function() {
-			e.picker.scroll(0, 0) // because toggling `display: none` screws the scrolling.
+			e.picker.scroll_to_focused_cell()
 		})
 
 		init()

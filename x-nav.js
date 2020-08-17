@@ -787,6 +787,11 @@ function nav_widget(e) {
 		return true
 	}
 
+	e.scroll_to_focused_cell = function() {
+		if (e.focused_row_index != null)
+			e.scroll_to_cell(e.focused_row_index, e.focused_field_index)
+	}
+
 	e.focus_next_cell = function(cols, ev) {
 		let dir = strict_sign(cols)
 		let auto_advance_row = ev && ev.auto_advance_row || e.auto_advance_row
