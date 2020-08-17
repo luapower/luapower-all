@@ -1269,6 +1269,10 @@ component('x-input', function(e) {
 		e.input.select(i0, i1)
 	}
 
+	e.set_text_min_w = function(w) {
+		e.input.min_w = w
+	}
+
 })
 
 // ---------------------------------------------------------------------------
@@ -1649,6 +1653,12 @@ component('x-dropdown', function(e) {
 
 	function picker_val_picked() {
 		e.close(true)
+	}
+
+	// grid editor protocol
+
+	e.set_text_min_w = function(w) {
+		e.val_div.min_w = w
 	}
 
 	// keyboard & mouse binding

@@ -880,7 +880,7 @@
 }
 
 .x-listbox.moving > .x-listbox-item:not(.moving) {
-	transition: top .1s, left .1s;
+	transition: top .1s, left .1s, right .1s;
 }
 
 .x-widget.x-listbox.picker {
@@ -1682,8 +1682,8 @@
 
 /* grid header cells */
 
-.x-grid-header-cell {           /* default: header column style */
-	position: absolute;
+.x-grid-header-cell {
+	position: absolute;        /* required */
 }
 
 .x-hgrid > .x-grid-header > .x-grid-header-cell {
@@ -1765,6 +1765,13 @@
 	background-color: white;
 }
 
+.x-grid-cell:hover,
+.x-grid-cell.focused {
+	overflow: visible;
+	z-index: 1;
+	width: auto !important;
+}
+
 .x-grid-cell[align=center] { justify-content: center; }
 .x-grid-cell[align=right]  { justify-content: flex-end; }
 
@@ -1784,7 +1791,7 @@
 .x-grid.col-moving .x-grid-header-cell:not(.col-moving),
 .x-grid.col-moving .x-grid-cell:not(.col-moving),
 .x-grid.col-moving .grid-editor:not(.col-moving) {
-	transition: top  .1s, left .1s;
+	transition: top  .1s, left .1s, right .1s;
 }
 
 /* grid row moving */
@@ -1830,10 +1837,11 @@
 .x-widget.grid-editor {
 
 	position: absolute;
-	min-width: 0;
+	width: min-content;
 	border: 0;
 	margin: 0;
 	border-radius: 0;
+	z-index: 1;
 
 	font-size: inherit;
 	font-family: inherit;

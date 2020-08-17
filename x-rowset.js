@@ -752,7 +752,7 @@ rowset = function(...options) {
 			print(err)
 		}
 		if (d.set_row_state(row, 'row_error', err))
-			row_state_changed(row, 'row_error', ev)
+			row_state_changed(row, 'row_error', err, ev)
 	}
 
 	d.row_has_errors = function(row) {
@@ -955,12 +955,13 @@ rowset = function(...options) {
 		} else {
 			if (!d.can_remove_row(row))
 				return
+			let removed = !ev || !ev.toggle || !row.removed
 			d.each_child_row(row, function(row) {
-				if (d.set_row_state(row, 'removed', true, false))
-					row_state_changed(row, 'row_removed', ev)
+				if (d.set_row_state(row, 'removed', removed, false))
+					row_state_changed(row, 'row_removed', removed, ev)
 			})
-			if (d.set_row_state(row, 'removed', true, false))
-				row_state_changed(row, 'row_removed', ev)
+			if (d.set_row_state(row, 'removed', removed, false))
+				row_state_changed(row, 'row_removed', removed, ev)
 			row_changed(row)
 		}
 		return row

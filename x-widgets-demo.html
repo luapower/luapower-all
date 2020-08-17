@@ -665,7 +665,7 @@ var data = {
 		{name: 'index'     , w:  50, type: 'number', editable: false},
 		{name: 'active'    , w:  30, type: 'bool', true_text: checked, false_text: ''},
 		{name: 'name'      , w: 150, min_w:  50, max_w: 400, validate: starts_with_a, filter_by: true},
-		{name: 'parent_id' , w:  50, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
+		{name: 'parent_id' , w:  50, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: true},
 		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: () => H('<i>Random</i><br>Number')},
 		{name: 'date'      , w: 120, allow_null: true, type: 'date', filter_by: true},
 	],
@@ -1240,7 +1240,7 @@ reload_button.on('click', function() {
 demo_list_ct.add(demo_list)
 
 window.on('load', function() {
-	demo_list.focus_cell(23)
+	demo_list.focus_cell(18)
 })
 
 lights_button.on('click', function() {

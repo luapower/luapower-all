@@ -367,6 +367,7 @@ function px(v) {
 }
 
 property(Element, 'x'    , { set: function(v) { this.style.left          = px(v) } })
+property(Element, 'x2'   , { set: function(v) { this.style.right         = px(v) } })
 property(Element, 'y'    , { set: function(v) { this.style.top           = px(v) } })
 property(Element, 'w'    , { set: function(v) { this.style.width         = px(v) } })
 property(Element, 'h'    , { set: function(v) { this.style.height        = px(v) } })
@@ -1049,7 +1050,7 @@ method(HTMLElement, 'late_property', function(prop, getter, setter, default_valu
 
 method(HTMLElement, 'prop', function(prop, opt) {
 
-	opt = opt || empty
+	opt = opt || {}
 	let getter = 'get_'+prop
 	let setter = 'set_'+prop
 	if (!opt.type) { // infer type

@@ -74,6 +74,18 @@ component('x-grid', function(e) {
 
 	// geometry ---------------------------------------------------------------
 
+	function set_cell_xw(cell, field, x, w) {
+		if (field.align == 'right') {
+			cell.x  = null
+			cell.x2 = cells_w - (x + w)
+		} else {
+			cell.x  = x
+			cell.x2 = null
+		}
+		cell.min_w = w
+		cell.w = w
+	}
+
 	function update_cell_widths_horiz(col_resizing) {
 
 		let cols_w = 0
@@ -89,9 +101,10 @@ component('x-grid', function(e) {
 
 		let col_x = 0
 		for (let fi = 0; fi < e.fields.length; fi++) {
+			let field = e.fields[fi]
 			let hcell = e.header.at[fi]
 
-			let min_col_w = col_resizing ? hcell._w : e.fields[fi].w
+			let min_col_w = col_resizing ? hcell._w : field.w
 			let free_w = total_free_w * (min_col_w / cols_w)
 			let col_w = floor(min_col_w + free_w)
 			if (fi == e.fields.length - 1) {
@@ -107,17 +120,6 @@ component('x-grid', function(e) {
 			hcell._x = col_x
 			hcell._w = col_w
 
-			hcell.x = col_x
-			hcell.w = col_w
-
-			let ci = fi
-			let cell
-			while (cell = e.cells.at[ci]) {
-				cell.x = col_x
-				cell.w = col_w
-				ci += e.fields.length
-			}
-
 			if (hcell.filter_dropdown)
 				hcell.filter_dropdown.w = hcell.clientWidth
 
@@ -125,13 +127,20 @@ component('x-grid', function(e) {
 		}
 
 		let header_w = e.fields.length ? col_x : cw
-		e.header.w = header_w
+		e.header.w   = header_w
 		e.cells_ct.w = header_w
+		e.cells.w    = header_w
+		cells_w      = header_w
+
+		for (let fi = 0; fi < e.fields.length; fi++) {
+			let hcell = e.header.at[fi]
+			each_cell_of_col(fi, set_cell_xw, e.fields[fi], hcell._x, hcell._w)
+		}
+
 	}
 
 	function update_cell_width_vert(cell, ri, fi) {
-		cell.x = cell_x(ri - vri1, fi)
-		cell.w = cell_w(fi)
+		set_cell_xw(cell, e.fields[fi], cell_x(ri - vri1, fi), cell_w(fi))
 	}
 	function update_cell_widths_vert() {
 		each_cell(update_cell_width_vert)
@@ -203,6 +212,7 @@ component('x-grid', function(e) {
 			e.cells_ct.w = cells_w
 			e.cells_ct.h = cells_h
 			e.cells_view.w = cells_view_w
+			e.cells.w = cells_w
 			vrn = floor(cells_view_w / e.cell_w) + 2
 
 			for (let fi = 0; fi < e.fields.length; fi++) {
@@ -217,12 +227,12 @@ component('x-grid', function(e) {
 	}
 
 	function update_cell_sizes(col_resizing) {
+		update_scroll()
 		if (horiz)
 			update_cell_widths_horiz(col_resizing)
 		else
 			update_cell_widths_vert()
 		update_editor()
-		update_scroll()
 		update_resize_guides()
 	}
 
@@ -535,7 +545,7 @@ component('x-grid', function(e) {
 	}
 
 	function update_cell(cell, ri, fi) {
-		cell.x = cell_x(ri - vri1, fi)
+		set_cell_xw(cell, e.fields[fi], cell_x(ri - vri1, fi), cell_w(fi))
 		cell.y = cell_y(ri - vri1, fi)
 		update_cell_content(cell, e.rows[ri], ri, fi)
 	}
@@ -627,14 +637,46 @@ component('x-grid', function(e) {
 		if (!e.editor) return
 		let ri = e.focused_row_index
 		let fi = e.focused_field_index
+		let field = e.fields[fi]
 		let hcell = e.header.at[fi]
 		let css = e.cells.at[0].css()
-		let iw = field_has_indent(e.fields[fi])
+		let bw = num(css['border-right-width'])
+		let bh = num(css['border-bottom-width'])
+		let iw = field_has_indent(field)
 			? indent_offset(or(indent, row_indent(e.rows[ri]))) : 0
-		e.editor.x = or(x, cell_x(ri, fi) + iw)
-		e.editor.y = or(y, cell_y(ri, fi))
-		e.editor.w = cell_w(fi) - num(css['border-right-width']) - iw
-		e.editor.h = e.cell_h - num(css['border-bottom-width'])
+
+		let w = cell_w(fi) - bw - iw
+
+		x = or(x, cell_x(ri, fi) + iw)
+		y = or(y, cell_y(ri, fi))
+
+		if (field.align == 'right') {
+			e.editor.x  = null
+			e.editor.x2 = cells_w - (x + w)
+		} else {
+			e.editor.x  = x
+			e.editor.x2 = null
+		}
+
+		// set min outer width to col width.
+		// width is set in css to 'min-content' to shrink to min inner width.
+		e.editor.min_w = w
+
+		e.editor.y = y
+		e.editor.h = e.cell_h - bh
+
+		// set min inner width to cell's unclipped text width.
+		let cell_text_w = 0
+		let cell = e.cells.at[cell_index(ri, fi)]
+		if (cell) {
+			let cell_w = cell.style.w
+			cell.min_w = null
+			cell.w = null
+			cell_text_w = cell.rect().w - bw - iw
+			cell.w = cell_w
+			cell.min_w = cell_w
+		}
+		e.editor.set_text_min_w(max(50, cell_text_w))
 	}
 
 	let create_editor = e.create_editor
@@ -747,8 +789,6 @@ component('x-grid', function(e) {
 	// col resizing -----------------------------------------------------------
 
 	function ht_col_resize_horiz(mx, my, hit) {
-		if (mx >= e.header.offsetWidth)
-			return
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let hcell = e.header.at[fi]
 			let x = mx - (hcell._x + hcell._w)
@@ -774,6 +814,11 @@ component('x-grid', function(e) {
 	}
 
 	function ht_col_resize(mx, my, hit) {
+		if (horiz) {
+			let hr = e.header.rect()
+			if (!hr.contains(mx, my))
+				return
+		}
 		let r = e.cells_ct.rect()
 		mx -= r.x
 		my -= r.y
@@ -884,13 +929,12 @@ component('x-grid', function(e) {
 
 		let hit_mx, hit_my
 		{
-			let r = e.cells.rect()
-			hit_mx = hit.mx - r.x - num(hit.cell.style.left)
-			hit_my = hit.my - r.y - num(hit.cell.style.top)
+			let r = hit.cell.rect()
+			hit_mx = hit.mx - r.x
+			hit_my = hit.my - r.y
 		}
 
 		let move_fi = hit.cell.fi
-
 		let move_ri1 = hit.cell.ri
 		let move_n = 1 + e.child_row_count(move_ri1)
 		let move_ri2 = move_ri1 + move_n
@@ -927,17 +971,19 @@ component('x-grid', function(e) {
 		// view update
 
 		function update_row(moving, vri, row, ri, xy, vxy1, focused) {
+
 			if (moving)
 				vri += (vri2 - vri1)
 
 			let ci0 = vri * e.fields.length
 			for (let fi = 0; fi < e.fields.length; fi++) {
 				let cell = e.cells.at[ci0 + fi]
+
 				if (horiz) {
 					cell.y = xy - vxy1
-					cell.x = cell_x(vri, fi)
+					set_cell_xw(cell, e.fields[fi], cell_x(vri, fi), cell_w(fi))
 				} else {
-					cell.x = xy - vxy1
+					set_cell_xw(cell, e.fields[fi], xy - vxy1, cell_w(fi))
 					cell.y = cell_y(vri, fi)
 				}
 
@@ -1112,7 +1158,7 @@ component('x-grid', function(e) {
 						update_row(false, vri++, e.rows[ri], ri, xs[ri], vri1x, false)
 
 					// hide leftover rows.
-					while(vri < vrn)
+					while (vri < vrn)
 						update_row(false, vri++)
 				}
 
@@ -1134,7 +1180,7 @@ component('x-grid', function(e) {
 					}
 
 					// hide leftover rows.
-					while(vri < vrn)
+					while (vri < vrn)
 						update_row(true, vri++)
 				}
 
@@ -1226,10 +1272,10 @@ component('x-grid', function(e) {
 		return horiz ? cell_w(fi) : e.cell_h
 	}
 
-	function set_cell_of_col_x(cell, x) { cell.x = x }
-	function set_cell_of_col_y(cell, y) { cell.y = y }
+	function set_cell_of_col_x(cell, field, x, w) { set_cell_xw(cell, field, x, w) }
+	function set_cell_of_col_y(cell, field, y) { cell.y = y }
 	e.set_movable_element_pos = function(fi, x) {
-		each_cell_of_col(fi, horiz ? set_cell_of_col_x : set_cell_of_col_y, x)
+		each_cell_of_col(fi, horiz ? set_cell_of_col_x : set_cell_of_col_y, e.fields[fi], x, cell_w(fi))
 		if (e.focused_field_index == fi)
 			update_editor(
 				 horiz ? x : null,
@@ -1251,7 +1297,7 @@ component('x-grid', function(e) {
 		let r = e.header.rect()
 		hit.mx -= r.x
 		hit.my -= r.y
-		hit.mx -= num(e.header.at[hit.fi].style.left)
+		hit.mx -= e.header.at[hit.fi]._x
 		hit.my -= num(e.header.at[hit.fi].style.top)
 		e.class('col-moving')
 		each_cell_of_col(hit.fi, cell => cell.class('col-moving'))
@@ -1533,7 +1579,7 @@ component('x-grid', function(e) {
 		if (!e.editor && key == 'Delete') {
 
 			// ctrl+delete: delete active row
-			if (ctrl && e.remove_selected_rows({refocus: true}))
+			if (ctrl && e.remove_selected_rows({refocus: true, toggle: true}))
 				return false
 
 			// delete: set selected cells to null.
