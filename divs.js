@@ -246,7 +246,8 @@ callers.pointerdown = function(e, f) {
 }
 
 method(Element, 'capture_pointer', function(e, move, up) {
-	up = or(up, return_false)
+	move = or(move, return_false)
+	up   = or(up  , return_false)
 	let down_mx = e.clientX
 	let down_my = e.clientY
 	function wrap_move(mx, my, e) {
