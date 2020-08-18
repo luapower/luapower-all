@@ -218,10 +218,14 @@ method(Element, 'overlay', function(target, attrs, content) {
 {
 let callers = {}
 
+let hidden_events = {prop_changed: 1, attr_changed: 1, stopped_event: 1}
+
 function passthrough_caller(e, f) {
-	if (isobject(e.detail) && e.detail.args)
+	if (isobject(e.detail) && e.detail.args) {
+		//if (!(e.type in hidden_events))
+		//print(e.type, ...e.detail.args)
 		return f.call(this, ...e.detail.args, e)
-	else
+	} else
 		return f.call(this, e)
 }
 
@@ -295,7 +299,7 @@ installers.attr_changed = function(e) {
 	let obs = e.__attr_observer
 	if (!obs) {
 		obs = new MutationObserver(function(mutations) {
-			e.fire('attr_changed', mutations)
+			e.fire(event('attr_changed', false, mutations))
 		})
 		obs.observe(e, {attributes: true})
 		e.__attr_observer = obs
@@ -321,7 +325,8 @@ let on = function(e, f, enable, capture) {
 				e.stopPropagation()
 				e.stopImmediatePropagation()
 				// notify document of stopped events.
-				document.fire('stopped_event', e)
+				if (e.type == 'pointerdown')
+					document.fire(event('stopped_event', false, e))
 			}
 		}
 		f.listener = listener
@@ -688,10 +693,13 @@ let popup_state = function(e) {
 
 		// move to top if the update was user-triggered not layout-triggered.
 		if (from_user === true && e.parent == document.body && !is_top_popup()) {
+			let sx = e.scrollLeft
+			let sy = e.scrollTop
 			force_attached(e, false)
 			e.remove()
 			force_attached(e, true)
 			document.body.add(e)
+			e.scroll(sx, sy)
 		}
 
 		let tr = target.rect()

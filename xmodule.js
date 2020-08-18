@@ -257,7 +257,7 @@ widget_tree = component('x-widget-tree', function(e) {
 		let rows = new Set()
 		function add_widget(e, pe) {
 			if (!e) return
-			rows.add([e, pe])
+			rows.add([e, pe, true])
 			if (e.child_widgets)
 				for (let ce of e.child_widgets())
 					add_widget(ce, e)
@@ -267,18 +267,21 @@ widget_tree = component('x-widget-tree', function(e) {
 	}
 
 	function widget_name(e) {
-		return e.typename.replace('_', ' ')
+		return () => H((e.id && '<b>'+e.id+'</b> ' || e.typename.replace('_', ' ')))
 	}
 
 	let rs = rowset({
 		fields: [
 			{name: 'widget', format: widget_name},
 			{name: 'parent_widget', visible: false},
+			{name: 'id', w: 40, format: (_, row) => row[0].id, visible: false},
 		],
 		rows: widget_tree_rows(),
 		pk: 'widget',
 		parent_col: 'parent_widget',
 	})
+
+	e.cols = 'id widget'
 
 	grid.construct(e)
 

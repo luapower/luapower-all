@@ -475,6 +475,7 @@ component('x-grid', function(e) {
 		else
 			cell.set(v)
 		cell.class('null', input_val == null)
+		cell.class('empty', input_val == '')
 	}
 
 	e.update_cell_error = function(cell, row, field, err) {
@@ -718,8 +719,8 @@ component('x-grid', function(e) {
 			create_fields()
 		if (opt.fields || opt.sort_order)
 			update_sort_icons()
-		let opt_rows = opt.rows
-		let opt_sizes = opt_rows || opt.fields || opt.sizes
+		let opt_rows = opt.rows || opt.fields
+		let opt_sizes = opt_rows || opt.sizes
 		if (opt_sizes) {
 			let last_vrn = vrn
 			update_sizes()
@@ -729,7 +730,7 @@ component('x-grid', function(e) {
 			create_cells()
 		if (opt_sizes)
 			update_cell_sizes(opt.col_resizing)
-		if (opt.fields || opt_rows || opt.vals || opt.focus)
+		if (opt_rows || opt.vals || opt.focus)
 			update_cells()
 	}
 
@@ -1470,7 +1471,7 @@ component('x-grid', function(e) {
 			let cols = key == left_arrow ? -1 : 1
 
 			let move = !e.editor
-				|| (e.auto_jump_cells && !shift && ctrl
+				|| (e.auto_jump_cells && !shift && (!horiz || ctrl)
 					&& (!horiz
 						|| !e.editor.editor_state
 						|| e.editor.editor_state(cols < 0 ? 'left' : 'right')))
@@ -1539,7 +1540,7 @@ component('x-grid', function(e) {
 				if (e.focus_cell(true, true, rows, 0, {
 					editor_state: rows > 0 ? 'left' : 'right',
 					expand_selection: shift,
-					input: e
+					input: e,
 				}))
 					return false
 
@@ -1584,12 +1585,12 @@ component('x-grid', function(e) {
 
 		if (!e.editor && key == 'Delete') {
 
-			// ctrl+delete: delete active row
-			if (ctrl && e.remove_selected_rows({refocus: true, toggle: true}))
+			// delete: toggle-delete active row
+			if (!ctrl && e.remove_selected_rows({refocus: true, toggle: true}))
 				return false
 
-			// delete: set selected cells to null.
-			if (!ctrl) {
+			// ctrl_delete: set selected cells to null.
+			if (ctrl) {
 				e.set_null_selected_cells()
 				return false
 			}
@@ -1602,7 +1603,7 @@ component('x-grid', function(e) {
 			return false
 		}
 
-		if (ctrl && key == 'a') {
+		if (!e.editor && ctrl && key == 'a') {
 			e.select_all_cells()
 			return false
 		}

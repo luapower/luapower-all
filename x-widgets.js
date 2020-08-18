@@ -114,6 +114,16 @@ function selectable_widget(e) {
 		document.fire(event('global_changed', false, this, id, id0))
 	})
 
+	e.set_css_classes = function(c1, c0) {
+		if (c0)
+			for (s of c0.split(/\s+/))
+				this.class(s, false)
+		if (c1)
+			for (s of c1.split(/\s+/))
+				this.class(s, true)
+	}
+	e.prop('css_classes', {store: 'var'})
+
 	e.property('parent_widget', function() {
 		return parent_widget_which(this, p => p.child_widgets)
 	})
