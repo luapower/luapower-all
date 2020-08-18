@@ -2,15 +2,9 @@
 FINISH
 ------------------------------------------------------------------------------
 
-- REFACTORING: use mouse capturing everywhere.
-- REFACTORING: use x-arrow classes for tooltip tips.
-
 - LIST_DROPDOWN null element.
 - GRID_DROPDOWN null element.
 - DATE_DROPDOWN null element.
-
-- GRID shortcut to set null.
-- GRID context menu option to set null.
 
 - ROWSET quicksearch bugs.
 

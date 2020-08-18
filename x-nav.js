@@ -59,6 +59,7 @@ function nav_widget(e) {
 		rs.on('notify', e.notify, on)
 		// take/release ownership of the rowset.
 		rs.bind_user_widget(e, on)
+		rs.param_nav = e.param_nav
 	}
 
 	e.on('attach', function() {
@@ -101,6 +102,15 @@ function nav_widget(e) {
 		reset({cols: true, rows: true})
 	}
 	e.prop('tree_col', {store: 'var'})
+
+	// param props ------------------------------------------------------------
+
+	e.set_param_nav = function(nav) {
+		if (e.rowset)
+			e.rowset.param_nav = nav
+	}
+	e.prop('param_nav', {store: 'var', private: true})
+	e.prop('param_nav_name', {store: 'var', bind: 'param_nav', type: 'nav'})
 
 	// row -> row_index mapping -----------------------------------------------
 

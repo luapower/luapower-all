@@ -559,26 +559,6 @@ function focusable_widget(e, fe) {
 }
 
 // ---------------------------------------------------------------------------
-// cell nav
-// ---------------------------------------------------------------------------
-
-function cell_nav(field_opt, rs_opt) {
-
-	let field = update({}, field_opt)
-	let row = [null]
-
-	let rs = rowset(update({
-		fields: [field],
-		rows: [row],
-		can_change_rows: true,
-	}, rs_opt))
-
-	rs.set_val(row, rs.field(0), field.val)
-
-	return {rowset: rs, focused_row: row, is_fake: true}
-}
-
-// ---------------------------------------------------------------------------
 // val widget mixin
 // ---------------------------------------------------------------------------
 
@@ -1547,6 +1527,23 @@ component('x-dropdown', function(e) {
 	e.button = span({class: 'x-dropdown-button fa fa-caret-down'})
 	e.inner_label_div = div({class: 'x-input-inner-label x-dropdown-inner-label'})
 	e.add(e.val_div, e.button, e.inner_label_div)
+
+	e.set_more_action = function(action) {
+		if (!e.more_button && action) {
+			e.more_button = div({class: 'x-input-more-button x-dropdown-more-button fa fa-ellipsis-h'})
+			e.add(e.more_button)
+			e.more_button.on('pointerdown', function(ev) {
+				return this.capture_pointer(ev, null, function() {
+					e.more_action()
+					return false
+				})
+			})
+		} else if (e.more_button && !action) {
+			e.more_button.remove()
+			e.more_button = null
+		}
+	}
+	e.prop('more_action', {store: 'var', private: true})
 
 	let inh_set_nav = e.set_nav
 	e.set_nav = function(v, v0) {
@@ -2637,6 +2634,10 @@ component('x-split', function(e) {
 		return e[1] == ce && 1 || e[2] == ce && 2 || null
 	}
 
+	e.remove_child_widget = function(ce) {
+		e.replace_widget(ce, widget_placeholder())
+	}
+
 	e.replace_widget = function(old_widget, new_widget) {
 		e[widget_index(old_widget)] = new_widget
 		old_widget.parent.replace(old_widget, new_widget)
@@ -2808,7 +2809,6 @@ component('x-dialog', function(e) {
 	e.classes = 'x-widget x-dialog'
 
 	e.x_button = true
-	e.footer = 'ok:ok cancel:cancel'
 
 	e.init = function() {
 		if (e.title != null) {
@@ -2820,11 +2820,11 @@ component('x-dialog', function(e) {
 		if (!e.content)
 			e.content = div()
 		e.content.class('x-dialog-content')
-		if (!(e.footer instanceof Node))
+		if (e.footer && !(e.footer instanceof Node))
 			e.footer = action_band({layout: e.footer, buttons: e.buttons})
 		e.add(e.header, e.content, e.footer)
 		if (e.x_button) {
-			e.x_button = div({class: 'x-dialog-button-close fa fa-times'})
+			e.x_button = div({class: 'x-dialog-x-button fa fa-times'})
 			e.x_button.on('click', function() {
 				e.cancel()
 			})

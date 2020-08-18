@@ -719,8 +719,9 @@ rowset = function(...options) {
 	}
 
 	d.can_change_val = function(row, field) {
-		return d.can_edit && d.can_change_rows && (!row || row.editable != false)
-			&& (field == null || field.editable)
+		return d.can_edit && d.can_change_rows
+			&& (!row || (row.editable != false && !row.removed))
+			&& (!field || field.editable)
 			&& d.can_focus_cell(row, field)
 	}
 
@@ -986,46 +987,49 @@ rowset = function(...options) {
 	// params -----------------------------------------------------------------
 
 	function init_params() {
-
-		if (typeof d.param_names == 'string')
-			d.param_names = d.param_names.split(' ')
-		else if (!d.param_names)
-			d.param_names = []
-
 		bind_param_nav(false)
-
-		if (d.param_names.length == 0)
-			return
-
-		if (!d.param_nav) {
-			let param_fields = []
-			let params_row = []
-			for (let param of d.param_names) {
-				param_fields.push({
-					name: param,
-				})
-				params_row.push(null)
-			}
-			let params_rowset = rowset({fields: param_fields, rows: [params_row]})
-			d.param_nav = rowset_nav({rowset: params_rowset})
-		}
-
 		if (d.attached)
 			bind_param_nav(true)
+	}
+
+	let param_nav = null
+	d.set_param_nav = function(nav1, nav0) {
+		bind_param_nav_cols_rs(nav0, d.param_names, nav0 && nav0.rowset, false)
+		bind_param_nav_cols_rs(nav1, d.param_names, nav1 && nav1.rowset, true)
+	}
+	property(d, 'param_nav', {get: () => param_nav, set: function(nav) {
+		if (nav == param_nav)
+			return
+		let nav0 = param_nav
+		param_nav = nav
+		d.set_param_nav(nav, nav0)
+	}})
+
+	function params_rowset_changed(rs1, rs0) {
+		bind_param_nav_cols_rs(d.param_nav, d.param_names, rs0, false)
+		bind_param_nav_cols_rs(d.param_nav, d.param_names, rs1, true)
 	}
 
 	function params_changed(row) {
 		d.reload()
 	}
 
+	function bind_param_nav_cols_rs(nav, cols, rs, on) {
+		if (!(nav && cols && rs))
+			return
+		if (nav.is_fake) {
+			rs.on('cell_state_changed', params_changed, on)
+		} else {
+			nav.on('focused_row_changed', params_changed, on)
+			nav.on('rowset_changed'     , params_rowset_changed, on)
+			rs.on('loaded'              , params_changed, on)
+			for (let param of cols)
+				nav.on('focused_row_val_changed_for_'+param, params_changed, on)
+		}
+	}
+
 	function bind_param_nav(on) {
-		if (!d.param_nav)
-			return
-		if (!d.param_names || !d.param_names.length)
-			return
-		d.param_nav.on('focused_row_changed', params_changed, on)
-		for (let param of d.param_names)
-			d.param_nav.on('focused_row_val_changed_for_'+param, params_changed, on)
+		bind_param_nav_cols_rs(d.param_nav, d.param_names, d.param_nav && d.param_nav.rowset, on)
 	}
 
 	function make_url(params) {
@@ -1518,3 +1522,70 @@ function global_rowset(name, ...options) {
 
 }
 
+// ---------------------------------------------------------------------------
+// cell nav
+// ---------------------------------------------------------------------------
+
+function cell_nav(field_opt, rs_opt) {
+
+	let field = update({}, field_opt)
+	let row = [null]
+
+	let rs = rowset(update({
+		fields: [field],
+		rows: [row],
+		can_change_rows: true,
+	}, rs_opt))
+
+	rs.set_val(row, rs.field(0), field.val)
+
+	return {rowset: rs, focused_row: row, is_fake: true}
+}
+
+/*
+// ---------------------------------------------------------------------------
+// row nav
+// ---------------------------------------------------------------------------
+
+function row_nav(field_opts, rs_opt) {
+
+	let row = []
+	let fields = []
+	let vals = []
+	for (let name in field_opts) {
+		let field = update({name: name}, field_opts[name])
+		fields.push(field)
+		row.push(null)
+		vals.push(field.val || null)
+	}
+
+	let rs = rowset(update({
+		fields: fields,
+		rows: [row],
+		can_change_rows: true,
+	}, rs_opt))
+
+	for (let fi = 0; fi < rs.fields.length; fi++)
+		rs.set_val(row, rs.fields[fi], vals[fi])
+
+	return {rowset: rs, focused_row: row, is_fake: true}
+}
+
+*/
+
+// ---------------------------------------------------------------------------
+// param nav
+// ---------------------------------------------------------------------------
+
+function param_nav(param_names) {
+	let fields = []
+	let row = []
+	for (let param of param_names) {
+		fields.push({
+			name: param,
+		})
+		row.push(null)
+	}
+	let rs = rowset({fields: fields, rows: [row]})
+	return {rowset: rs, focused_row: row, is_fake: true}
+}

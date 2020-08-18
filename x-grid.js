@@ -23,7 +23,7 @@ component('x-grid', function(e) {
 	// keyboard behavior
 	e.tab_navigation = false    // disabled as it prevents jumping out of the grid.
 	e.auto_advance = 'next_row' // advance on enter = false|'next_row'|'next_cell'
-	e.auto_jump_cells = true    // jump to next/prev cell on caret limits
+	e.auto_jump_cells = false   // jump to next/prev cell on caret limits
 	e.quick_edit = false        // quick edit (vs. quick-search) when pressing a key
 
 	// mouse behavior
@@ -1408,7 +1408,7 @@ component('x-grid', function(e) {
 		return 'capture'
 	}
 
-	function pointerup(mx, my, ev) {
+	function pointerup(ev, mx, my) {
 		if (!hit.state)
 			return
 		if (hit.state == 'header_resizing') {

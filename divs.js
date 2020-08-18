@@ -759,9 +759,9 @@ method(HTMLElement, 'popup', function(target, side, align, px, py) {
 method(Element, 'modal', function(on) {
 	let e = this
 	if (on == false) {
-		if (e.__dialog) {
-			e.__dialog.remove()
-			e.__dialog = null
+		if (e.dialog) {
+			e.dialog.remove()
+			e.dialog = null
 		}
 	} else if (!e.__dialog) {
 		let dialog = tag('dialog', {
@@ -773,14 +773,16 @@ method(Element, 'modal', function(on) {
 				height: 100%;
 				overflow: auto;
 				border: 0;
+				margin: 0;
+				padding: 0;
 				background-color: rgba(0,0,0,0.4);
-				display: flex;
-				align-items: center;
-				justify-content: center;
+				display: grid;
+				justify-content: stretch;
+				z-index: 100;
 			`,
 		}, e)
 		dialog.on('pointerdown', () => false)
-		e.__dialog = dialog
+		e.dialog = dialog
 		document.body.add(dialog)
 		dialog.showModal()
 		e.focus()

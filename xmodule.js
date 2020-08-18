@@ -62,11 +62,16 @@ rowsets_rowset.load()
 rowset.types.rowset = {}
 
 rowset.types.rowset.editor = function(...options) {
+	function more() {
+		let d = sql_rowset_editor_dialog()
+		d.modal()
+	}
 	return list_dropdown(update({
 		nolabel: true,
 		lookup_rowset: rowsets_rowset,
 		lookup_col: 'name',
 		mode: 'fixed',
+		more_action: more,
 	}, ...options))
 }
 
@@ -370,7 +375,33 @@ widget_tree = component('x-widget-tree', function(e) {
 
 })
 
-// toolboxes -----------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// sql rowset editor
+// ---------------------------------------------------------------------------
+
+sql_rowset_editor = component('x-sql-rowset-editor', function(e) {
+
+
+
+})
+
+// ---------------------------------------------------------------------------
+// sql schema editor
+// ---------------------------------------------------------------------------
+
+
+
+// ---------------------------------------------------------------------------
+// globals list
+// ---------------------------------------------------------------------------
+
+function globals_list() {
+
+}
+
+// ---------------------------------------------------------------------------
+// toolboxes
+// ---------------------------------------------------------------------------
 
 function properties_toolbox(tb_opt, insp_opt) {
 	let pg = prop_inspector(insp_opt)
@@ -395,5 +426,20 @@ function widget_tree_toolbox(tb_opt, wt_opt) {
 	}, tb_opt))
 	tb.tree = wt
 	return tb
+}
+
+// ---------------------------------------------------------------------------
+// dialogs
+// ---------------------------------------------------------------------------
+
+function sql_rowset_editor_dialog() {
+	let ed = sql_rowset_editor()
+	let d = dialog({
+		text: 'SQL Rowset Editor',
+		content: ed,
+		footer: '',
+	})
+	d.editor = ed
+	return d
 }
 
