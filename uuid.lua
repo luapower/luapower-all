@@ -60,9 +60,18 @@ do
 end
 
 if not ... then
-	math.randomseed(require'time'.clock())
-	for i=1,10 do
-		print(_M.generate_v4())
+	local t = {}
+	for j = 1, 1e4 do
+		math.randomseed(require'time'.clock())
+		for i = 1, 1e6 do
+			local uuid = _M.generate_v4()
+			if i == 1 then
+				print(uuid)
+			end
+			assert(not t[uuid])
+			t[uuid] = true
+		end
+		print(j..'M')
 	end
 end
 
