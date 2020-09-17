@@ -103,10 +103,14 @@ local Error_Names = {
 	[0xBA] = 'Corrupted Font Glyphs',
 }
 
+local has_error_strings = pcall(function () return C.FT_Error_String end)
 local function checkz(result)
 	if result == 0 then return end
+	local estr
+	if has_error_strings then estr = C.FT_Error_String(result) end
+	estr = estr~=nil and ffi.string(estr) or nil
 	error(string.format('freetype error %d: %s', result,
-		Error_Names[result] or '<unknown error>'), 2)
+		estr or Error_Names[result] or '<unknown error>'), 2)
 end
 
 local function nonzero(ret)
