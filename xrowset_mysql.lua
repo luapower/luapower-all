@@ -220,6 +220,9 @@ function sql_rowset(...)
 
 		function rs:select_rows(res, param_values)
 			trace_queries(not config'hide_errors')
+			if rs.schema then
+				query_on(rs.db, 'use '..rs.schema)
+			end
 			local rows, cols, params = query_on(rs.db, rs.select, param_values)
 			local fields, pk, id_col =
 				field_defs_from_query_result_cols(cols, rs.field_attrs, rs.update_table)
@@ -277,4 +280,3 @@ function sql_rowset(...)
 
 	end, ...)
 end
-

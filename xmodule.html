@@ -10,6 +10,7 @@ html, body {
 	margin: 0;
 	height: 100%;
 	display: grid;
+	overflow: hidden;
 }
 
 * { box-sizing: border-box; }
@@ -32,22 +33,19 @@ html, body {
 }
 </style>
 
-<script src="ace.js" integrity="sha256-+svOVB1WmhKhTy7N21gWvtyXn91qF0r52P2hIArRRug="></script>
-
 <link rel="stylesheet" type="text/css" href="fontawesome.css">
 <link rel="stylesheet" type="text/css" href="x-widgets.css">
+
+<script src="ace/ace.js"></script>
 
 <script src="glue.js"></script>
 <script src="divs.js"></script>
 <script src="ajax.js"></script>
 <script src="url.js"></script>
-<script src="x-rowset.js"></script>
 <script src="x-widgets.js"></script>
 <script src="x-nav.js"></script>
 <script src="x-listbox.js"></script>
 <script src="x-grid.js"></script>
-<script src="x-calendar.js"></script>
-<script src="x-country-dropdown.js"></script>
 <script src="x-cssgrid.js"></script>
 <script src="xmodule.js"></script>
 
@@ -56,88 +54,62 @@ html, body {
 <body>
 <script>
 
+//DEBUG_EVENTS = true
+//DEBUG_ATTACH_TIME = true
+
 // ---------------------------------------------------------------------------
 // main app
 // ---------------------------------------------------------------------------
 
-body = document.body
-
 allow_editing = true
 
-function xmodule_load() {
-	function loaded(t) {
-		if (root_widget)
-			root_widget.remove()
-		root_widget	= component.create(t)
-		body.add(root_widget)
-		body.fire('widget_tree_changed')
-	}
-	ajax({url: '/xmodule.json', success: loaded}).send()
-}
-
-function xmodule_save() {
-	ajax({url: '/xmodule.json', upload: root_widget.serialize()}).send()
-}
-
-body.on('keydown', function(key, shift, ctrl) {
+document.body.on('keydown', function(key, shift, ctrl) {
 	if (key == 's' && ctrl) {
-		xmodule_save()
+		xmodule.save()
 		return false
 	}
-	if (key == 'F5') {
-		xmodule_load()
-		return false
-	}
-
 })
 
-root_widget = widget_placeholder()
-body.add(root_widget)
-
-xmodule_load()
-
-props_tb = properties_toolbox({
-	y: 128, x: 920, w: 220, h: 397,
-}, {header_w: 80})
-props_tb.show(true, true)
-
-tree_tb = widget_tree_toolbox({
-	y: 528, x: 920, w: 220, h: 401,
-})
-tree_tb.show(true, true)
-
-/*
-
-function widgets_toolbox() {
-	let lb = listbox({
-		items: [
-			'button', 'checkbox', 'radiogroup',
-			'input', 'spin_input', 'slider',
-			'list_dropdown', 'date_dropdown', 'grid_dropdown',
-			'listbox', 'grid',
-			'split', 'pagelist', 'cssgrid',
-		],
-	})
-	let tb = toolbox({
-		text: 'widgets',
-		content: lb,
-	})
-	tb.on('dblclick', function(ev) {
-		let i = ev.target.index
-		let name = lb.items[i]
-		let cons = window[name]
-		let e = cons()
-		body.add(e)
-	})
-	return tb
+let prop_layers = {
+	base_dba    : 'dba',
+	base        : 'lma',
+	base_server : 'lma-server',
+	lang2       : 'lma-lang-it',
+	lang        : 'lma-lang-ro',
+	user        : 'lma-user-admin',
+	dev         : 'lma-user-cosmin',
 }
 
-widgets_tb = widgets_toolbox({
-	y: 150,
-	x: 500,
+let prop_layer_slots = {}
+
+for (let k in prop_layers)
+	prop_layer_slots[k] = null
+
+xmodule = xmodule({
+	prop_layer_slots: prop_layer_slots,
+	prop_layer_slot_colors: {
+		base_server: '#000',
+		lang: '#f66',
+		lang2: '#f69',
+		user: '#99f',
+		dev: '#33a',
+	},
 })
-//widgets_tb.show()
-*/
+
+for (let slot of keys(prop_layers).reverse())
+	xmodule.set_prop_layer(slot, prop_layers[slot], null, null, false)
+
+root_widget = null
+root_widget = component.create('lma1')
+document.body.add(root_widget)
+
+document.on('keydown', function(key) {
+	if (key == 'F9')
+		show_toolboxes('toggle')
+})
+
+//show_toolboxes()
+
 
 </script>
 </body>

@@ -1,48 +1,22 @@
 
 component('x-cssgrid', function(e) {
 
+	e.props.align_x = {default: 'stretch'}
+	e.props.align_y = {default: 'stretch'}
+
 	serializable_widget(e)
 	selectable_widget(e)
 	editable_widget(e)
 	cssgrid_item_widget(e)
+	widget_items_widget(e)
 
-	e.align_x = 'stretch'
-	e.align_y = 'stretch'
 	e.classes = 'x-widget x-cssgrid'
 
-	e.init = function() {
-		let items = e.items || []
-		e.items = []
-		for (let item of items) {
-			item = component.create(item)
-			e.add_child_widget(item)
-		}
-	}
-
-	e.serialize = function() {
-		let t = e.serialize_fields()
-		t.items = []
-		for (let item of e.items)
-			t.items.push(item.serialize())
-		return t
-	}
-
-	// add/remove items -------------------------------------------------------
-
-	e.child_widgets = function() {
-		return e.items.slice()
-	}
-
-	e.add_child_widget = function(item) {
-		e.items.push(item)
-		e.add(item)
-	}
-
-	e.remove_child_widget = function(item) {
-		let i = e.items.indexOf(item)
-		assert(i >= 0)
-		e.items.remove(i)
-		item.remove()
+	// widget-items widget protocol.
+	e.do_init_items = function(items) {
+		e.clear()
+		for (let item of items)
+			e.add(item)
 	}
 
 	// get/set gaps -----------------------------------------------------------
@@ -67,8 +41,7 @@ component('x-cssgrid', function(e) {
 	e.prop('sizes_x')
 	e.prop('sizes_y')
 
-	// edit mode --------------------------------------------------------------
-
+	// editable widget protocol.
 	e.set_widget_editing = function(v, ...args) {
 		if (!v) return
 		cssgrid_widget_editing(e)
@@ -137,7 +110,7 @@ function cssgrid_widget_editing(e) {
 	// get/set template sizes from/to array
 
 	function get_sizes(axis) {
-		return e['sizes_'+axis].split(' ')
+		return e['sizes_'+axis].split(/\s+/)
 	}
 
 	function set_sizes(axis, ts, prevent_recreate_guides) {
@@ -177,7 +150,7 @@ function cssgrid_widget_editing(e) {
 	}
 
 	function bind(on) {
-		e.on('prop_changed', prop_changed, on)
+		document.on('prop_changed', prop_changed, on)
 	}
 
 	function enter_editing() {
@@ -196,13 +169,13 @@ function cssgrid_widget_editing(e) {
 		remove_guides_for('y')
 	}
 
-	function prop_changed(k, v, v0, ev) {
-		if (ev.target.parent == e) {
+	function prop_changed(te, k) {
+		if (te.parent == e) {
 			if (k == 'pos_x' || k == 'span_x')
 				update_guides_for('x')
 			else if (k == 'pos_y' || k == 'span_y')
 				update_guides_for('y')
-		} else if (ev.target == e) {
+		} else if (te == e) {
 			if (k == 'sizes_x')
 				update_sizes_for('x')
 			else if (k == 'sizes_y')
@@ -317,7 +290,7 @@ function cssgrid_widget_editing(e) {
 		}
 		z0 = num(z0)
 
-		return this.capture_pointer(ev, function(mx, my, ev) {
+		return this.capture_pointer(ev, function(ev, mx, my) {
 			let dx = (this.axis == 'x' ? mx : my) - drag_mx - e.rect()[this.axis]
 			let tz = get_sizes(this.axis)
 			let z = tz[this.i]
@@ -375,12 +348,12 @@ function cssgrid_widget_editing(e) {
 	e.add_button.hide()
 	e.add(e.add_button)
 	e.add_button.on('click', function() {
-		let item = widget_placeholder()
+		let item = widget_placeholder({module: e.module})
 		item.pos_x = this.pos_x
 		item.pos_y = this.pos_y
 		e.items.push(item)
 		e.add(item)
-		e.fire('widget_tree_changed')
+		document.fire('widget_tree_changed')
 	})
 
 	function is_cell_empty(i, j) {
@@ -392,7 +365,7 @@ function cssgrid_widget_editing(e) {
 		return true
 	}
 
-	e.on('pointermove', function(mx, my, ev) {
+	e.on('pointermove', function(ev, mx, my) {
 		if (ev.buttons)
 			return
 		if (!e.widget_editing)
@@ -432,7 +405,7 @@ function cssgrid_widget_editing(e) {
 		let i = e.items.indexOf(old_widget)
 		e.items[i] = new_widget
 		old_widget.parent.replace(old_widget, new_widget)
-		e.fire('widget_tree_changed')
+		document.fire('widget_tree_changed')
 	}
 
 	// you won't believe this shit, but page-up/down from inner contenteditables

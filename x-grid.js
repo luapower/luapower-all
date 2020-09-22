@@ -1,15 +1,25 @@
 
+/* ---------------------------------------------------------------------------
+// grid widget
 // ---------------------------------------------------------------------------
-// grid
-// ---------------------------------------------------------------------------
+uses:
+	...
+implements:
+	nav widget protocol.
+calls:
+	e.do_update_cell_val(cell, row, field, input_val)
+	e.do_update_cell_error(cell, row, field, err)
+--------------------------------------------------------------------------- */
 
 component('x-grid', function(e) {
 
+	e.props.align_x = {default: 'stretch'}
+	e.props.align_y = {default: 'stretch'}
+
 	nav_widget(e)
+	editable_widget(e)
 	focusable_widget(e)
 
-	e.align_x = 'stretch'
-	e.align_y = 'stretch'
 	e.classes = 'x-widget x-focusable x-grid'
 
 	// geometry
@@ -21,27 +31,25 @@ component('x-grid', function(e) {
 	e.cell_w = 120              // vertical grid
 
 	// keyboard behavior
+	e.auto_jump_cells = true    // jump to next/prev cell on caret limits
 	e.tab_navigation = false    // disabled as it prevents jumping out of the grid.
-	e.auto_advance = 'next_row' // advance on enter = false|'next_row'|'next_cell'
-	e.auto_jump_cells = false   // jump to next/prev cell on caret limits
+	e.advance_on_enter = 'next_row' // false|'next_row'|'next_cell'
+	e.prop('exit_edit_on_escape'           , {store: 'var', type: 'bool', default: true})
+	e.prop('exit_edit_on_enter'            , {store: 'var', type: 'bool', default: false})
 	e.quick_edit = false        // quick edit (vs. quick-search) when pressing a key
 
 	// mouse behavior
-	e.prop('can_sort_rows'               , {store: 'var', default: true})
-	e.prop('can_reorder_fields'          , {store: 'var', default: true})
-	e.prop('enter_edit_on_click'         , {store: 'var', default: false})
-	e.prop('enter_edit_on_click_focused' , {store: 'var', default: true})
-	e.prop('exit_edit_on_escape'         , {store: 'var', default: true})
-	e.prop('exit_edit_on_enter'          , {store: 'var', default: true})
-	e.prop('focus_cell_on_click_header'  , {store: 'var', default: false})
-	e.prop('can_move_rows'               , {store: 'var', default: false})
-	e.prop('can_change_parent'           , {store: 'var', default: true})
+	e.prop('can_reorder_fields'            , {store: 'var', type: 'bool', default: true})
+	e.prop('enter_edit_on_click'           , {store: 'var', type: 'bool', default: false})
+	e.prop('enter_edit_on_click_focused'   , {store: 'var', type: 'bool', default: true})
+	e.prop('focus_cell_on_click_header'    , {store: 'var', type: 'bool', default: false})
+	e.prop('can_change_parent'             , {store: 'var', type: 'bool', default: true})
 
 	// context menu features
-	e.prop('enable_context_menu'           , {store: 'var', default: true})
-	e.prop('can_change_header_visibility'  , {store: 'var', default: false})
-	e.prop('can_change_filters_visibility' , {store: 'var', default: true})
-	e.prop('can_change_fields_visibility'  , {store: 'var', default: true})
+	e.prop('enable_context_menu'           , {store: 'var', type: 'bool', default: true})
+	e.prop('can_change_header_visibility'  , {store: 'var', type: 'bool', default: false})
+	e.prop('can_change_filters_visibility' , {store: 'var', type: 'bool', default: true})
+	e.prop('can_change_fields_visibility'  , {store: 'var', type: 'bool', default: true})
 
 	let horiz = true
 	e.get_vertical = function() { return !horiz }
@@ -49,7 +57,7 @@ component('x-grid', function(e) {
 		horiz = !v
 		e.class('x-hgrid',  horiz)
 		e.class('x-vgrid', !horiz)
-		e.update({fields: true, rows: true, focus: true})
+		e.update({fields: true, rows: true})
 	}
 	e.prop('vertical', {type: 'bool'})
 
@@ -60,16 +68,8 @@ component('x-grid', function(e) {
 	e.progress_bar = div({class: 'x-grid-progress-bar'})
 	e.add(e.header, e.progress_bar, e.cells_view)
 
-	function bind(on) {
+	e.on('bind', function(on) {
 		document.on('layout_changed', layout_changed, on)
-	}
-
-	e.on('attach', function() {
-		bind(true)
-	})
-
-	e.on('detach', function() {
-		bind(false)
 	})
 
 	// geometry ---------------------------------------------------------------
@@ -286,8 +286,9 @@ component('x-grid', function(e) {
 
 	function set_col_w(fi, w) { // hgrid
 		let field = e.fields[fi]
-		field.w = clamp(w, field.min_w, field.max_w)
-		e.header.at[fi]._w = field.w
+		w = clamp(w, field.min_w, field.max_w)
+		e.set_prop(`col.${field.name}.w`, w)
+		e.header.at[fi]._w = w
 	}
 
 	function update_header_w(w) { // vgrid
@@ -356,13 +357,11 @@ component('x-grid', function(e) {
 			w0 = w1
 			h0 = h1
 		}
-	}
 
-	// detect w/h changes from resizing made with css 'resize: both'.
-	e.on('attr_changed', function(mutations) {
-		if (mutations[0].attributeName == 'style')
-			layout_changed()
-	})
+		// detect w/h changes from resizing made with css 'resize: both'.
+		e.detect_style_size_changes()
+		e.on('style_size_changed', layout_changed)
+	}
 
 	// rendering --------------------------------------------------------------
 
@@ -372,10 +371,12 @@ component('x-grid', function(e) {
 			let field = e.fields[fi]
 			let sort_icon     = H.span({class: 'fa x-grid-sort-icon'})
 			let sort_icon_pri = H.span({class: 'x-grid-header-sort-icon-pri'})
-			let e1 = H.td({class: 'x-grid-header-title-td'})
-			e1.set(field.text)
-			e1.title = field.hint || e1.textContent
-			let e2 = H.td({class: 'x-grid-header-sort-icon-td'}, sort_icon, sort_icon_pri)
+			let title_div = H.td({class: 'x-grid-header-title-td'})
+			title_div.set(field.text)
+			title_div.title = field.hint || title_div.textContent
+			let sort_icon_div = H.td({class: 'x-grid-header-sort-icon-td'}, sort_icon, sort_icon_pri)
+			let e1 = title_div
+			let e2 = sort_icon_div
 			if (horiz && field.align == 'right')
 				[e1, e2] = [e2, e1]
 			e1.attr('align', 'left')
@@ -383,6 +384,7 @@ component('x-grid', function(e) {
 			let title_table = H.table({class: 'x-grid-header-cell-table'}, H.tr(0, e1, e2))
 			let hcell = div({class: 'x-grid-header-cell'}, title_table)
 			hcell.fi = fi
+			hcell.title_div = title_div
 			hcell.sort_icon = sort_icon
 			hcell.sort_icon_pri = sort_icon_pri
 			e.header.add(hcell)
@@ -405,8 +407,8 @@ component('x-grid', function(e) {
 			},
 		})
 
-		let f0 = rs.field(0)
-		let f1 = rs.field(1)
+		let f0 = rs.all_fields[0]
+		let f1 = rs.all_fields[1]
 
 		dd.display_val = function() {
 			if (!rs.filtered_count)
@@ -423,7 +425,7 @@ component('x-grid', function(e) {
 			let checked = !rs.val(this.focused_row, f0)
 			rs.set_val(this.focused_row, f0, checked)
 			rs.filtered_count = (rs.filtered_count || 0) + (checked ? -1 : 1)
-			dd.update_val()
+			dd.do_update_val()
 		}
 
 		dd.picker.on('keydown', function(key) {
@@ -436,13 +438,13 @@ component('x-grid', function(e) {
 	}
 
 	function update_sort_icons() {
+		let asc  = horiz ? 'up' : 'left'
+		let desc = horiz ? 'down' : 'right'
 		for (let fi = 0; fi < e.fields.length; fi++) {
 			let field = e.fields[fi]
 			let hcell = e.header.at[fi]
-			let dir = e.order_by_dir(field)
-			let pri = e.order_by_priority(field)
-			let asc  = horiz ? 'up' : 'left'
-			let desc = horiz ? 'down' : 'right'
+			let dir = field.sort_dir
+			let pri = field.sort_priority
 			hcell.sort_icon.class('fa-angle-'+asc        , false)
 			hcell.sort_icon.class('fa-angle-double-'+asc , false)
 			hcell.sort_icon.class('fa-angle-'+desc       , false)
@@ -466,19 +468,24 @@ component('x-grid', function(e) {
 				e.cells.add(cell)
 			}
 		}
+		e.empty_rt.show(!e.rows.length)
 	}
 
-	e.update_cell_val = function(cell, row, field, input_val) {
-		let v = e.rowset.display_val(row, field)
-		if (cell.indent)
-			cell.replace(cell.childNodes[1], v)
-		else
-			cell.set(v)
+	e.do_update_cell_val = function(cell, row, field, input_val) {
+		let v = e.cell_display_val_for(row, field, input_val)
+		cell.input_val = v
+		let node = cell.childNodes[cell.indent ? 1 : 0]
+		if (cell.qs_div) { // value is wrapped
+			node.replace(node.childNodes[0], v)
+			cell.qs_div.clear()
+		} else {
+			cell.replace(node, v)
+		}
 		cell.class('null', input_val == null)
 		cell.class('empty', input_val == '')
 	}
 
-	e.update_cell_error = function(cell, row, field, err) {
+	e.do_update_cell_error = function(cell, row, field, err) {
 		let invalid = !!err
 		cell.class('invalid', invalid)
 		cell.attr('title', err || null)
@@ -488,8 +495,8 @@ component('x-grid', function(e) {
 		return 12 + indent * 16
 	}
 
-	function set_cell_indent(cell, indent) {
-		cell.indent.style['padding-left'] = (indent_offset(indent) - 4)+'px'
+	function set_cell_indent(cell_indent, indent) {
+		cell_indent.style['padding-left'] = (indent_offset(indent) - 4)+'px'
 	}
 
 	function update_cell_content(cell, row, ri, fi, row_focused, indent) {
@@ -512,7 +519,7 @@ component('x-grid', function(e) {
 		cell.class('disabled', e.is_cell_disabled(row, field))
 		cell.class('new', !!row.is_new)
 		cell.class('removed', !!row.removed)
-		cell.class('modified', e.rowset.cell_modified(row, field))
+		cell.class('modified', e.cell_modified(row, field))
 
 		if (field_has_indent(field)) {
 			if (!cell.indent) {
@@ -523,17 +530,17 @@ component('x-grid', function(e) {
 			cell.indent.class('far', has_children)
 			cell.indent.class('fa-plus-square' , has_children && !!row.collapsed)
 			cell.indent.class('fa-minus-square', has_children && !row.collapsed)
-			set_cell_indent(cell, or(indent, row_indent(row)))
+			set_cell_indent(cell.indent, or(indent, row_indent(row)))
 		} else if (cell.indent) {
 			cell.set(null)
 			cell.indent = null
 		}
 
-		e.update_cell_val(cell, row, field, e.rowset.input_val(row, field))
-		e.update_cell_error(cell, row, field, e.rowset.cell_error(row, field))
+		e.do_update_cell_val(cell, row, field, e.cell_input_val(row, field))
+		e.do_update_cell_error(cell, row, field, e.cell_error(row, field))
 
-		row_focused = or(row_focused, e.focused_row_index == ri)
-		let cell_focused = row_focused && (!e.can_focus_cells || fi == e.focused_field_index)
+		row_focused = or(row_focused, e.focused_row == row)
+		let cell_focused = row_focused && (!e.can_focus_cells || field == e.focused_field)
 		let sel_fields = e.selected_rows.get(row)
 		let selected = (isobject(sel_fields) ? sel_fields.has(field) : sel_fields) || false
 		let editing = !!e.editor
@@ -566,7 +573,39 @@ component('x-grid', function(e) {
 		update_scroll()
 		if (vri1 != last_vri1)
 			update_cells()
+		update_editor()
+		update_quicksearch_cell()
 	})
+
+	// quicksearch highlight --------------------------------------------------
+
+	function update_quicksearch_cell() {
+		let row = e.focused_row
+		let field = e.quicksearch_field
+		let s = e.quicksearch_text
+		if (!(row && field))
+			return
+		let cell = e.cells.at[cell_index(e.row_index(row), field.index)]
+		if (!cell)
+			return
+		if (typeof cell.input_val != 'string')
+			return
+		if (!cell.qs_div) {
+			if (s) {
+				cell.qs_div = div({class: 'x-grid-qs-text'}, s)
+				let val_node = cell.childNodes[cell.indent ? 1 : 0]
+				val_node.remove()
+				cell.add(div({style: 'position: relative'}, val_node, cell.qs_div))
+			}
+		} else {
+			if (s) {
+				let prefix = e.cell_input_val(row, field).slice(0, s.length)
+				cell.qs_div.set(prefix)
+			} else {
+				cell.qs_div.clear()
+			}
+		}
+	}
 
 	// resize guides ----------------------------------------------------------
 
@@ -634,15 +673,18 @@ component('x-grid', function(e) {
 	// inline editing ---------------------------------------------------------
 
 	// when: input created, column width or height changed.
+	let bw, bh
 	function update_editor(x, y, indent) {
 		if (!e.editor) return
 		let ri = e.focused_row_index
 		let fi = e.focused_field_index
 		let field = e.fields[fi]
 		let hcell = e.header.at[fi]
-		let css = e.cells.at[0].css()
-		let bw = num(css['border-right-width'])
-		let bh = num(css['border-bottom-width'])
+		if (bw == null) {
+			let css = e.cells.at[0].css()
+			bw = num(css['border-right-width'])
+			bh = num(css['border-bottom-width'])
+		}
 		let iw = field_has_indent(field)
 			? indent_offset(or(indent, row_indent(e.rows[ri]))) : 0
 
@@ -673,11 +715,10 @@ component('x-grid', function(e) {
 			if (cell) {
 				let cell_min_w = cell.style['min-width']
 				let cell_w     = cell.style['width']
+				// measure cell unclipped width.
 				cell.style['min-width'] = null
 				cell.style['width'    ] = null
-
 				cell_text_w = cell.rect().w - bw - iw
-
 				cell.style['min-width'] = cell_min_w
 				cell.style['width'    ] = cell_w
 			}
@@ -686,20 +727,21 @@ component('x-grid', function(e) {
 
 	}
 
-	let create_editor = e.create_editor
-	e.create_editor = function(field, ...editor_options) {
-		create_editor(field, {
+	let do_create_editor = e.do_create_editor
+	e.do_create_editor = function(field, ...opt) {
+		do_create_editor(field, {
 			inner_label: false,
-			can_select_widget: false,
-		}, ...editor_options)
+			grid_editor_for: e,
+		}, ...opt)
 		if (!e.editor)
 			return
 		e.editor.class('grid-editor')
-		e.cells_ct.add(e.editor)
+		if (!e.editor.parent)
+			e.cells_ct.add(e.editor)
 		update_editor()
 	}
 
-	e.update_cell_editing = function(ri, fi, editing) {
+	e.do_update_cell_editing = function(ri, fi, editing) {
 		let cell = e.cells.at[cell_index(ri, fi)]
 		if (cell)
 			cell.class('editing', editing)
@@ -707,14 +749,22 @@ component('x-grid', function(e) {
 
 	// responding to rowset changes -------------------------------------------
 
-	let val_widget_update = e.update
-	e.update = function(opt) {
+	let val_widget_do_update = e.do_update
+	e.do_update = function(opt) {
+
 		if (!opt) {
-			val_widget_update()
+			val_widget_do_update()
 			return
 		}
+
 		if (!e.attached)
 			return
+
+		if (opt.reload) {
+			e.reload()
+			return
+		}
+
 		if (opt.fields)
 			create_fields()
 		if (opt.fields || opt.sort_order)
@@ -730,23 +780,29 @@ component('x-grid', function(e) {
 			create_cells()
 		if (opt_sizes)
 			update_cell_sizes(opt.col_resizing)
-		if (opt_rows || opt.vals || opt.focus)
+		if (opt_rows || opt.vals || opt.state)
 			update_cells()
+		if (opt_rows || opt.state)
+			update_quicksearch_cell()
+		if (opt.enter_edit)
+			e.enter_edit(...opt.enter_edit)
+		if (opt.scroll_to_cell)
+				e.scroll_to_cell(...opt.scroll_to_cell)
 	}
 
-	e.update_cell_state = function(ri, fi, prop, val) {
+	e.do_update_cell_state = function(ri, fi, prop, val) {
 		let cell = e.cells.at[cell_index(ri, fi)]
 		if (!cell)
 			return
 		if (prop == 'input_val')
-			e.update_cell_val(cell, e.rows[ri], e.fields[fi], val)
-		else if (prop == 'cell_error')
-			e.update_cell_error(cell, e.rows[ri], e.fields[fi], val)
-		else if (prop == 'cell_modified')
+			e.do_update_cell_val(cell, e.rows[ri], e.fields[fi], val)
+		else if (prop == 'error')
+			e.do_update_cell_error(cell, e.rows[ri], e.fields[fi], val)
+		else if (prop == 'modified')
 			cell.class('modified', val)
 	}
 
-	e.update_row_state = function(ri, prop, val, ev) {
+	e.do_update_row_state = function(ri, prop, val, ev) {
 		let ci = cell_index(ri, 0)
 		if (ci == null)
 			return
@@ -761,7 +817,7 @@ component('x-grid', function(e) {
 			}, cls, val)
 	}
 
-	e.update_load_progress = function(p) {
+	e.do_update_load_progress = function(p) {
 		e.progress_bar.w = (lerp(p, 0, 1, .2, 1) * 100) + '%'
 	}
 
@@ -769,13 +825,6 @@ component('x-grid', function(e) {
 
 	e.pick_val = function() {
 		e.fire('val_picked', {input: e})
-	}
-
-	e.row_display_val = function(row) { // stub
-		e.display_field = e.rowset && e.rowset.field(e.display_col)
-		if (!e.display_field)
-			return 'no display field'
-		return e.rowset.display_val(row, e.display_field)
 	}
 
 	// vgrid header resizing --------------------------------------------------
@@ -881,7 +930,7 @@ component('x-grid', function(e) {
 		return true
 	}
 
-	function md_row_drag(ev, mx, my) {
+	function md_row_drag(ev, mx, my, shift, ctrl) {
 
 		let cell = hit.cell
 		let over_indent = ev.target.closest('.x-grid-cell-indent')
@@ -892,27 +941,31 @@ component('x-grid', function(e) {
 		if (!cell)
 			return
 
-		let already_on_it =
-			e.focused_row_index   == cell.ri &&
-			e.focused_field_index == cell.fi
+		if (over_indent)
+			e.toggle_collapsed(e.rows[cell.ri], shift)
 
-		if (e.focus_cell(cell.ri, cell.fi, 0, 0, {
+		let already_on_it =
+			cell.ri == e.focused_row_index &&
+			cell.fi == e.focused_field_index
+
+		let toggle =
+			!e.enter_edit_on_click
+			&& !e.stay_in_edit_mode
+			&& !e.editor
+			&& e.fields[cell.fi].type == 'bool'
+
+		return e.focus_cell(cell.ri, cell.fi, 0, 0, {
 			must_not_move_row: true,
 			enter_edit: !over_indent && e.can_edit
-				&& !ev.ctrlKey && !ev.shiftKey
-				&& (e.enter_edit_on_click
+				&& !ctrl && !shift
+				&& ((e.enter_edit_on_click || toggle)
 					|| (e.enter_edit_on_click_focused && already_on_it)),
 			focus_editor: true,
-			editor_state: 'select_all',
-			expand_selection: ev.shiftKey,
-			invert_selection: ev.ctrlKey,
+			editor_state: toggle ? 'toggle' : 'select_all',
+			expand_selection: shift,
+			invert_selection: ctrl,
 			input: e,
-		})) {
-			if (over_indent)
-				e.toggle_collapsed(e.focused_row_index, ev.shiftKey)
-			if (!already_on_it)
-				e.pick_val()
-		}
+		})
 	}
 
 	// row moving -------------------------------------------------------------
@@ -922,7 +975,7 @@ component('x-grid', function(e) {
 		if (e.focused_row_index != hit.cell.ri) return
 		if ( horiz && abs(hit.my - my) < 8) return
 		if (!horiz && abs(hit.mx - mx) < 8) return
-		if (!horiz && e.rowset.parent_field) return
+		if (!horiz && e.parent_field) return
 		if (e.order_by) return
 		if (e.filter_rowsets && e.filter_rowsets.size > 0) return
 		return true
@@ -950,11 +1003,11 @@ component('x-grid', function(e) {
 
 		let parent_row = e.rows[move_ri1].parent_row
 
-		let tree_fi = e.fields.indexOf(e.tree_field)
+		let tree_fi = e.field_index(e.tree_field)
 
 		let ri1 = 0
 		let ri2 = e.rows.length
-		if (!e.can_change_parent && e.rowset.parent_field) {
+		if (!e.can_change_parent && e.parent_field) {
 			if (parent_row) {
 				let parent_ri = e.row_index(parent_row)
 				ri1 = parent_ri + 1
@@ -1003,7 +1056,7 @@ component('x-grid', function(e) {
 				if (cell.ri != ri || ri == null)
 					update_cell_content(cell, row, ri, fi, focused, indent)
 				else if (cell.indent)
-					set_cell_indent(cell, indent)
+					set_cell_indent(cell.indent, indent)
 
 				cell.class('row-moving', moving)
 
@@ -1020,7 +1073,7 @@ component('x-grid', function(e) {
 		// hit testing
 
 		function advance_row(before_ri) {
-			if (!d.parent_field)
+			if (!e.parent_field)
 				return 1
 			if (e.can_change_parent)
 				return 1
@@ -1045,7 +1098,7 @@ component('x-grid', function(e) {
 				let i2 = row2 ? row_indent(row2) : 0
 				// if the row can be a child of the row above,
 				// the indent right limit is increased one unit.
-				let ii1 = i1 + (row1 && !row1.collapsed && e.rowset.can_have_children(row1) ? 1 : 0)
+				let ii1 = i1 + (row1 && !row1.collapsed && e.row_can_have_children(row1) ? 1 : 0)
 				hit_indent = min(floor(lerp(hit_p, 0, 1, ii1 + 1, i2)), ii1)
 				let parent_i = i1 - hit_indent
 				hit_parent_row = parent_i >= 0 ? row1 && row1.parent_rows[parent_i] : row1
@@ -1250,7 +1303,6 @@ component('x-grid', function(e) {
 			mm_row_move = null
 			mu_row_move = null
 			update_cells_moving = null
-			hit.state = null
 
 			e.class('row-moving', false)
 			if (e.editor)
@@ -1290,9 +1342,9 @@ component('x-grid', function(e) {
 	}
 
 	function ht_col_drag(mx, my, hit, ev) {
-		let hcell_table = ev.target.closest('.x-grid-header-cell-table')
-		if (!hcell_table) return
-		hit.fi = hcell_table.parent.index
+		let hcell = ev.target.closest('.x-grid-header-cell')
+		if (!hcell) return
+		hit.fi = hcell.index
 		hit.mx = mx
 		hit.my = my
 		return true
@@ -1333,11 +1385,173 @@ component('x-grid', function(e) {
 		e.move_field(hit.fi, over_fi)
 	}
 
+	// empty placeholder text -------------------------------------------------
+
+	e.empty_rt = richtext({
+		classes: 'x-grid-empty-rt',
+		align_x: 'center',
+		align_y: 'center',
+	})
+	e.empty_rt.hide()
+	e.cells_view.add(e.empty_rt)
+
+	let barrier
+	e.set_empty_text = function(s) {
+		if (barrier) return
+		e.empty_rt.content = s
+	}
+
+	e.on('bind', function(on) {
+		document.on('prop_changed', function(te, k, v) {
+			if (te == e.empty_rt && k == 'content') {
+				barrier = true
+				e.empty_text = v
+				barrier = false
+			}
+		})
+	})
+
+	e.prop('empty_text', {store: 'var', slot: 'lang'})
+
+	// widget editing protocol ------------------------------------------------
+
+	let editing_field, editing_sql
+
+	e.hit_test_widget_editing = function(ev, mx, my) {
+		if (!hit.state)
+			pointermove(ev, mx, my)
+		return hit.state == 'col_drag' || hit.state == 'row_drag' || !hit.state
+	}
+
+	e.set_widget_editing = function(on) {
+		if (editing_field)
+			set_editing_field(on)
+		else if (editing_sql)
+			set_editing_sql(on)
+	}
+
+	e.on('pointerdown', function(ev, mx, my) {
+		if (!e.widget_editing)
+			return
+		if (!hit.state)
+			pointermove(ev, mx, my)
+
+		if (!(hit.state == 'col_drag' || hit.state == 'row_drag' || !hit.state) || !ev.ctrlKey) {
+			unselect_all_widgets()
+			return false
+		}
+
+		// editable_widget mixin's `pointerdown` handler must have ran before
+		// this handler and must have called unselect_all_widgets().
+		assert(!editing_field)
+		assert(!editing_sql)
+
+		if (hit.state == 'col_drag') {
+
+			editing_field = e.fields[hit.fi]
+			if (editing_field) {
+				set_editing_field(true)
+				// for convenience: select-all text if clicking near it but not on it.
+				let hcell = e.header.at[editing_field.index]
+				let title_div = hcell.title_div
+				if (ev.target != title_div && hcell.contains(ev.target)) {
+					title_div.focus()
+					title_div.select_all()
+					return false
+				}
+			}
+
+		} else {
+
+			editing_sql = true
+			set_editing_sql(true)
+
+		}
+
+		// don't prevent default to let the caret land under the mouse.
+		ev.stopPropagation()
+	})
+
+	function prevent_bubbling(ev) {
+		ev.stopPropagation()
+	}
+
+	function prevent_bubbling2(ev) {
+		print(ev.type)
+		ev.stopPropagation()
+	}
+
+	function exit_widget_editing() {
+		e.widget_editing = false
+	}
+
+	function editing_field_keydown(key, shift, ctrl, alt, ev) {
+		if (key == 'Enter') {
+			if (ctrl) {
+				let hcell = e.header.at[editing_field.index]
+				let title_div = hcell.title_div
+				title_div.insert_at_caret('<br>')
+			} else {
+				e.widget_editing = false
+			}
+			return false
+		}
+	}
+
+	function set_editing_field(on) {
+		let hcell = e.header.at[editing_field.index]
+		let title_div = hcell.title_div
+		hcell.class('editing', on)
+		title_div.contenteditable = on
+		title_div.on('blur'        , exit_widget_editing, on)
+		title_div.on('raw:pointerdown' , prevent_bubbling, on)
+		title_div.on('raw:pointerup'   , prevent_bubbling, on)
+		title_div.on('raw:click'       , prevent_bubbling, on)
+		title_div.on('raw:contextmenu' , prevent_bubbling, on)
+		title_div.on('keydown'         , editing_field_keydown, on)
+		if (!on) {
+			let s = title_div.textContent
+			e.set_prop(`col.${editing_field.name}.text`, s)
+			editing_field = null
+		}
+	}
+
+	let sql_editor, sql_editor_ct
+
+	function set_editing_sql(on) {
+		e.cells_view.class('editing', on)
+		if (on) {
+			sql_editor_ct = div({class: 'x-grid-sql-editor'})
+			sql_editor = ace.edit(sql_editor_ct, {
+				mode: 'ace/mode/mysql',
+				highlightActiveLine: false,
+				printMargin: false,
+				displayIndentGuides: false,
+				tabSize: 3,
+				enableBasicAutocompletion: true,
+			})
+			sql_editor_ct.on('blur'        , exit_widget_editing, on)
+			sql_editor_ct.on('raw:pointerdown' , prevent_bubbling, on)
+			sql_editor_ct.on('raw:pointerup'   , prevent_bubbling, on)
+			sql_editor_ct.on('raw:click'       , prevent_bubbling, on)
+			sql_editor_ct.on('raw:contextmenu' , prevent_bubbling, on)
+			sql_editor.getSession().setValue(e.sql_select || '')
+			e.cells_view.add(sql_editor_ct)
+		} else {
+			e.sql_select = sql_editor.getSession().getValue()
+			sql_editor.destroy()
+			sql_editor = null
+			sql_editor_ct.remove()
+			sql_editor_ct = null
+			editing_sql = null
+		}
+	}
+
 	// mouse bindings ---------------------------------------------------------
 
 	let hit = {}
 
-	function pointermove(mx, my, ev) {
+	function pointermove(ev, mx, my) {
 		if (hit.state == 'header_resizing') {
 			mm_header_resize(mx, my, hit)
 		} else if (hit.state == 'col_resizing') {
@@ -1361,7 +1575,11 @@ component('x-grid', function(e) {
 			hit.state = null
 			e.class('col-resize', false)
 			if (!e.disabled) {
-				if (ht_header_resize(mx, my, hit)) {
+				if (e.widget_editing) {
+					if (ht_col_drag(mx, my, hit, ev)) {
+						hit.state = 'col_drag'
+					}
+				} else if (ht_header_resize(mx, my, hit)) {
 					hit.state = 'header_resize'
 					e.class('col-resize', true)
 				} else if (ht_col_resize(mx, my, hit)) {
@@ -1380,8 +1598,10 @@ component('x-grid', function(e) {
 
 	function pointerdown(ev, mx, my) {
 
+		if (e.widget_editing)
+			return
 		if (!hit.state)
-			pointermove(mx, my, ev)
+			pointermove(ev, mx, my)
 		if (!hit.state)
 			return
 
@@ -1398,38 +1618,60 @@ component('x-grid', function(e) {
 			hit.state = 'col_dragging'
 		} else if (hit.state == 'row_drag') {
 			hit.state = 'row_dragging'
-			md_row_drag(ev, mx, my)
+			if (!md_row_drag(ev, mx, my, ev.shiftKey, ev.ctrlKey))
+				return false
 		} else
 			assert(false)
 
-		if (ev.which == 3)
-			return false // no dragging with right-click.
-
-		return 'capture'
+		return this.capture_pointer(ev, pointermove, pointerup)
 	}
 
-	function pointerup(ev, mx, my) {
+	function rightpointerdown(ev, mx, my) {
+
+		if (e.widget_editing)
+			return
+		if (!hit.state)
+			pointermove(ev, mx, my)
 		if (!hit.state)
 			return
+
+		e.focus()
+
+		if (hit.state == 'row_drag')
+			e.focus_cell(hit.cell.ri, hit.cell.fi, 0, 0, {
+				must_not_move_row: true,
+				expand_selection: ev.shiftKey,
+				invert_selection: ev.ctrlKey,
+				input: e,
+			})
+
+		return false
+	}
+
+	function pointerup(ev) {
+
+		if (e.widget_editing)
+			return
+		if (!hit.state)
+			return
+
 		if (hit.state == 'header_resizing') {
 			e.class('col-resizing', false)
 			e.update({sizes: true})
 		} else if (hit.state == 'col_resizing') {
 			mu_col_resize()
 		} else if (hit.state == 'col_dragging') {
-			if (ev.ctrlKey) {
-				e.select_all_cells(hit.fi)
-			} else {
-				if (e.can_sort_rows)
-					e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
-				else if (e.focus_cell_on_click_header)
-					e.focus_cell(true, hit.fi)
-			}
+			if (e.can_sort_rows)
+				e.set_order_by_dir(e.fields[hit.fi], 'toggle', ev.shiftKey)
+			else if (e.focus_cell_on_click_header)
+				e.focus_cell(true, hit.fi)
 		} else if (hit.state == 'col_moving') {
 			mu_col_move()
 		} else if (hit.state == 'row_moving') {
 			mu_row_move()
-		}
+		} else if (hit.state == 'row_dragging')
+			e.pick_val()
+
 		hit.state = null
 		return false
 	}
@@ -1438,7 +1680,7 @@ component('x-grid', function(e) {
 	e.on('pointerdown'     , pointerdown)
 	e.on('pointerup'       , pointerup)
 	e.on('pointerleave'    , pointerup)
-	e.on('rightpointerdown', pointerdown)
+	e.on('rightpointerdown', rightpointerdown)
 
 	e.on('contextmenu', function(ev) {
 		let cell = ev.target.closest('.x-grid-header-cell') || ev.target.closest('.x-grid-cell')
@@ -1457,6 +1699,8 @@ component('x-grid', function(e) {
 
 	e.on('keydown', function(key, shift, ctrl) {
 
+		if (e.widget_editing)
+			return
 		if (e.disabled)
 			return
 
@@ -1474,11 +1718,18 @@ component('x-grid', function(e) {
 				|| (e.auto_jump_cells && !shift && (!horiz || ctrl)
 					&& (!horiz
 						|| !e.editor.editor_state
-						|| e.editor.editor_state(cols < 0 ? 'left' : 'right')))
+						|| ctrl
+							&& (e.editor.editor_state(cols < 0 ? 'left' : 'right')
+							|| e.editor.editor_state('all_selected'))
+						))
 
 			if (move)
 				if (e.focus_next_cell(cols, {
-					editor_state: horiz ? (cols > 0 ? 'left' : 'right') : 'select_all',
+					editor_state: horiz
+						? (((e.editor && e.editor.editor_state) ? e.editor.editor_state('all_selected') : ctrl)
+							? 'select_all'
+							: cols > 0 ? 'left' : 'right')
+						: 'select_all',
 					expand_selection: shift,
 					input: e,
 				}))
@@ -1503,7 +1754,7 @@ component('x-grid', function(e) {
 		// insert with the arrow down key on the last focusable row.
 		if (key == down_arrow) {
 			if (e.is_last_row_focused())
-				if (e.insert_row(null, true))
+				if (e.insert_rows(1, null, true))
 					return false
 		}
 
@@ -1511,7 +1762,7 @@ component('x-grid', function(e) {
 		if (key == up_arrow) {
 			if (e.is_last_row_focused()) {
 				let row = e.focused_row
-				if (row.is_new && !row.cells_modified) {
+				if (row.is_new && !row.modified) {
 					if (e.remove_selected_rows({refocus: true}))
 						return false
 				}
@@ -1534,11 +1785,15 @@ component('x-grid', function(e) {
 				|| (e.auto_jump_cells && !shift
 					&& (horiz
 						|| !e.editor.editor_state
-						|| e.editor.editor_state(rows < 0 ? 'left' : 'right')))
+						|| (ctrl
+							&& (e.editor.editor_state(rows < 0 ? 'left' : 'right')
+							|| e.editor.editor_state('all_selected')))
+						))
 
 			if (move)
 				if (e.focus_cell(true, true, rows, 0, {
-					editor_state: rows > 0 ? 'left' : 'right',
+					editor_state: e.editor && e.editor.editor_state
+						&& (horiz ? e.editor.editor_state() : 'select_all'),
 					expand_selection: shift,
 					input: e,
 				}))
@@ -1554,33 +1809,37 @@ component('x-grid', function(e) {
 
 		// Enter: toggle edit mode, and navigate on exit
 		if (key == 'Enter') {
-			if (e.hasclass('picker')) {
+			if (e.quicksearch_text) {
+				e.quicksearch(e.quicksearch_text, e.focused_row, 1)
+			} else if (e.hasclass('picker')) {
 				e.pick_val()
 			} else if (!e.editor) {
-				e.enter_edit('select_all')
-			} else if (e.exit_edit_on_enter && e.exit_edit()) {
-				if (e.auto_advance == 'next_row')
-					e.focus_cell(true, true, 1, 0, {editor_state: 'select_all', input: e})
-				else if (e.auto_advance == 'next_cell')
-					e.focus_next_cell(shift ? -1 : 1, {editor_state: 'select_all', input: e})
+				e.enter_edit('toggle')
+			} else if (!e.exit_edit_on_enter || e.exit_edit()) {
+				if (e.advance_on_enter == 'next_row')
+					e.focus_cell(true, true, 1, 0, {editor_state: 'select_all', input: e, enter_edit: e.stay_in_edit_mode})
+				else if (e.advance_on_enter == 'next_cell')
+					e.focus_next_cell(shift ? -1 : 1, {editor_state: 'select_all', input: e, enter_edit: e.stay_in_edit_mode})
 			}
 			return false
 		}
 
 		// Esc: exit edit mode.
 		if (key == 'Escape') {
-			if (e.hasclass('picker'))
-				return
-			if (e.exit_edit_on_escape) {
+			if (e.quicksearch_text) {
+				e.quicksearch('')
+				return false
+			}
+			if (e.editor && e.exit_edit_on_escape) {
 				e.exit_edit()
 				e.focus()
+				return false
 			}
-			return false
 		}
 
 		// insert key: insert row
 		if (key == 'Insert')
-			if (e.insert_row(true, true))
+			if (e.insert_rows(1, true, true))
 				return false
 
 		if (!e.editor && key == 'Delete') {
@@ -1597,9 +1856,11 @@ component('x-grid', function(e) {
 
 		}
 
-		if (!e.editor && key == ' ') {
-			if (e.focused_row_index)
-				e.toggle_collapsed(e.focused_row_index, shift)
+		if (!e.editor && key == ' ' && !e.quicksearch_text) {
+			if (e.focused_row && (!e.can_focus_cells || e.focused_field == e.tree_field))
+				e.toggle_collapsed(e.focused_row, shift)
+			else if (e.focused_field && e.focused_field.type == 'bool')
+				e.enter_edit('toggle')
 			return false
 		}
 
@@ -1608,11 +1869,19 @@ component('x-grid', function(e) {
 			return false
 		}
 
+		if (!e.editor && key == 'Backspace') {
+			if (e.quicksearch_text)
+				e.quicksearch(e.quicksearch_text.slice(0, -1), e.focused_row)
+			return false
+		}
+
 	})
 
 	// printable characters: enter quick edit mode.
 	e.on('keypress', function(c) {
 
+		if (e.widget_editing)
+			return
 		if (e.disabled)
 			return
 
@@ -1620,14 +1889,14 @@ component('x-grid', function(e) {
 			if (!e.editor && e.focused_row && e.focused_field) {
 				e.enter_edit('select_all')
 				let v = e.focused_field.from_text(c)
-				e.rowset.set_val(e.focused_row, e.focused_field, v)
+				e.set_cell_val(e.focused_row, e.focused_field, v)
 				return false
 			}
-		} else if (!e.editor)
-			e.quicksearch(c, e.focused_field)
+		} else if (!e.editor) {
+			e.quicksearch(e.quicksearch_text + c, e.focused_row)
+			return false
+		}
 	})
-
-	e.property('ctrl_click_used', () => e.can_select_multiple)
 
 	// column context menu ----------------------------------------------------
 
@@ -1645,12 +1914,12 @@ component('x-grid', function(e) {
 		let items = []
 
 		items.push({
-			text: e.rowset && e.rowset.changed_rows ?
+			text: e.changed_rows ?
 				S('discard_changes_and_reload', 'Discard changes and reload') : S('reload', 'Reload'),
-			enabled: !!e.rowset,
+			enabled: !e.changed_rows && !!e.rowset_url,
 			icon: 'fa fa-sync',
 			action: function() {
-				e.rowset.reload()
+				e.reload()
 			},
 			separator: true,
 		})
@@ -1658,9 +1927,9 @@ component('x-grid', function(e) {
 		items.push({
 			text: S('save', 'Save'),
 			icon: 'fa fa-save',
-			enabled: !!(e.rowset && e.rowset.changed_rows),
+			enabled: !!(e.changed_rows),
 			action: function() {
-				e.rowset.save()
+				e.save()
 			},
 			separator: true,
 		})
@@ -1668,9 +1937,9 @@ component('x-grid', function(e) {
 		items.push({
 			text: S('revert_changes', 'Revert changes'),
 			icon: 'fa fa-undo',
-			enabled: !!(e.rowset && e.rowset.changed_rows),
+			enabled: !!(e.changed_rows),
 			action: function() {
-				e.rowset.revert()
+				e.revert()
 			},
 			separator: true,
 		})
@@ -1680,7 +1949,7 @@ component('x-grid', function(e) {
 			icon: 'fa fa-trash',
 			enabled: e.selected_rows.size && e.can_remove_row(),
 			action: function() {
-				e.remove_selected_rows()
+				e.remove_selected_rows({refocus: true})
 			},
 		})
 
@@ -1747,17 +2016,16 @@ component('x-grid', function(e) {
 				e.show_field(item.field, true, fi)
 			}
 			let items_added
-			if (e.rowset)
-				for (let field of e.rowset.fields) {
-					if (e.fields.indexOf(field) == -1) {
-						items_added = true
-						items.push({
-							field: field,
-							text: field.text,
-							action: show_field,
-						})
-					}
+			for (let field of e.all_fields) {
+				if (e.fields.indexOf(field) == -1) {
+					items_added = true
+					items.push({
+						field: field,
+						text: field.text,
+						action: show_field,
+					})
 				}
+			}
 			if (!items_added)
 				items.push({
 					text: S('all_fields_shown', 'All fields are shown'),
@@ -1768,7 +2036,7 @@ component('x-grid', function(e) {
 
 		}
 
-		if (e.rowset.parent_field) {
+		if (e.parent_field) {
 			items.push({
 				text: S('expand_all', 'Expand all'),
 				enabled: horiz && e.tree_field,
@@ -1791,21 +2059,23 @@ component('x-grid', function(e) {
 })
 
 // ---------------------------------------------------------------------------
-// grid_dropdown
+// grid dropdown
 // ---------------------------------------------------------------------------
 
 component('x-grid-dropdown', function(e) {
 
-	lookup_dropdown_widget(e)
+	nav_dropdown_widget(e)
 	e.classes = 'x-grid-dropdown'
 
 	init = e.init
 	e.init = function() {
 		e.picker = grid(update({
-			rowset: e.lookup_rowset,
+			gid: e.gid && e.gid + '.dropdown',
+			rowset: e.rowset,
+			rowset_name: e.rowset_name,
 			nav: e.nav,
 			col: e.col,
-			val_col: e.lookup_col,
+			val_col: e.val_col,
 			display_col: e.display_col,
 			can_edit: false,
 			can_focus_cells: false,
@@ -1816,5 +2086,20 @@ component('x-grid-dropdown', function(e) {
 		}, e.grid))
 		init()
 	}
+
+	e.on('opened', function() {
+		e.picker.scroll_to_focused_cell()
+	})
+
+})
+
+// ---------------------------------------------------------------------------
+// grid profile
+// ---------------------------------------------------------------------------
+
+component('x-grid-profile', function(e) {
+
+	pagelist_item_widget(e)
+
 
 })

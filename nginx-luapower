@@ -1,0 +1,2 @@
+#!/bin/bash
+cd "${0%nginx-luapower}" && ./nginx -c nginx-luapower.conf "$@"

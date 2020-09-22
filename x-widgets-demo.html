@@ -92,7 +92,7 @@ h2 {
 
 </style>
 
-<script src="ace.js" integrity="sha256-+svOVB1WmhKhTy7N21gWvtyXn91qF0r52P2hIArRRug="></script>
+<script src="ace/ace.js"></script>
 
 <link rel="stylesheet" type="text/css" href="fontawesome.css">
 <link rel="stylesheet" type="text/css" href="x-widgets.css">
@@ -101,13 +101,10 @@ h2 {
 <script src="divs.js"></script>
 <script src="ajax.js"></script>
 <script src="url.js"></script>
-<script src="x-rowset.js"></script>
 <script src="x-widgets.js"></script>
 <script src="x-nav.js"></script>
 <script src="x-listbox.js"></script>
 <script src="x-grid.js"></script>
-<script src="x-calendar.js"></script>
-<script src="x-country-dropdown.js"></script>
 <script src="x-cssgrid.js"></script>
 
 </head>
@@ -188,18 +185,19 @@ main.add(
 
 main.add(checkbox({
 	text: 'Wassup homie',
-	nav: cell_nav({
-		val: 'wrong',
+	val: 'wrong',
+	field: {
 		validate: function(v) {
 			return typeof(v) == 'boolean' || 'Value not a boolean'
 		},
-	}),
+	},
 }))
 
 c2 = checkbox({
 	text: H('Yo wasup<br>I am multiline and right-aligned.'),
 	align: 'right',
-	nav: cell_nav({val: true}),
+	field: {},
+	val: true,
 })
 
 c2.on('value_changed', function(v) { print(v, this.checked) })
@@ -221,9 +219,8 @@ main.add(
 			'Option 2',
 			H('Option 3<br>Multiple lines'),
 		],
-		nav: cell_nav({
-			val: 1,
-		}),
+		field: {},
+		val: 1,
 	}),
 	radiogroup({
 		align: 'right',
@@ -232,12 +229,12 @@ main.add(
 			'Option 2',
 			H('Option 3<br>Multiple lines long text'),
 		],
-		nav: cell_nav({
-			val: 1/0,
+		val: 1/0,
+		field: {
 			validate: function(v) {
 				return v >= 0 && v < 3 || 'Selected option out of range'
 			},
-		}),
+		},
 	})
 )
 
@@ -434,14 +431,14 @@ function say_my_name_long(v) {
 }
 
 main.add(H.div({}, 'type in "Klaus" to validate: ', input({
-	nav: cell_nav({
-		val: 'wrong',
+	field: {
 		validate: say_my_name,
-	}),
+	},
+	val: 'wrong',
 })))
 
 main.add(H.div({}, 'type in "Klaus" to validate: ', input({
-	nav: cell_nav({validate: say_my_name_long}),
+	field: {validate: say_my_name_long},
 })))
 
 main.add(
@@ -449,10 +446,11 @@ main.add(
 		'Check out these inner labels:',
 		H.div({},
 			input({
-				nav: cell_nav({name: "santa's_name", validate: say_my_name}),
+				field: {name: "santa's_name", validate: say_my_name},
 			}),
 			input({
-				nav: cell_nav({text: "devil's name"}),
+				field: {text: "devil's name"},
+				val: 'Anything goes',
 			})
 		)
 	)
@@ -467,20 +465,20 @@ main.add(
 <script>
 
 main.add(H.div({},
-	spin_input({nav: cell_nav({val: 42})}),
-	spin_input({nav: cell_nav({val: 42, text: 'Heeey'})})
+	spin_input({field: {val: 42}}),
+	spin_input({field: {val: 42, text: 'Heeey'}})
 ))
 main.add(H.div({},
-	spin_input({button_style: 'up-down', nav: cell_nav({val: 42})}),
-	spin_input({button_style: 'up-down', nav: cell_nav({text: 'Hey hey'})})
+	spin_input({button_style: 'up-down', field: {val: 42}}),
+	spin_input({button_style: 'up-down', field: {text: 'Hey hey'}})
 ))
 main.add(H.div({},
-	spin_input({button_style: 'left-right', nav: cell_nav({val: 42})}),
-	spin_input({button_style: 'left-right', nav: cell_nav({text: 'Dis look good?'})})
+	spin_input({button_style: 'left-right', field: {val: 42}}),
+	spin_input({button_style: 'left-right', field: {text: 'Dis look good?'}})
 ))
 main.add(H.div({},
-	spin_input({nav: cell_nav({min: -2, max: 5, multiple_of: 1.5, val: 1}), button_placement: 'right'}),
-	spin_input({nav: cell_nav({min: -2, max: 5, multiple_of: 1.5, text: 'How bout dis?'}), button_placement: 'right'}),
+	spin_input({field: {min: -2, max: 5, multiple_of: 1.5, val: 1}, button_placement: 'right'}),
+	spin_input({field: {min: -2, max: 5, multiple_of: 1.5, text: 'How bout dis?'}, button_placement: 'right'}),
 ))
 
 </script>
@@ -494,22 +492,22 @@ main.add(H.div({},
 main.add(H.div({},
 	'Slider 1',
 	slider({
-		nav: cell_nav({
-			val: .5,
+		field: {
 			validate: function(v) {
 				return v >= .2 && v <= .8 || 'Value not between .2 and .8'
 			},
-		}),
+		},
+		val: .5,
 	})))
 
 main.add(H.div({},
 	'Slider 2',
 	slider({
 		from: 1000, to: 2000,
-		nav: cell_nav({
-			val: 1500,
+		field: {
 			multiple_of: 200, min: 1300, max: 1700,
-		}),
+		},
+		val: 1500,
 	}))
 )
 
@@ -528,7 +526,8 @@ lb = listbox({
 		'Something Else Entirely',
 	],
 	val_col: 0,
-	nav: cell_nav({val: 'Bananas'}),
+	field: {},
+	val: 'Bananas',
 })
 
 hlb = hlistbox({
@@ -546,6 +545,9 @@ sb = select_button({
 		'Of',
 		'Us',
 	],
+	val_col: 0,
+	field: {},
+	val: 'One',
 })
 
 main.add(lb, hlb, div({}, H('<h3>select_button</h3>'), sb))
@@ -609,9 +611,9 @@ main.add(
 
 cg = cssgrid({
 	items: [
-		date_dropdown ({nav: cell_nav({val: day(time())}), pos_x: 3, pos_y: 1}),
-		input         ({nav: cell_nav({val: 'hello1'}), pos_x: 2, pos_y: 2}),
-		input         ({nav: cell_nav({val: 'hello2'}), pos_x: 1, pos_y: 3}),
+		date_dropdown ({val: day(time()), pos_x: 3, pos_y: 1}),
+		input         ({val: 'hello1', pos_x: 2, pos_y: 2}),
+		input         ({val: 'hello2', pos_x: 1, pos_y: 3}),
 	],
 })
 
@@ -630,20 +632,22 @@ main.add(cg)
 <script>
 
 main.add(calendar({
-	nav: cell_nav(),
+	field: {},
 }))
 
+/*
 main.add(calendar({
-	nav: cell_nav({
-		val: day(time(), 1),
+	val: day(time(), 1),
+	field: {
 		validate: function(v) {
 			if (day(v) == day(time()))
 				return 'Can\'t have today.'
 			if (day(v) == day(time(), 1))
 				return 'Can\'t have tomorrow.'
 		},
-	}),
+	},
 }))
+*/
 
 </script>
 </template>
@@ -653,54 +657,52 @@ main.add(calendar({
 <template id=grid_demo>
 <script>
 
-var checked = () => H('<div class="fa fa-check"></div>')
+let checked = () => H('<div class="fa fa-check"></div>')
 
 function starts_with_a(s) {
 	return s.lower().starts('a') || 'Name must start with "A"'
 }
 
-var data = {
-	fields: [
-		{name: 'id'        , w:  50, min_w:  30, type: 'number', editable: false},
-		{name: 'index'     , w:  50, type: 'number', editable: false},
-		{name: 'active'    , w:  30, type: 'bool', true_text: checked, false_text: ''},
-		{name: 'name'      , w: 150, min_w:  50, max_w: 400, validate: starts_with_a, filter_by: true},
-		{name: 'parent_id' , w:  50, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: true},
-		{name: 'random_num', w: 130, allow_null: true, type: 'number', text: () => H('<i>Random</i><br>Number')},
-		{name: 'date'      , w: 120, allow_null: true, type: 'date', filter_by: true},
-	],
-	pk: 'id',
-	parent_col: 'parent_id',
-	index_col: 'index',
-	rows: new Set(),
-	can_add_rows: true,
-	can_remove_rows: true,
-	can_change_rows: true,
-}
+let fields = [
+	{name: 'id'        , w:  50, min_w:  30, type: 'number', editable: false},
+	{name: 'index'     , w:  50, type: 'number', editable: false},
+	{name: 'active'    , w:  30, type: 'bool', true_text: checked, false_text: ''},
+	{name: 'name'      , w: 150, min_w:  50, max_w: 400, validate: starts_with_a, filter_by: true},
+	{name: 'parent_id' , w:  50, min_w:  50, type: 'number', allow_null: true, editable: false, focusable: false},
+	{name: 'random_num', w: 130, allow_null: true, type: 'number', text: () => H('<i>Random</i><br>Number')},
+	{name: 'date'      , w: 120, allow_null: true, type: 'date', filter_by: true},
+]
+
+let rows = []
 
 for (let i = 0; i <= 10000; i++) {
 	let id         = i
 	let name       = 'record '+i
 	let parent_id  = i > 1 ? (i-1) % 3 : null // floor((random() * i))
 	let random_num = floor(random() * 1e9)
-	let random_date = i * 24 * 3600 * 1000
+	let random_date = clamp(i * 24 * 3600 * 10, 0, time(3000, 0))
 	let active = i % 5 == 0
 	let row = [id, id, active, name, parent_id, random_num, random_date]
-	//row.focusable = i % 10 >= 2
-	data.rows.add(row)
+	row.focusable = true // i % 100 >= 85
+	rows.push(row)
 }
 
-d = rowset(data)
-
 g = grid({
-	rowset: d,
+	rowset: {
+		fields: fields,
+		rows: rows,
+		pk: 'id',
+		parent_col: 'parent_id',
+		index_col: 'index',
+	},
+	order_by: 'active name:desc',
+	tree_col: 'name',
 	w: 606,
 	h: 400,
 	//can_edit: false,
 	can_change_header_visibility: true,
 	//can_focus_cells: false,
 	//order_by: 'parent_id name:desc',
-	tree_col: 'name',
 	can_move_rows: true,
 	//enter_edit_on_click_focused: false,
 	//can_change_parent: false,
@@ -713,10 +715,6 @@ main.add(g)
 log = tag('pre')
 main.add(log)
 
-d.on('row_changed', function() {
-	//log.html = json(d.pack_changes(), null, 3)
-})
-
 </script>
 </template>
 
@@ -725,9 +723,9 @@ d.on('row_changed', function() {
 <template id=vgrid_demo>
 <script>
 
-var checked = () => H('<div class="fa fa-check"></div>')
+checked = () => H('<div class="fa fa-check"></div>')
 
-var data = {
+rowset = {
 	fields: [
 		{name: 'id'        , w:  60, min_w:  30, type: 'number', editable: false},
 		{name: 'index'     , w:  60, type: 'number', editable: false},
@@ -738,7 +736,7 @@ var data = {
 	],
 	pk: 'id',
 	index_col: 'index',
-	rows: new Set(),
+	rows: [],
 	can_add_rows: true,
 	can_remove_rows: true,
 	can_change_rows: true,
@@ -751,14 +749,12 @@ for (let i = 1; i <= 100000; i++) {
 	let random_date = i * 24 * 3600 * 1000
 	let row = [id, id, i % 5 == 0, name, random_num, random_date]
 	//row.focusable = i % 5 >= 2
-	data.rows.add(row)
+	rowset.rows.push(row)
 }
-
-d = rowset(data)
 
 vg = grid({
 	vertical: true,
-	rowset: d,
+	rowset: rowset,
 	w: 600,
 	h: 200,
 	can_change_header_visibility: true,
@@ -775,9 +771,32 @@ main.add(vg)
 log = tag('pre')
 main.add(log)
 
-d.on('row_changed', function() {
-	log.html = json(d.pack_changes(), null, 3)
+vg.on('row_changed', function() {
+	log.html = json(vg.pack_changes(), null, 3)
 })
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=date_dropdown_demo>
+<script>
+
+d = date_dropdown({
+	val: time(),
+	field: {
+		type: 'date',
+		validate: function(v) {
+			if (day(v) == day(time()))
+				return 'Can\'t have today.'
+			if (day(v) == day(time(), 1))
+				return 'Can\'t have tomorrow.'
+		},
+	},
+})
+
+main.add(d)
 
 </script>
 </template>
@@ -797,28 +816,86 @@ function thousand_items() {
 main.add(
 	list_dropdown({
 		id: 'dd1',
-		field_name: 'Here we are',
-		items: [
-			'Apples',
-			'Mananas',
-			'Bangos',
-			'Something Else Entirely',
-		],
-		nav: cell_nav({
-			val: 'Mananas',
+		rowset: {
+			fields: [
+				{name: 'name'},
+				{name: 'code'},
+			],
+			rows: [
+				['Apples', 'a'],
+				['Mananas', 'm'],
+				['Bangos', 'b'],
+				['Something Else Entirely', 's'],
+			],
+		},
+		val_col: 'code',
+		display_col: 'name',
+		field: {
+			name: 'Here we are',
 			validate: function(v) {
-				return v != 'Mananas' || 'Can\'t have mananas.'
+				return v != 'm' || 'Can\'t have mananas.'
 			},
-		}),
+		},
+		val: 'm',
 	}),
 
 	list_dropdown({
 		id: 'dd2',
-		field_name: 'Here we are again',
+		field: {name: 'Here we are again'},
 		items: thousand_items(),
-		nav: cell_nav({val: 'not-in-list'}),
+		val_col: 0,
+		val: 'not-in-list',
 	}),
 
+)
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
+<template id=grid_dropdown_demo>
+<script>
+
+main.add(
+	grid_dropdown({
+		rowset: {
+			fields: [
+				{w:  50, name: 'id', type: 'number', visible: false},
+				{w: 150, name: 'name'},
+				{w: 150, name: 'date', type: 'date'},
+			],
+			rows: [
+				[1, 'Hey Dude', day(time())],
+				[2, 'Wasup'   , month(time())],
+				[3, 'Nuthin'  , year(time())],
+			],
+		},
+		val_col: 'id',
+		display_col: 'name',
+		field: {},
+		val: 4,
+	})
+)
+
+rows2 = []
+for (let i = 1; i <= 1e5; i++)
+	rows2.push([i, 'Hey Dude #'+i])
+
+main.add(
+	grid_dropdown({
+		rowset: {
+			fields: [
+				{w:  50, name: 'id', type: 'number', visible: false},
+				{w: 200, name: 'name'},
+			],
+			rows: rows2,
+		},
+		val_col: 'id',
+		display_col: 'name',
+		field: {},
+		val: 42,
+	})
 )
 
 </script>
@@ -829,9 +906,11 @@ main.add(
 <template id=countries_listbox_demo>
 <script>
 
-clb = countries_listbox({})
+clb = countries_listbox({
+	field: {},
+	val: 'RO',
+})
 main.add(clb)
-//TODO: clb.val: 'RO'
 
 </script>
 </template>
@@ -841,82 +920,11 @@ main.add(clb)
 <template id=country_dropdown_demo>
 <script>
 
-cd = country_dropdown({nav: cell_nav({val: 'RO'})})
+cd = country_dropdown({
+	field: {},
+	val: 'RO',
+})
 main.add(cd)
-
-</script>
-</template>
-
-<!--------------------------------------------------------------------------->
-
-<template id=date_dropdown_demo>
-<script>
-
-d = date_dropdown({
-	nav: cell_nav({
-		val: time(),
-		type: 'date',
-		validate: function(v) {
-			if (day(v) == day(time()))
-				return 'Can\'t have today.'
-			if (day(v) == day(time(), 1))
-				return 'Can\'t have tomorrow.'
-		},
-	}),
-})
-
-main.add(d)
-
-</script>
-</template>
-
-<!--------------------------------------------------------------------------->
-
-<template id=grid_dropdown_demo>
-<script>
-
-r1 = rowset({
-	fields: [
-		{w:  50, name: 'id', type: 'number', visible: false},
-		{w: 150, name: 'name'},
-		{w: 150, name: 'date', type: 'date'},
-	],
-	rows: [
-		[1, 'Hey Dude', day(time())],
-		[2, 'Wasup'   , month(time())],
-		[3, 'Nuthin'  , year(time())],
-	],
-})
-
-main.add(
-	grid_dropdown({
-		lookup_rowset: r1,
-		lookup_col: 'id',
-		display_col: 'name',
-		nav: cell_nav({val: 4}),
-	})
-)
-
-rows2 = []
-for (let i = 1; i <= 1e5; i++)
-	rows2.push([i, 'Hey Dude #'+i])
-
-r2 = rowset({
-	fields: [
-		{w:  50, name: 'id', type: 'number', visible: false},
-		{w: 200, name: 'name'},
-	],
-	rows: rows2,
-})
-
-main.add(
-	grid_dropdown({
-		lookup_rowset: r2,
-		lookup_col: 'id',
-		display_col: 'name',
-		nav: cell_nav({val: 42}),
-	})
-)
 
 </script>
 </template>
@@ -1191,6 +1199,8 @@ ace_editor = ace.edit(code, {
 ace_editor.commands.removeCommand(ace_editor.commands.byName.indent)
 ace_editor.commands.removeCommand(ace_editor.commands.byName.outdent)
 
+xmodule = {resolve: noop}
+
 function run_script() {
 	let s = ace_editor.getSession().getValue()
 	main.innerHTML = ''
@@ -1201,10 +1211,9 @@ function run_script() {
 let demos = []
 
 $('template').forEach(function(e) {
-	let id = e.attr('id')
-	if (!id.ends('_demo'))
+	if (!e.id.ends('_demo'))
 		return
-	let name = id.replace('_demo', '')
+	let name = e.id.replace('_demo', '')
 	let t = window[name+'_demo'].content
 	let s = t.$('script')[0]; s = s && s.innerHTML.trim() || ''
 	demos.push({text: name, code: s})
@@ -1212,19 +1221,24 @@ $('template').forEach(function(e) {
 
 demo_list = listbox({
 	items: demos,
-	attrs: {id: 'demo_list'},
+	id: 'demo_list',
 	auto_focus_first_cell: false,
 	item_typename: 'richtext',
+	field: {},
+	val_col: 0,
+	val: demos[18],
 })
 
 demo_list.create_item = function() {
 	return richtext({content: 'hey'})
 }
 
-demo_list.rowset.can_add_rows = true
+demo_list.can_add_rows = true
 
 demo_list.on('focused_row_changed', function() {
 	let demo = this.focused_item
+	if (!demo)
+		return
 	let code = isobject(demo) && demo.code || ''
 	ace_editor.getSession().setValue(code)
 	ace_editor.initial_script = code
@@ -1241,10 +1255,6 @@ reload_button.on('click', function() {
 })
 
 demo_list_ct.add(demo_list)
-
-window.on('load', function() {
-	demo_list.focus_cell(18+2)
-})
 
 lights_button.on('click', function() {
 	let dark = !document.body.hasclass('x-dark')

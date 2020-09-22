@@ -193,7 +193,7 @@ end
 
 local actionfile = glue.memoize(function(action)
 	local ret_file, ret_handler
-	if wwwfile[action] or wwwpath(action) then --action is a plain file
+	if wwwfile[action] then --action is a plain file
 		if plain_file_allowed(action) then
 			ret_file = action
 			ret_handler = plain_file_handler

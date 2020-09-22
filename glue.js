@@ -15,17 +15,14 @@ isarray = Array.isArray
 
 // logic ---------------------------------------------------------------------
 
-// `||` operator that considers `0` and `''` to be truth values.
+// non-shortcircuiting `||` operator for which only `undefined` and `null` are falsey.
 function or(x, z) { return x != null ? x : z }
 
-// `||` operator that considers `null` to be truth value as well.
-function opt(x, z) { return x !== undefined ? x : z }
-
-// `&&` operator that considers `0` and `''` to be truth values.
-function and(x, z) { return x != null ? z : x }
+// non-shortcircuiting `||` operator for which only `undefined` is falsey.
+function strict_or(x, z) { return x !== undefined ? x : z }
 
 // single-value filter.
-function repl(x, v, z) { return x == v ? z : x }
+function repl(x, v, z) { return x === v ? z : x }
 
 // math ----------------------------------------------------------------------
 
@@ -38,6 +35,8 @@ max = Math.max
 sqrt = Math.sqrt
 random = Math.random
 
+// NOTE: returns x1 if x1 < x0, which enables the idiom
+// `a[clamp(i, 0, b.length-1)]` to return undefined when b is empty.
 function clamp(x, x0, x1) {
 	return min(max(x, or(x0, -1/0)), or(x1, 1/0))
 }
@@ -83,6 +82,14 @@ function assert(ret, err, ...args) {
 		throw ((err && err.subst(...args) || 'assertion failed'))
 	}
 	return ret
+}
+
+function stacktrace() {
+	try {
+		throw new Error()
+	} catch(e) {
+		return e.stack
+	}
 }
 
 // extending built-in objects ------------------------------------------------
@@ -246,6 +253,12 @@ function array_attr(t, k) {
 	return v
 }
 
+function map_attr(t, k) {
+	let v = t.get(k)
+	if (!v) { v = new Map(); t.set(k, v) }
+	return v
+}
+
 // TOOD: multi-arg memoize.
 function memoize(f) {
 	let t = new Map()
@@ -370,14 +383,26 @@ function month_day_of (t) { _d.setTime(t * 1000); return _d.getDay() }
 
 locale = navigator.language
 
-function weekday_name(t, how) {
-	_d.setTime(t * 1000)
-	return _d.toLocaleDateString(locale, {weekday: how || 'short'})
-}
+{
+	let wd = {short: {}, long: {}}
 
-function month_name(t, how) {
-	_d.setTime(t * 1000)
-	return _d.toLocaleDateString(locale, {month: how || 'short'})
+	for (let i = 0; i < 7; i++) {
+		_d.setTime(1000 * 3600 * 24 * (3 + i))
+		for (how of ['short', 'long'])
+			wd[how][i] = _d.toLocaleDateString(locale, {weekday: how, timeZone: 'UTC'})
+	}
+
+	function weekday_name(t, how) {
+		_d.setTime(t * 1000)
+		return wd[how || 'short'][_d.getDay()]
+	}
+
+	let month_names = {}
+
+	function month_name(t, how) {
+		_d.setTime(t * 1000)
+		return _d.toLocaleDateString(locale, {month: how || 'short'})
+	}
 }
 
 // no way to get OS locale in JS in 2020. I hate the web.
@@ -391,6 +416,22 @@ function after(t, f) { return setTimeout(f, t * 1000) }
 function every(t, f) { return setInterval(f, t * 1000) }
 
 function clock() { return performance.now() / 1000 }
+
+function timer(f) {
+	let timer_id
+	function wrapper() {
+		timer_id = null
+		f()
+	}
+	return function(t) {
+		if (timer_id != null) {
+			clearTimeout(timer_id)
+			timer_id = null
+		}
+		if (t != null && t !== false)
+			timer_id = after(t, wrapper)
+	}
+}
 
 // serialization -------------------------------------------------------------
 
