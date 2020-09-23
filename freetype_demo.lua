@@ -168,7 +168,7 @@ local faces = {
 	['Firefly Sung']  = 'media/fonts/fireflysung.ttf',
 	['Fixedsys300']  = 'media/fonts/FSEX300.ttf',
 	--['MaterialIcons'] = 'media/fonts/MaterialIcons-Regular.ttf',
-	--['Font Awesome'] = 'media/fonts/fa-regular-400.ttf',
+	--['Font Awesome'] = 'fa-regular-400.ttf',
 }
 
 --metrics

@@ -1,7 +1,100 @@
 /*
 
-	JavaScript extended vocabulary of basic tools.
+	JavaScript "assorted lengths of wire" library.
 	Written by Cosmin Apreutesei. Public domain.
+
+	types:
+		isobject(e)
+	logic:
+		or(x, z)
+		strict_or(x, z)
+		repl(x, v, z)
+	math:
+		floor(x) ceil(x) round(x)
+		abs(x)
+		min(x, y) max(x, y)
+		sqrt(x)
+		random()
+		PI sin(x) cos(x) tan(x)
+		clamp(x, x0, x1)
+		strict_sign(x)
+		lerp(x, x0, x1, y0, y1)
+		num(s, z)
+		mod(a, b)
+	callback stubs:
+		noop
+		return_true
+		return_false
+		return_arg
+	error handling:
+		print()
+		trace()
+		assert()
+		stacktrace()
+	extending built-in objects:
+		property(cls, prop, descriptor)
+		method(cls, method, func)
+		override(cls, method, func)
+		alias(cls, new_name, old_name)
+		override_property_setter(cls, prop, set)
+	strings:
+		s.subst('{0} {1}', a0, a1, ...)
+		s.starts(s)
+		s.ends(s)
+		s.upper()
+		s.lower()
+	arrays:
+		a.insert(i, v)
+		a.remove(i) -> v
+		a.remove_value(v) -> v
+		a.last
+		a.binsearch(v, cmp, i1, i2)
+	hash maps:
+		empty
+		keys(t)
+		update(dt, t1, ...)
+		attr(t, k)
+		array_attr(t, k)
+		map_attr(t, k)
+		memoize(f)
+	events:
+		events_mixin(o)
+	timestamps:
+		time()
+		time(y, m, d, H, M, s, ms)
+		time(seconds)
+		time(date_str)
+		day   (ts[, offset])
+		month (ts[, offset])
+		year  (ts[, offset])
+		week  (ts[, offset])
+		days(delta_ts)
+		year_of      (ts)
+		month_of     (ts)
+		month_day_of (ts)
+		locale
+		weekday_name(ts, ['long'])
+		month_name(ts, ['long'])
+		week_start_offset()
+	timers:
+		after(s, f)
+		every(s, f)
+		clock()
+		timer(f)
+	serialization:
+		json(t) -> s
+	url decoding, encoding and updating:
+		url(path) -> t
+		url(path|path_comp, [path_comp], params) -> s
+	ajax requests:
+		ajax({
+			url: s,
+			upload: json|s, ...,
+			success: f(json|res),
+			fail: f('http'|'timeout'|'network'|'abort'[, status, msg, body]),
+			done: f('success'|'fail', ...),
+			...
+		}) -> req
 
 */
 
@@ -436,3 +529,233 @@ function timer(f) {
 // serialization -------------------------------------------------------------
 
 json = JSON.stringify
+
+/* URL encoding & decoding ---------------------------------------------------
+
+	url(path) -> t
+	url(path|path_comp, [path_comp], params) -> s
+
+	examples:
+		decode: url('a/b?k=v') -> {path: ['a','b'], params: {k:'v'}}
+		encode: url(['a','b'], {k:'v'}) -> 'a/b?k=v'
+		update: url('a/b', {k:'v'}) -> 'a/b?k=v'
+		update: url('a/b?k=v', ['c'], {k:'x'}) -> 'c/b?k=x'
+
+*/
+function url(path, params, update) {
+	if (typeof path == 'string') { // decode or update
+		if (params !== undefined || update !== undefined) { // update
+			if (!isarray(params)) { // update params only
+				update = params
+				params = undefined
+			}
+			let t = url(path) // decode
+			if (params) // update path
+				for (let i = 0; i < params.length; i++)
+					t.path[i] = params[i]
+			if (update) // update params
+				for (let k in update)
+					t.params[k] = update[k]
+			return url(t.path, t.params) // encode back
+		} else { // decode
+			let i = path.indexOf('?')
+			if (i > -1) {
+				params = path.substring(i + 1)
+				path = path.substring(0, i)
+			}
+			let a = path.split('/')
+			for (let i = 0; i < a.length; i++)
+				a[i] = decodeURIComponent(a[i])
+			let t = {}
+			if (params !== undefined) {
+				params = params.split('&')
+				for (let i = 0; i < params.length; i++) {
+					let kv = params[i].split('=')
+					let k = decodeURIComponent(kv[0])
+					let v = kv.length == 1 ? true : decodeURIComponent(kv[1])
+					if (t[k] !== undefined) {
+						if (isarray(t[k]))
+							t[k] = [t[k]]
+						t[k].push(v)
+					} else {
+						t[k] = v
+					}
+				}
+			}
+			return {path: a, params: t}
+		}
+	} else { // encode
+		if (!isarray(path)) {
+			params = path.params
+			path = path.path
+		}
+		let a = []
+		for (let i = 0; i < path.length; i++)
+			a[i] = encodeURIComponent(path[i])
+		path = a.join('/')
+		a = []
+		let pkeys = keys(params).sort()
+		for (let i = 0; i < pkeys.length; i++) {
+			let pk = pkeys[i]
+			let k = encodeURIComponent(pk)
+			let v = params[pk]
+			if (isarray(v)) {
+				for (let j = 0; j < v.length; j++) {
+					let z = v[j]
+					let kv = k + (z !== true ? '=' + encodeURIComponent(z) : '')
+					a.push(kv)
+				}
+			} else {
+				let kv = k + (v !== true ? '=' + encodeURIComponent(v) : '')
+				a.push(kv)
+			}
+		}
+		params = a.join('&')
+		return path + (params ? '?' + params : '')
+	}
+}
+
+/* AJAX requests -------------------------------------------------------------
+
+	ajax(opt) -> req
+		opt.url
+		opt.upload: object (sent as json) | s
+		opt.timeout
+		opt.method ('POST' or 'GET' based on req.upload)
+		opt.slow_timeout (4)
+		opt.headers: {h->v}
+		opt.user
+		opt.pass
+		opt.async (true)
+		opt.dont_send (false)
+
+	req.send()
+	req.abort()
+
+	^slow(show|hide)
+	^progress(p, loaded, [total])
+	^upload_progress(p, loaded, [total])
+	^success(response_object)
+	^fail('timeout'|'network'|'abort')
+	^fail('http', status, message, body_text)
+	^done('success' | 'fail', ...)
+
+*/
+function ajax(req) {
+
+	req = update({slow_timeout: 4}, req)
+	events_mixin(req)
+
+	let xhr = new XMLHttpRequest()
+
+	let method = req.method || (req.upload ? 'POST' : 'GET')
+	let async = req.async !== false // NOTE: this is deprecated but that's ok.
+
+	xhr.open(method, req.url, async, req.user, req.pass)
+
+	let upload = req.upload
+	if (typeof upload == 'object') {
+		upload = json(upload)
+		xhr.setRequestHeader('content-type', 'application/json')
+	}
+
+	if (async)
+		xhr.timeout = (req.timeout || 0) * 1000
+
+	if (req.headers)
+		for (let h of headers)
+			xhr.setRequestHeader(h, headers[h])
+
+	let slow_watch
+
+	function stop_slow_watch() {
+		if (slow_watch) {
+			clearTimeout(slow_watch)
+			slow_watch = null
+		}
+		if (slow_watch === false) {
+			req.fire('slow', false)
+			slow_watch = null
+		}
+	}
+
+	function slow_expired() {
+		req.fire('slow', true)
+		slow_watch = false
+	}
+
+	req.send = function() {
+		slow_watch = after(req.slow_timeout, slow_expired)
+		xhr.send(upload)
+		return req
+	}
+
+	// NOTE: only Firefox fires progress events on non-200 responses.
+	xhr.onprogress = function(ev) {
+		if (ev.loaded > 0)
+			stop_slow_watch()
+		let p = ev.lengthComputable ? ev.loaded / ev.total : .5
+		req.fire('progress', p, ev.loaded, ev.total)
+	}
+
+	xhr.upload.onprogress = function(ev) {
+		if (ev.loaded > 0)
+			stop_slow_watch()
+		let p = ev.lengthComputable ? ev.loaded / ev.total : .5
+		req.fire('upload_progress', p, ev.loaded, ev.total)
+	}
+
+	xhr.ontimeout = function() {
+		req.fire('fail', 'timeout')
+		req.fire('done', 'fail', 'timeout')
+	}
+
+	// NOTE: only fired on network errors like connection refused!
+	xhr.onerror = function() {
+		req.fire('fail', 'network')
+		req.fire('done', 'fail', 'network')
+	}
+
+	xhr.onabort = function() {
+		req.fire('fail', 'abort')
+		req.fire('done', 'fail', 'abort')
+	}
+
+	xhr.onreadystatechange = function(ev) {
+		if (xhr.readyState > 1)
+			stop_slow_watch()
+		if (xhr.readyState == 4) {
+			if (xhr.status == 200) {
+				let res = xhr.response
+				if (!xhr.responseType || xhr.responseType == 'text')
+					if (xhr.getResponseHeader('content-type') == 'application/json' && res)
+						res = JSON.parse(res)
+				req.fire('success', res)
+				req.fire('done', 'success', res)
+			} else if (xhr.status) { // status is 0 for network errors, incl. timeout.
+				req.fire('fail', 'http', xhr.status, xhr.statusText, xhr.responseText)
+				req.fire('done', 'fail', 'http', xhr.status, xhr.statusText, xhr.responseText)
+			}
+		}
+	}
+
+	req.abort = function() {
+		xhr.abort()
+		return req
+	}
+
+	req.on('slow', req.slow)
+	req.on('progress', req.progress)
+	req.on('upload_progress', req.upload_progress)
+	req.on('done', req.done)
+	req.on('fail', req.fail)
+	req.on('success', req.success)
+
+	req.xhr = xhr
+
+	if (!req.dont_send)
+		req.send()
+
+	return req
+}
+

@@ -3,6 +3,95 @@
 	DOM manipulation & extensions.
 	Written by Cosmin Apreutesei. Public Domain.
 
+	Dependencies: glue.js.
+
+	element attribute manipulation:
+		e.hasattr(k)
+		e.attrval(k)
+		e.attrs = {k: v}
+	element css class list manipulation:
+		e.class(k, [false])
+		e.hasclass(k)
+		e.switch_class(k1, k2, normal)
+		e.classess = 'k1 k2 ...'
+	access to element computed styles:
+		e.css([k][, state])
+	dom tree navigation excluding text nodes:
+		e.at[i], e.at.length
+		e.parent
+		e.index
+		e.first, e.last, e.next, e.prev
+	dom tree querying:
+		e.$(sel)
+		$(sel)
+		E(sel|e)
+	safe dom tree manipulation:
+		T(te[,whitespace]) where `te` is f|e|text_str
+		e.set(te[,whitespace])
+		e.add(te1,...)
+		e.insert(i, te1,...)
+		e.replace([e0], te)
+		e.clear()
+		tag(s, [attrs], te1,...)
+		div(...)
+		span(...)
+	unsafe dom tree manipulation:
+		H(he) where `he` is f|e|html_str|null
+		e.html
+	events:
+		event(name|ev, [bubbles], ...args) -> ev
+		e.on   (name|ev, f, [enable], [capture])
+		e.off  (name|ev, f, [capture])
+		e.once (name|ev, f, [enable], [capture])
+		e.fire   (name, ...args)
+		e.fireup (name, ...args)
+		~[right]click       (ev)
+		~[right]pointerdown (ev, mx, my)
+		~[right]pointerup   (ev, mx, my)
+		~pointermove        (ev, mx, my)
+		~wheel              (ev, dy)
+		~keydown            (key, shift, ctrl, alt, ev)
+		~keyup              (key, shift, ctrl, alt, ev)
+		~keypress           (key, shift, ctrl, alt, ev)
+		~stopped_event      (stopped_ev, ev)
+		~layout_changed()
+		e.capture_pointer(ev, on_pointermove, on_pointerup)
+		e.detect_style_size_changes()
+		DEBUG_EVENTS = false
+	element geometry:
+		px(x)
+		e.x, e.y, e.x1, e.y1, e.x2, e.y2, e.w, e.h
+		e.min_w, e.min_h, e.max_w, e.max_h
+		e.rect()
+		e.ox, e.oy
+		e.contains(x, y)
+	element visibility:
+		e.show([on][, affects_layout])
+		e.hide()
+	element state:
+		e.hovered
+		e.focused_element
+		e.focused
+		e.hasfocus
+		e.focusables()
+	text editing:
+		e.select(i, j)
+		e.contenteditable
+		e.insert_at_caret(s)
+		e.select_all()
+		e.unselect()
+	scrolling:
+		scroll_to_view_rect(x, y, w, h, pw, ph, sx, sy)
+		e.scroll_to_view_rect_offset(sx0, sy0, x, y, w, h)
+		e.scroll_to_view_rect(sx0, sy0, x, y, w, h)
+		e.make_visible_scroll_offset(sx0, sy0[, parent])
+		e.make_visible()
+	UI patterns:
+		e.popup([target|false], [side], [align], [px], [py])
+		e.modal([on])
+		overlay(attrs, content)
+		live_move_mixin(e)
+
 */
 
 // element attribute map manipulation ----------------------------------------
@@ -79,7 +168,6 @@ alias(Element, 'first'  , 'firstElementChild')
 alias(Element, 'last'   , 'lastElementChild')
 alias(Element, 'next'   , 'nextElementSibling')
 alias(Element, 'prev'   , 'previousElementSibling')
-alias(Element, 'child_count', 'childElementCount')
 
 {
 let indexOf = Array.prototype.indexOf
@@ -121,7 +209,7 @@ function T(s, whitespace) {
 function H(s) {
 	if (typeof s != 'string') // pass-through nulls and elements
 		return s
-	let span = H.span(0)
+	let span = document.createElement('span')
 	span.html = s.trim()
 	return span.childNodes.length > 1 ? span : span.firstChild
 }
@@ -261,7 +349,7 @@ callers.keypress = callers.keydown
 
 callers.wheel = function(e, f) {
 	if (e.deltaY)
-		return f.call(this, e.deltaY, e)
+		return f.call(this, e, e.deltaY)
 }
 
 method(Element, 'detect_style_size_changes', function(event_name) {
@@ -831,12 +919,6 @@ function overlay(attrs, content) {
 	e.content.style['margin'] = 'auto' // center it.
 	return e
 }
-
-method(Element, 'overlay', function(target, attrs, content) {
-	let e = overlay(attrs, content)
-	target.add(e)
-	return e
-})
 
 // live-move list element pattern --------------------------------------------
 
