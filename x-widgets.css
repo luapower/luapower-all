@@ -102,6 +102,8 @@
 
 /* item states ------------------------------------------------------------ */
 
+[hidden] { display: none !important; }
+
 .x-item.disabled { color: #999; }
 .x-item.disabled.focused { color: #ccc; }
 .x-item.null     { color: #999; }
@@ -390,8 +392,8 @@
 .x-tooltip[align=end]    { align-items: flex-end; }
 .x-tooltip[align=center] { align-items: center; }
 
-.x-tooltip[side=right]  > .x-tooltip-text,
-.x-tooltip[side=bottom] > .x-tooltip-text { order: 2; }
+.x-tooltip[side=right]  > .x-tooltip-content,
+.x-tooltip[side=bottom] > .x-tooltip-content { order: 2; }
 
 .x-tooltip[side=top][align=center] > .x-tooltip-text,
 .x-tooltip[side=bottom][align=center] > .x-tooltip-text { text-align: center; }
@@ -1831,8 +1833,8 @@
 	overflow-x: auto;          /* required: show scrollbars as needed */
 	overflow-y: scroll;        /* required: show scrollbars always */
 	position: relative;        /* required: anchor rows div */
+	flex: 1 0 0;               /* required: grow to fill container but ignore overflow */
 	min-height: 0;
-	flex: 1;
 	display: grid;
 }
 

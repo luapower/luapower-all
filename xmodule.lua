@@ -29,14 +29,14 @@ function xmodule_file(layer)
 	return _('x-%s.json', layer)
 end
 
-function action.xmodule_next_gid(prefix)
-	local fn = _('xmodule-%s-next-gid', prefix)
-	local id = tonumber(assert(readfile(fn)))
+function action.xmodule_next_gid(module)
+	local file = _('x-%s-next-gid', module)
+	local id = tonumber(assert(readfile(file) or '1'))
 	if method'post' then
-		assert(writefile(fn, tostring(id + 1), nil, fn..'.tmp'))
+		assert(writefile(file, tostring(id + 1), nil, file..'.tmp'))
 	end
 	setmime'txt'
-	out(prefix..id)
+	out(module..id)
 end
 
 action['xmodule_layer.json'] = function(layer)
@@ -52,8 +52,8 @@ action['xmodule_layer.json'] = function(layer)
 end
 
 action['sql_rowset.json'] = function(gid, ...)
-	local prefix = check(gid:match'^[^_%d]+')
-	local layer = json(check(readfile(xmodule_file(_('%s-server', prefix)))))
+	local module = check(gid:match'^[^_%d]+')
+	local layer = json(check(readfile(xmodule_file(_('%s-server', module)))))
 	local t = check(layer[gid])
 	local rs = {}
 	for k,v in pairs(t) do

@@ -318,11 +318,11 @@ function nav_widget(e) {
 		}
 	})
 
-	function static_rows() {
-		if (!e.static_rows)
+	function rows_from_row_vals() {
+		if (!e.row_vals)
 			return
 		let rows = []
-		for (vals of e.static_rows) {
+		for (vals of e.row_vals) {
 			let row = []
 			for (let fi = 0; fi < e.all_fields.length; fi++)
 				row[fi] = strict_or(vals[e.all_fields[fi].name], null)
@@ -331,17 +331,16 @@ function nav_widget(e) {
 		return rows
 	}
 
-	e.set_static_rowset = function() {
-		let rs = e.static_rowset
+	e.set_static_rowset = function(rs) {
 		e.rowset = rs ? update({}, rs) : null
 		e.reset()
 	}
 	e.prop('static_rowset', {store: 'var'})
 
-	e.set_static_rows = function() {
+	e.set_row_vals = function() {
 		e.reset()
 	}
-	e.prop('static_rows', {store: 'var'})
+	e.prop('row_vals', {store: 'var', slot: 'app'})
 
 	e.set_rowset_name = function(v) {
 		e.rowset_url = v ? 'rowset.json/' + v : null
@@ -726,7 +725,7 @@ function nav_widget(e) {
 	function init_all_rows() {
 		e.do_update_load_fail(false)
 		// TODO: unbind_filter_rowsets()
-		e.all_rows = e.attached && e.rowset && (e.static_rows && static_rows() || e.rowset.rows) || []
+		e.all_rows = e.attached && e.rowset && (rows_from_row_vals() || e.rowset.rows) || []
 		init_tree()
 		init_rows()
 	}
@@ -2608,8 +2607,8 @@ function nav_widget(e) {
 			return
 		if (e.rowset_url)
 			save_to_server(row)
-		else if (e.static_rowset)
-			save_to_static_rowset(row)
+		else if (e.row_vals)
+			save_to_row_vals(row)
 	}
 
 	function save_slow(show) {
@@ -2654,7 +2653,7 @@ function nav_widget(e) {
 		e.changed_rows = null
 	}
 
-	function save_to_static_rowset() {
+	function save_to_row_vals() {
 		e.changed_rows = null
 		let rows = []
 		for (let row of e.all_rows) {
@@ -2666,10 +2665,10 @@ function nav_widget(e) {
 			}
 			rows.push(vals)
 		}
-		let set_static_rows = e.set_static_rows
-		e.set_static_rows = noop
-		e.static_rows = rows
-		e.set_static_rows = set_static_rows
+		let f = e.set_row_vals
+		e.set_row_vals = noop
+		e.row_vals = rows
+		e.set_row_vals = f
 	}
 
 	// responding to notifications from the server ----------------------------

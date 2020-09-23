@@ -118,15 +118,16 @@ function component(tag, cons) {
 	function init(e, opt) {
 		if (e.initialized)
 			return
-		let gid = opt.gid
-		let prop_vals
-		if (gid && !e.type) // put prop_vals on top of instance options.
-			update(opt, xmodule.prop_vals(gid))
-		component_prop_system(e, opt)
+		let assign_gid = opt.gid === true
+		if (assign_gid) { // assign new gid.
+			opt.gid = xmodule.next_gid(opt.module)
+		} else if (opt.gid && !opt.type) { // put prop_vals on top of instance options.
+			update(opt, xmodule.prop_vals(opt.gid))
+		}
+		component_prop_system(e, opt.props)
 		component_deferred_updating(e)
 		e.iswidget = true
 		e.type = type
-		e.props.type = {name: 'type'}
 		e.init = noop
 		cons(e)
 		e.initialized = false
@@ -135,11 +136,13 @@ function component(tag, cons) {
 		for (let k in opt)
 			e.set_prop(k, opt[k])
 		e.xmodule_updating_props = false
-		if (gid)
+		if (e.gid)
 			xmodule.init_widget(e)
 		e.end_update()
 		e.initialized = true
 		e.init()
+		if (assign_gid)
+			document.fire('prop_changed', e, 'type'   , e.type  , undefined, null)
 	}
 
 	function create(...args) {
@@ -265,7 +268,7 @@ global_widget_resolver = memoize(function(type) {
 	}
 })
 
-function component_prop_system(e, opt) {
+function component_prop_system(e, iprops) {
 
 	/* TODO: use this or scrape it
 	e.bind_ext = function(te, ev, f) {
@@ -278,7 +281,6 @@ function component_prop_system(e, opt) {
 	}
 
 	e.props = {}
-	let iprops = opt.props
 
 	e.prop = function(prop, opt) {
 		opt = opt || {}
@@ -1982,7 +1984,7 @@ component('x-spin-input', function(e) {
 
 	// controller
 
-	e.input.on('wheel', function(dy) {
+	e.input.on('wheel', function(ev, dy) {
 		e.set_val(e.input_val + (dy / 100), {input: e})
 		e.input.select(0, -1)
 		return false
@@ -2369,7 +2371,7 @@ component('x-dropdown', function(e) {
 		}
 	}
 
-	e.on('wheel', function(dy) {
+	e.on('wheel', function(ev, dy) {
 			e.set_open(true, false, true)
 		e.picker.pick_near_val(dy / 100, {input: e})
 		return false
@@ -2582,7 +2584,7 @@ component('x-calendar', function(e) {
 		}
 	})
 
-	e.weekview.on('wheel', function(dy) {
+	e.weekview.on('wheel', function(ev, dy) {
 		set_ts(day(as_ts(e.input_val), 7 * dy / 100))
 		return false
 	})
@@ -2982,11 +2984,9 @@ component('x-widget-placeholder', function(e) {
 		['B', 'button'],
 	]
 
-	function replace_with_widget() {
-		let te = component.create({type: this.type, module: e.module})
-		xmodule.assign_gid(te)
-		document.fire('prop_changed', te, 'type', this.type, undefined, null)
+	function create_btn_action() {
 		let pe = e.parent_widget
+		let te = component.create({type: this.type, gid: true, module: pe.module || e.module})
 		if (pe)
 			pe.replace_child_widget(e, te)
 		else {
@@ -3008,7 +3008,7 @@ component('x-widget-placeholder', function(e) {
 			e.add(btn)
 			btn.can_select_widget = false
 			btn.type = type
-			btn.action = replace_with_widget
+			btn.action = create_btn_action
 		}
 	}
 
@@ -3132,21 +3132,22 @@ widget_items_widget = function(e) {
 
 component('x-pagelist', function(e) {
 
+	e.classes = 'x-widget x-pagelist'
+
+	e.props.align_x = {default: 'stretch'}
+	e.props.align_y = {default: 'stretch'}
+
 	selectable_widget(e)
 	editable_widget(e)
 	cssgrid_item_widget(e)
 	serializable_widget(e)
 	widget_items_widget(e)
 
-	e.align_x = 'stretch'
-	e.align_y = 'stretch'
-	e.classes = 'x-widget x-pagelist'
+	e.prop('tabs_side', {store: 'attr', type: 'enum', enum_values: ['top', 'bottom', 'left', 'right'], default: 'top'})
 
 	e.set_header_width = function(v) {
 		e.header.w = v
 	}
-
-	e.prop('tabs_side', {store: 'attr', type: 'enum', enum_values: ['top', 'bottom', 'left', 'right'], default: 'top'})
 	e.prop('header_width', {store: 'var', type: 'number'})
 
 	e.selection_bar = div({class: 'x-pagelist-selection-bar'})
@@ -3166,7 +3167,7 @@ component('x-pagelist', function(e) {
 			tab.on('pointerdown' , tab_pointerdown)
 			tab.on('dblclick'    , tab_dblclick)
 			tab.on('keydown'     , tab_keydown)
-			title_div.on('input' , title_input)
+			title_div.on('input' , update_title)
 			title_div.on('blur'  , title_blur)
 			xbutton.on('pointerdown', xbutton_pointerdown)
 			tab.item = item
@@ -3179,6 +3180,7 @@ component('x-pagelist', function(e) {
 
 	// widget-items widget protocol.
 	e.do_init_items = function(items) {
+
 		let sel_tab = e.selected_tab
 
 		e.header.clear()
@@ -3206,13 +3208,15 @@ component('x-pagelist', function(e) {
 	e.replace_child_widget = function(old_widget, new_widget) {
 		let i = e.items.indexOf(old_widget)
 		let tab = e.items[i]._tab
+		tab.item = new_widget
 		new_widget._tab = tab
+		e.content.set(tab.item)
+		update_tab_title(tab)
 		inh_replace_child_widget(old_widget, new_widget)
 	}
 
 	e.init = function() {
-		if (!e.items)
-			e.items = [{type: 'widget_placeholder', title: 'New'}]
+		e.update()
 	}
 
 	function update_tab_title(tab) {
@@ -3347,7 +3351,8 @@ component('x-pagelist', function(e) {
 			if (item)
 				select_tab(item._tab)
 		} else {
-			select_tab(e.header.at[0])
+			if (e.items.length)
+				select_tab(e.header.at[0])
 		}
 	}
 
@@ -3458,14 +3463,14 @@ component('x-pagelist', function(e) {
 
 	e.set_widget_editing = function(v) {
 		if (!v)
-			title_input()
+			update_title()
 		e.update()
 	}
 
 	e.add_button.on('click', function() {
 		if (e.selected_tab == this)
 			return
-		e.items = [...e.items, {type: 'widget_placeholder', title: 'New'}]
+		e.items = [...e.items, widget_placeholder({title: 'New', module: e.module})]
 		return false
 	})
 
@@ -3477,8 +3482,9 @@ component('x-pagelist', function(e) {
 		return false
 	}
 
-	function title_input() {
-		e.selected_tab.item.title = e.selected_tab.title_div.innerText
+	function update_title() {
+		if (e.selected_tab)
+			e.selected_tab.item.title = e.selected_tab.title_div.innerText
 		e.update()
 	}
 
@@ -3546,6 +3552,10 @@ component('x-split', function(e) {
 		e.auto_pane.min_h = null
 
 		document.fire('layout_changed')
+	}
+
+	e.init = function() {
+		e.update()
 	}
 
 	e.set_orientation = e.update

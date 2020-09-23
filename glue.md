@@ -1,5 +1,5 @@
 ---
-tagline: everyday Lua functions
+tagline: assorted lengths of wire
 ---
 
 ## `local glue = require'glue'`

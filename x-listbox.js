@@ -210,7 +210,7 @@ component('x-listbox', function(e) {
 						item._offset = item[e.axis == 'x' ? 'ox' : 'oy']
 						item.class('moving', ri >= move_ri1 && ri <= move_ri2)
 					}
-					e.move_element_start(move_ri1, move_n, 0, e.child_count)
+					e.move_element_start(move_ri1, move_n, 0, e.at.length)
 					drag_mx = down_mx + e.scrollLeft - e.at[move_ri1].ox
 					drag_my = down_my + e.scrollTop  - e.at[move_ri1].oy
 					mx0 = mx

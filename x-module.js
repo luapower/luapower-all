@@ -3,54 +3,52 @@
 // prop layers
 // ---------------------------------------------------------------------------
 
-function xmodule(e) {
+function xmodule(opt) {
+
+	let e = {}
+	xmodule = e // singleton.
 
 	let generation = 0
 
-	assert(e.prop_layer_slots) // {slot -> layer_obj} in application order.
-	attr(e, 'prop_layer_slot_colors')
+	e.slots = opt.slots || {} // {name -> {color:, }}
+	e.modules = opt.modules || {} // {name -> {icon:, }}
+	e.layers = {} // {name -> {name:, props: {gid -> {prop -> val}}}}
 	e.widgets = {} // {gid -> e}
-	e.prop_layers = {} // {layer -> {slot:, name:, widgets: {gid -> prop_vals}}}
-	e.selected_prop_slot = null
+	e.selected_module = null
+	e.selected_slot = null
+	e.active_layers = {} // {'module:slot' -> layer} in override order
 
-	e.resolve = gid => e.widgets[gid]
+	function slot_name(s) { assert(s.search(/[:]/) == -1); return s }
+	function module_name(s) { assert(s.search(/[_:\d]/) == -1); return s }
 
-	e.nav_editor = function(...options) {
-		return widget_select_editor(e.widgets, e => e.isnav, ...options)
+	function init() {
+		for (let t of opt.layers)
+			e.active_layers[module_name(t.module)+':'+slot_name(t.slot)] = layer(t.layer)
+
+		root_widget = null
+		if (opt.root_module) {
+			root_widget = opt.root_gid
+				? component.create(opt.root_gid)
+				: widget_placeholder({module: opt.root_module})
+			document.body.set(root_widget)
+		}
+
+		for (let gid in e.widgets)
+			update_widget(e.widgets[gid])
+
+		document.fire('prop_layer_slots_changed')
 	}
 
-	document.on('widget_attached', function(te) {
-		e.widgets[te.gid] = te
-		update_widget(te)
-		document.fire('widget_tree_changed')
-	})
-
-	document.on('widget_detached', function(te) {
-		delete e.widgets[te.gid]
-		document.fire('widget_tree_changed')
-	})
-
-	document.on('prop_changed', function(te, k, v, v0, slot) {
-		if (!te.gid) return
-		if (te.xmodule_updating_props) return
-		slot = e.selected_prop_slot || slot || 'base'
-		if (slot == 'none')
-			return
-		set_prop_val(te, slot, k, v, v0)
-	})
+	// loading layer prop vals into widgets -----------------------------------
 
 	e.prop_vals = function(gid) {
-		let t = {}
-		let opt = {gid: gid, prop_layers_generation: generation, __pv: t}
-		for (let slot in e.prop_layer_slots) {
-			let layer_obj = e.prop_layer_slots[slot]
-			if (layer_obj) {
-				let prop_vals = layer_obj.widgets[gid]
-				update(t, prop_vals)
-			}
-		}
-		opt.type = t.type
-		delete t.type
+		let pv = {}
+		let opt = {gid: gid, prop_layers_generation: generation, __pv: pv}
+		for (let k in e.active_layers)
+			update(pv, e.active_layers[k].props[gid])
+		opt.type   = pv.type
+		opt.module = gid.match(/^[^_\d]+/)[0]
+		delete pv.type
 		return opt
 	}
 
@@ -91,29 +89,40 @@ function xmodule(e) {
 		te.xmodule_updating_props = false
 	}
 
-	function set_prop_val(te, slot, k, v, v0) {
-		let layer_obj = e.prop_layer_slots[slot]
-		if (!layer_obj) {
-			print('prop-val-lost', te.gid, k, v, slot)
+	document.on('widget_attached', function(te) {
+		e.widgets[te.gid] = te
+		update_widget(te)
+		document.fire('widget_tree_changed')
+	})
+
+	document.on('widget_detached', function(te) {
+		delete e.widgets[te.gid]
+		document.fire('widget_tree_changed')
+	})
+
+	// saving prop vals into prop layers --------------------------------------
+
+	document.on('prop_changed', function(te, k, v, v0, slot) {
+		if (!te.gid) return
+		if (te.xmodule_updating_props) return
+		slot = e.selected_slot || slot || 'base'
+		if (slot == 'none')
+			return
+		let module = e.selected_module || te.module
+		let layer = e.active_layers[module+':'+slot]
+		if (!layer) {
+			print('prop-val-lost', '['+module+':'+slot+']', te.gid, k, v)
 			return
 		}
-
 		v = te.serialize_prop(k, v)
-
-		let t = layer_obj.widgets[te.gid]
-
-		if (t && t[k] === v) // value already stored.
+		let t = attr(layer.props, te.gid)
+		if (t[k] === v) // value already stored.
 			return
-
-		if (!t) {
-			t = {}
-			layer_obj.widgets[te.gid] = t
-		}
-		layer_obj.modified = true
+		layer.modified = true
 		let pv0 = attr(te, '__pv0')
 		if (v === undefined) { // `undefined` signals removal.
 			if (t[k] !== undefined) {
-				print('prop-val-deleted', te.gid, k, slot, layer_obj.name)
+				print('prop-val-deleted', '['+module+':'+slot+'='+layer.name+']', te.gid, k)
 				delete t[k]
 				delete pv0[k] // no need to keep this anymore.
 			}
@@ -121,46 +130,32 @@ function xmodule(e) {
 			if (!(k in pv0)) // save current val if it wasn't saved before.
 				pv0[k] = v0
 			t[k] = v
-			print('prop-val-set', te.gid, k, slot, layer_obj.name, v)
+			print('prop-val-set', '['+module+':'+slot+'='+layer.name+']', te.gid, k, v)
 		}
-	}
 
-	e.update_widgets = function(layer_widgets) {
+	})
+
+	// loading prop layers and assigning to slots -----------------------------
+
+	e.update_widgets = function(gids1, gids2) {
 		for (let gid in e.widgets)
-			if (layer_widgets && layer_widgets[gid])
+			if ((gids1 && gids1[gid]) || (gids2 && gids2[gid]))
 				update_widget(e.widgets[gid])
 	}
 
-	function add_prop_layer_slot(slot) {
+	e.set_prop_layer = function(slot, layer, opt) {
 
-		// find a place for the slot.
-		let before_slot; {
-			let slots = keys(e.prop_layer_slots)
-			slots.push(slot)
-			slots.sort()
-			before_slot = slots[slots.indexOf(slot) - 1]
-		}
-		let slots = keys(e.prop_layer_slots)
-		slots.insert(slots.indexOf(before_slot) + 1, slot)
-
-		let t = {}
-		for (let slot of slots)
-			t[slot] = e.prop_layer_slots[slot]
-		e.prop_layer_slots = t
-	}
-
-	e.set_prop_layer = function(slot, layer, reload, on_loaded, async) {
+		opt = opt || empty
 
 		function update_layer(layer_widgets) {
 
 			generation++
 
+			let old_layer_obj
 			if (slot) {
-
 				if (!(slot in e.prop_layer_slots))
 					add_prop_layer_slot(slot)
-
-				let old_layer_obj = e.prop_layer_slots[slot]
+				old_layer_obj = e.prop_layer_slots[slot]
 				if (old_layer_obj)
 					old_layer_obj.slot = null
 			}
@@ -174,83 +169,71 @@ function xmodule(e) {
 			if (slot)
 				e.prop_layer_slots[slot] = layer_obj
 
-			e.update_widgets(layer_widgets)
+			if (opt.update_widgets !== false) {
+				e.update_widgets(layer_widgets, old_layer_obj && old_layer_obj.widgets)
+				if (slot)
+					document.fire('prop_layer_slots_changed')
+			}
 
-			if (slot)
-				document.fire('prop_layer_slots_changed')
-
-			if (on_loaded)
-				on_loaded()
 		}
 
-		if (!layer) {
-			let layer_obj = e.prop_layer_slots[slot]
-			if (!layer_obj)
-				return
-			e.prop_layer_slots[slot] = null
-			slot = null
-			update_layer(layer_obj.widgets)
-			return
-		}
+	}
 
-		let layer_obj = e.prop_layers[layer]
-		if (!layer_obj || reload) {
+	// gid generation for new widgets -----------------------------------------
+
+	e.next_gid = function(module) {
+		let ret_gid
+		ajax({
+			url: 'xmodule-next-gid/'+assert(module),
+			method: 'post',
+			async: false,
+			success: gid => ret_gid = gid,
+		})
+		return ret_gid
+	}
+
+	// loading & saving prop layers -------------------------------------------
+
+	function layer(name) {
+		let t = e.layers[name]
+		if (!t) {
 			ajax({
-				url: 'xmodule-layer.json/'+layer,
-				success: function(widgets) {
-					update_layer(widgets)
+				url: 'xmodule-layer.json/'+name,
+				async: false,
+				success: function(props) {
+					t = {name: name, props: props}
 				},
-				async: async,
 				fail: function(how, status) {
-					if (how == 'http' && status == 404)
-						update_layer({})
+					assert(how == 'http' && status == 404)
+					t = {name: name, props: {}}
 				},
 			})
-		} else {
-			update_layer(layer_obj.widgets)
+			e.layers[name] = t
 		}
-
-	}
-
-	e.save_prop_layer = function(layer) {
-		let layer_obj = e.prop_layers[layer]
-		if (layer_obj.save_request)
-			return // already saving...
-
-		layer_obj.save_request = ajax({
-			url: 'xmodule-layer.json/'+layer,
-			upload: json(layer_obj.widgets, null, '\t'),
-			done: () => layer_obj.save_request = null,
-		})
-	}
-
-	e.reload = function() {
-		for (let layer in e.prop_layers) {
-			let layer_obj = e.prop_layers[layer]
-			e.set_prop_layer(layer_obj.slot, layer, true)
-		}
+		return t
 	}
 
 	e.save = function() {
-		for (let layer in e.prop_layers)
-			if (e.prop_layers[layer].modified)
-				e.save_prop_layer(layer)
+		for (let name in e.layers) {
+			let t = e.layers[name]
+			if (t.modified && !t.save_request)
+				t.save_request = ajax({
+					url: 'xmodule-layer.json/'+name,
+					upload: json(t.props, null, '\t'),
+					done: () => t.save_request = null,
+				})
+		}
 	}
 
-	e.assign_gid = function(widget) {
-		ajax({
-			url: 'xmodule-next-gid/'+assert(widget.module),
-			method: 'post',
-			// TODO: find another way since smart-ass condescending w3c people
-			// deprecated synchronous requests.
-			async: false,
-			success: function(gid) {
-				widget.gid = gid
-			},
-		})
+	// gid-based dynamic prop binding -----------------------------------------
+
+	e.resolve = gid => e.widgets[gid]
+
+	e.nav_editor = function(...options) {
+		return widget_select_editor(e.widgets, e => e.isnav, ...options)
 	}
 
-	return e
+	init()
 
 }
 
@@ -317,10 +300,10 @@ field_types.col.editor = function(...options) {
 // ---------------------------------------------------------------------------
 
 window.on('load', function() {
-	state_toaster = toaster({
+	xmodule_state_toaster = toaster({
 		timeout: null,
 	})
-	document.body.add(state_toaster)
+	document.body.add(xmodule_state_toaster)
 })
 
 // ---------------------------------------------------------------------------
@@ -410,7 +393,7 @@ component('x-prop-layers-inspector', function(e) {
 		if (sel_slot) {
 			let layer_obj = xmodule.prop_layer_slots[xmodule.selected_prop_slot]
 			let s = sel_slot + ': '+ (layer_obj ? layer_obj.name : 'none')
-			e.state_tooltip = state_toaster.post(s, 'error')
+			e.state_tooltip = xmodule_state_toaster.post(s, 'error')
 			e.state_tooltip.close_button = true
 			e.state_tooltip.on('closed', function() {
 				e.state_tooltip = null
@@ -908,4 +891,20 @@ function sql_rowset_editor_dialog() {
 	d.editor = ed
 	return d
 }
+
+// ---------------------------------------------------------------------------
+// global key bindings
+// ---------------------------------------------------------------------------
+
+document.on('keydown', function(key, shift, ctrl) {
+	if (key == 's' && ctrl) {
+		xmodule.save()
+		return false
+	}
+})
+
+document.on('keydown', function(key) {
+	if (key == 'F9')
+		show_toolboxes('toggle')
+})
 

@@ -75,17 +75,11 @@ To install the library you need docker, kubernetes, webpack, redis, memcached
 Look, it's just a few .js files and one .css file. Load them as they are or
 bundle, minify and gzip them, do what you have to do. Just make it look professional.
 
-The dependencies are `glue.js`, `divs.js`, `ajax.js` and `url.js`
-from [webb] so get those first.
+The dependencies are `glue.js` and `divs.js` from [webb] so get those first.
 
 `glue.js` extends JavaScript with basic routines similar to [glue] from Lua.
 
-`divs.js` is a tiny jQuery-like library for DOM manipulation and creating
-web components.
-
-`ajax.js` is an even tinier wrapper over XMLHttpRequest().
-
-`url.js` does URL composing and decomposing.
+`divs.js` is a tiny jQuery-like library for DOM manipulation.
 
 ## Styling
 
@@ -117,6 +111,8 @@ If you're still not sure, here's a list to
 * this lib uses snake case instead of hungarian notation.
 * this lib wraps instantiations with `new` into plain functions.
 * this lib does not even quote html attributes. why are you still reading?
+* this lib uses synchronous ajax requests that some smart-ass condescending
+w3c people found that it's in our best interest to deprecate.
 * this lib uses a deployment system whereby you open up your file explorer
 and then you copy-paste a bunch of .css and .js files to your goddam www folder.
 * this lib was not written by Google so it must have a lot of security vulnerabilities.
