@@ -5,6 +5,9 @@
 
 	Dependencies: glue.js.
 
+	CSS Requirements:
+		[hidden] { display: none !important; }
+
 	element attribute manipulation:
 		e.hasattr(k)
 		e.attrval(k)
@@ -541,12 +544,9 @@ window.on('resize', function() { document.fire('layout_changed') })
 
 // common style wrappers -----------------------------------------------------
 
+// NOTE: requires `[hidden] { display: none !important; }` in CSS.
 method(Element, 'show', function(v, affects_layout) {
-	let d0 = this.style.display
-	let d1 = (v === undefined || v) ? null : 'none'
-	if (d0 == d1)
-		return
-	this.style.display = d1
+	this.attr('hidden', v === false)
 	if (affects_layout)
 		document.fire('layout_changed')
 })
