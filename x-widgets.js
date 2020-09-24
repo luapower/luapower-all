@@ -142,7 +142,7 @@ function component(tag, cons) {
 		e.initialized = true
 		e.init()
 		if (assign_gid)
-			document.fire('prop_changed', e, 'type'   , e.type  , undefined, null)
+			document.fire('prop_changed', e, 'type', e.type, undefined, null)
 	}
 
 	function create(...args) {
@@ -221,8 +221,9 @@ let component_deferred_updating = function(e) {
 			return
 		if (!e.attached)
 			return
-		e.do_update(opt)
+		let opt_arg = opt
 		opt = null
+		e.do_update(opt_arg)
 		invalid = false
 	}
 
@@ -1154,7 +1155,7 @@ publishes:
 	e.reset_val(v, ev)
 	e.display_val()
 implements:
-	e.do_update()
+	e.do_update(opt)
 calls:
 	e.do_update_val(val, ev)
 	e.do_update_error(err, ev)
@@ -1218,7 +1219,7 @@ function val_widget(e, enabled_without_nav) {
 		nav.on('focused_row_cell_state_changed_for_'+col, cell_state_changed, on)
 		nav.on('display_vals_changed_for_'+col, val_changed, on)
 		nav.on('loaded', loaded, on)
-		nav.on('label_changed_for_'+col, label_changed, on)
+		nav.on('col_text_changed_for_'+col, label_changed, on)
 	}
 
 	let field_opt

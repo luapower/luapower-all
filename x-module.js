@@ -8,7 +8,7 @@ function xmodule(opt) {
 	let e = {}
 	xmodule = e // singleton.
 
-	let generation = 0
+	let generation = 1
 
 	e.slots = opt.slots || {} // {name -> {color:, }}
 	e.modules = opt.modules || {} // {name -> {icon:, }}
@@ -43,7 +43,7 @@ function xmodule(opt) {
 
 	e.prop_vals = function(gid) {
 		let pv = {}
-		let opt = {gid: gid, prop_layers_generation: generation, __pv: pv}
+		let opt = {gid: gid, __pv: pv}
 		for (let k in e.active_layers)
 			update(pv, e.active_layers[k].props[gid])
 		opt.type   = pv.type
@@ -69,6 +69,7 @@ function xmodule(opt) {
 	function update_widget(te) {
 		if (te.prop_layers_generation == generation)
 			return
+		te.prop_layers_generation = generation
 		te.xmodule_updating_props = true
 		te.begin_update()
 		let pv = e.prop_vals(te.gid).__pv
@@ -111,7 +112,7 @@ function xmodule(opt) {
 		let module = e.selected_module || te.module
 		let layer = e.active_layers[module+':'+slot]
 		if (!layer) {
-			print('prop-val-lost', '['+module+':'+slot+']', te.gid, k, v)
+			print('prop-val-lost', '['+module+':'+slot+']', te.gid, k, json(v))
 			return
 		}
 		v = te.serialize_prop(k, v)
@@ -130,7 +131,7 @@ function xmodule(opt) {
 			if (!(k in pv0)) // save current val if it wasn't saved before.
 				pv0[k] = v0
 			t[k] = v
-			print('prop-val-set', '['+module+':'+slot+'='+layer.name+']', te.gid, k, v)
+			print('prop-val-set', '['+module+':'+slot+'='+layer.name+']', te.gid, k, json(v))
 		}
 
 	})

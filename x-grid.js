@@ -95,7 +95,7 @@ component('x-grid', function(e) {
 		let total_free_w = 0
 		let cw = cols_w
 		if (e.auto_cols_w && !col_resizing) {
-			cw = e.cells_view.clientWidth
+			cw = e.cells_view.clientWidth - 3 // TODO: fix this 3 thing!
 			total_free_w = max(0, cw - cols_w)
 		}
 

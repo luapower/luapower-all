@@ -11,6 +11,8 @@ typing:
 
 rowset:
 	needs:
+		e.static_rowset
+		e.rowset_vals
 		e.rowset <- {fields: [field1,...], rows: [row1,...]}
 	publishes:
 		e.reset()
@@ -102,6 +104,12 @@ rows:
 
 vlookup:
 	e.lookup()
+
+master-detail:
+	needs:
+		e.params <- 'param1[=master_col1] ...'
+		e.param_nav
+		e.param_nav_gid
 
 tree:
 	needs:
@@ -214,6 +222,7 @@ loading & saving:
 		e.rowset_name
 		e.rowset_url
 	publishes:
+		e.can_save_changes()
 		e.reload()
 		e.abort_loading()
 		e.save()
@@ -310,7 +319,7 @@ function nav_widget(e) {
 	e.on('bind', function(on) {
 		bind_param_nav(on)
 		if (on) {
-			e.reset()
+			e.update({reload: true})
 		} else {
 			abort_ajax_requests()
 			force_unfocus_focused_cell()
@@ -332,7 +341,7 @@ function nav_widget(e) {
 	}
 
 	e.set_static_rowset = function(rs) {
-		e.rowset = rs ? update({}, rs) : null
+		e.rowset = rs
 		e.reset()
 	}
 	e.prop('static_rowset', {store: 'var'})
@@ -350,13 +359,18 @@ function nav_widget(e) {
 
 	// fields array matching 1:1 to row contents ------------------------------
 
-	function convert_field_attr(field, f, k, v) {
-		if (k == 'text') {
-			if (v == null)
-				v = auto_display_name(f.name)
-		} else if (k == 'w') {
-			v = clamp(v, field.min_w, field.max_w)
-		}
+	let convert_field_attr = {}
+
+	convert_field_attr.text = function(field, v, f) {
+		return v == null ? auto_display_name(f.name) : v
+	}
+
+	convert_field_attr.w = function(field, v) {
+		return clamp(v, field.min_w, field.max_w)
+	}
+
+	convert_field_attr.exclude_vals = function(field, v) {
+		set_exclude_filter(field, v)
 		return v
 	}
 
@@ -370,8 +384,8 @@ function nav_widget(e) {
 
 		update(field, att, tt, f, ct, pt)
 
-		field.w    = convert_field_attr(field, f, 'w'   , field.w)
-		field.text = convert_field_attr(field, f, 'text', field.text)
+		for (let k in convert_field_attr)
+			field[k] = convert_field_attr[k](field, field[k], f)
 	}
 
 	function set_field_attr(field, k, v) {
@@ -391,14 +405,14 @@ function nav_widget(e) {
 			v = strict_or(v, att[k])
 		}
 
-		v = convert_field_attr(field, f, k, v)
+		let convert = convert_field_attr[k]
+		if (convert)
+			v = convert(field, v, f)
 
 		if (field[k] === v)
 			return
 		field[k] = v
 
-		if (k == 'text')
-			e.fire('label_changed_for_'+field.name)
 	}
 
 	function init_field(f, fi) {
@@ -565,6 +579,8 @@ function nav_widget(e) {
 			e.update({fields: true})
 		}
 
+		e.fire('col_'+k+'_changed_for_'+col)
+
 		let attrs = field_prop_attrs[k]
 		let slot = attrs && attrs.slot
 		document.fire('prop_changed', e, prop, v, v0, slot)
@@ -709,6 +725,7 @@ function nav_widget(e) {
 	e.set_param_nav = function(nav1, nav0) {
 		bind_param_nav_cols(nav0, e.params, false)
 		bind_param_nav_cols(nav1, e.params, true)
+		e.reload()
 	}
 	e.prop('param_nav', {store: 'var', private: true})
 	e.prop('param_nav_gid', {store: 'var', bind_gid: 'param_nav', type: 'nav', text: 'Param Nav'})
@@ -720,11 +737,31 @@ function nav_widget(e) {
 	}
 	e.prop('params', {store: 'var'})
 
+	function init_param_vals() {
+		if (!e.params) {
+			e.param_vals = null
+		} else if (!(e.param_nav && e.param_nav.focused_row)) {
+			e.param_vals = false
+		} else {
+			e.param_vals = {}
+			for (let s of e.params.split(/\s+/)) {
+				let p = s.split('=')
+				let param = p && p[0] || s
+				let col = p && (p[1] || p[0]) || param
+				let field = e.param_nav.all_fields[col]
+				if (!field)
+					print('param nav is missing col', col)
+				let row = e.param_nav.focused_row
+				let v = field && row ? e.param_nav.cell_val(row, field) : null
+				e.param_vals[param] = v
+			}
+		}
+	}
+
 	// all rows in load order -------------------------------------------------
 
 	function init_all_rows() {
 		e.do_update_load_fail(false)
-		// TODO: unbind_filter_rowsets()
 		e.all_rows = e.attached && e.rowset && (rows_from_row_vals() || e.rowset.rows) || []
 		init_tree()
 		init_rows()
@@ -736,7 +773,7 @@ function nav_widget(e) {
 		e.rows = []
 		if (e.attached) {
 			let i = 0
-			let passes = return_true // TODO: e.filter_rowsets_filter(e.filter_rowsets)
+			let passes = row_filter()
 			for (let row of e.all_rows)
 				if (!row.parent_collapsed && passes(row))
 					e.rows.push(row)
@@ -761,6 +798,15 @@ function nav_widget(e) {
 		let index_fi = e.all_fields.length
 		for (let i = 0; i < e.rows.length; i++)
 			e.rows[i][index_fi] = i
+	}
+
+	function reinit_rows() {
+		let refocus = refocus_state('row')
+		init_rows()
+		e.begin_update()
+		e.update({rows: true})
+		refocus()
+		e.end_update()
 	}
 
 	// navigation and selection -----------------------------------------------
@@ -1340,12 +1386,7 @@ function nav_widget(e) {
 		else
 			for (let row of e.child_rows)
 				set_collapsed(row, collapsed, recursive)
-		let refocus = refocus_state('row')
-		init_rows()
-		e.begin_update()
-		e.update({rows: true})
-		refocus()
-		e.end_update()
+		reinit_rows()
 	}
 
 	e.toggle_collapsed = function(row, recursive) {
@@ -1534,52 +1575,15 @@ function nav_widget(e) {
 
 	// filtering --------------------------------------------------------------
 
-	/*
-	e.filter_rowset = function(field, ...opt) {
-
-		field = e.all_fields[field]
-		let rs_field = {}
-		for (let k of [
-			'name', 'text', 'type', 'align', 'min_w', 'max_w',
-			'format', 'true_text', 'false_text', 'null_text', 'empty_text',
-			'lookup_rowset', 'lookup_col', 'display_col', 'lookup_failed_display_val',
-			'sortable',
-		])
-			rs_field[k] = field[k]
-
-		let rs = rowset({
-			fields: [
-				{text: '', type: 'bool'},
-				rs_field,
-			],
-			filtered_field: field,
-		}, ...opt)
-
-		e.reload = function() {
-			let fi = field.val_index
-			let rows = new Set()
-			let val_set = new Set()
-			for (let row of e.rows) {
-				let v = row[fi]
-				if (!val_set.has(v)) {
-					rows.add([true, v])
-					val_set.add(v)
-				}
-			}
-			e.rows = rows
-			e.fire('loaded')
-		}
-
-		return rs
-	}
-
-	e.row_filter = function(expr) {
+	// expr: [bin_oper, expr1, ...] | [un_oper, expr] | [col, oper, val]
+	function expr_filter(expr) {
 		let expr_bin_ops = {'&&': 1, '||': 1}
 		let expr_un_ops = {'!': 1}
 		let s = []
 		function push_expr(expr) {
 			let op = expr[0]
 			if (op in expr_bin_ops) {
+				assert(expr.length > 1)
 				s.push('(')
 				for (let i = 1; i < expr.length; i++) {
 					if (i > 1)
@@ -1588,56 +1592,79 @@ function nav_widget(e) {
 				}
 				s.push(')')
 			} else if (op in expr_un_ops) {
-				s.push('(')
-				s.push(op)
-				s.push('(')
-				for (let i = 1; i < expr.length; i++)
-					push_expr(expr[i])
+				s.push('('+op+'(')
+				push_expr(expr[1])
 				s.push('))')
-			} else
-				s.push('row['+e.all_fields[expr[1]].index+'] '+expr[0]+' '+json(expr[2]))
+			} else {
+				s.push('row['+e.all_fields[expr[1]].val_index+'] '+expr[0]+' '+json(expr[2]))
+			}
 		}
 		push_expr(expr)
+		if (!s.length)
+			return return_true
 		s = 'let f = function(row) {\n\treturn ' + s.join('') + '\n}; f'
 		return eval(s)
 	}
 
-	e.filter_rowsets_filter = function(filter_rowsets) {
+	function row_filter() {
+		if (e.param_vals === false)
+			return return_false
 		let expr = ['&&']
-		if (filter_rowsets)
-			for (let [field, rs] of filter_rowsets) {
-				let e = ['&&']
-				for (let row of e.rows)
-					if (!row[0])
-						e.push(['!=', e.filtered_field.val_index, row[1]])
-				if (e.length > 1)
-					expr.push(e)
+		if (e.param_vals) {
+			for (let k in e.param_vals)
+				expr.push(['===', k, e.param_vals[k]])
+		}
+		for (let field of e.all_fields)
+			if (field.exclude_vals)
+				for (let v of field.exclude_vals)
+					expr.push(['!==', field.name, v])
+		return expr.length > 1 ? expr_filter(expr) : return_true
+	}
+
+	// exclude filter UI ------------------------------------------------------
+
+	e.create_exclude_vals_nav = function(opt, field) { // stub
+		return bare_nav(opt)
+	}
+
+	function set_exclude_filter(field, exclude_vals) {
+		let nav = field.exclude_vals_nav
+		if (!exclude_vals) {
+			if (nav) {
+				field.exclude_vals_nav.remove()
+				field.exclude_vals_nav = null
 			}
-		return expr.length > 1 ? e.row_filter(expr) : return_true
-	}
-
-	function unbind_filter_rowsets() {
-		if (!e.filter_rowsets)
 			return
-		for (let [field, rs] of e.filter_rowsets) {
-			//TODO: e.unbind()
 		}
-		e.filter_rowsets = null
-	}
-
-	e.filter_rowset = function(field) {
-		e.filter_rowsets = e.filter_rowsets || new Map()
-		let frs = e.filter_rowsets.get(field)
-		if (!frs) {
-			frs = e.filter_rowset(field, {
-				col_attrs: {'0': {w: 20}},
-			})
-			e.filter_rowsets.set(field, frs)
+		if (!nav) {
+			function format_row(row) {
+				return e.cell_display_val_for(row, field)
+			}
+			nav = e.create_exclude_vals_nav({
+					rowset: {
+						fields: [
+							{name: 'include', type: 'bool', default: true},
+							{name: 'row', format: format_row},
+						],
+					},
+				}, field)
+			field.exclude_vals_nav = nav
 		}
-		return rs
-	}
+		let exclude_set = new Set(exclude_vals)
+		let rows = []
+		let val_set = new Set()
+		for (let row of e.all_rows) {
+			let v = e.cell_val(row, field)
+			if (!val_set.has(v)) {
+				rows.push([!exclude_set.has(v), row])
+				val_set.add(v)
+			}
+		}
+		nav.rowset.rows = rows
+		nav.reset()
 
-	*/
+		reinit_rows()
+	}
 
 	// get/set cell & row state (storage api) ---------------------------------
 
@@ -2100,7 +2127,9 @@ function nav_widget(e) {
 			for (let fi = 0; fi < e.all_fields.length; fi++) {
 				let field = e.all_fields[fi]
 				let val = isobject(vals) ? vals[field.name] : vals && vals[fi]
-				row[fi] = or(or(val, field.server_default), null)
+				let param_val = e.param_vals && e.param_vals[field.name]
+				let default_val = field.server_default
+				row[fi] = or(or(or(val, param_val), default_val), null)
 			}
 			row.is_new = true
 			e.all_rows.push(row)
@@ -2173,7 +2202,7 @@ function nav_widget(e) {
 
 	e.remove_rows = function(rows_to_remove, ev) {
 
-		let forever = (ev && ev.forever) || !e.rowset_url
+		let forever = (ev && ev.forever) || !e.can_save_changes()
 		let toggle = ev && ev.toggle
 		let refocus = ev && ev.refocus
 
@@ -2218,6 +2247,8 @@ function nav_widget(e) {
 
 		}
 
+		e.begin_update()
+
 		if (removed_rows.size) {
 
 			if (removed_rows.size < 100) {
@@ -2232,8 +2263,6 @@ function nav_widget(e) {
 				init_rows()
 			}
 
-			e.begin_update()
-
 			e.update({rows: true})
 
 			if (top_row_index != null) {
@@ -2243,13 +2272,17 @@ function nav_widget(e) {
 				e.focus_cell(false, false)
 			}
 
-			e.end_update()
-
 			e.fire('rows_removed', removed_rows)
+
 		}
+
+		if (rows_marked)
+			e.update({state: true})
 
 		if (rows_marked && e.save_row_on != 'manual' && e.remove_row_on == 'input')
 			e.save()
+
+		e.end_update()
 
 		return removed_rows.size > 0 || rows_marked
 	}
@@ -2356,87 +2389,7 @@ function nav_widget(e) {
 				req.abort()
 	}
 
-	// url with params --------------------------------------------------------
-
-	function make_rowset_url(param_vals) {
-		if (!param_vals) {
-			if (!e.params)
-				return e.rowset_url
-			if (!e.param_nav || !e.param_nav.focused_row)
-				return
-			param_vals = {}
-			for (let s of e.params.split(/\s+/)) {
-				let p = s.split('=')
-				let param = p && p[0] || s
-				let col = p && (p[1] || p[0]) || param
-				let field = e.param_nav.all_fields[col]
-				if (!field)
-					print('param nav is missing col', col)
-				let row = e.param_nav.focused_row
-				let v = field && row ? e.param_nav.cell_val(row, field) : null
-				param_vals[param] = v
-			}
-		}
-		return url(e.rowset_url, {params: json(param_vals)})
-	}
-
 	// loading ----------------------------------------------------------------
-
-	e.reload = function(param_vals) {
-		if (!e.rowset_url)
-			return
-		if (!e.attached) {
-			e.update({reload: true})
-			return
-		}
-		let url = make_rowset_url(param_vals)
-		if (!url)
-			return
-		if (requests && requests.size && !e.load_request) {
-			e.notify('error',
-				S('error_load_while_saving', 'Cannot reload while saving is in progress.'))
-			return
-		}
-		e.abort_loading()
-		let req = ajax({
-			url: url,
-			progress: load_progress,
-			success: load_success,
-			fail: load_fail,
-			done: load_done,
-			slow: load_slow,
-			slow_timeout: e.slow_timeout,
-		})
-		add_request(req)
-		e.load_request = req
-		e.loading = true
-		loading(true)
-		return true
-	}
-
-	e.abort_loading = function() {
-		if (!e.load_request)
-			return
-		e.load_request.abort()
-		e.load_request = null
-	}
-
-	function load_progress(p, loaded, total) {
-		e.do_update_load_progress(p, loaded, total)
-		e.fire('load_progress', p, loaded, total)
-	}
-
-	function load_slow(show) {
-		e.do_update_load_slow(show)
-		e.fire('load_slow', show)
-	}
-
-	function load_done() {
-		requests.delete(this)
-		e.load_request = null
-		e.loading = false
-		loading(false)
-	}
 
 	e.reset = function() {
 
@@ -2462,6 +2415,62 @@ function nav_widget(e) {
 		e.end_update()
 		e.fire('loaded', true)
 
+	}
+
+	e.reload = function() {
+		if (!e.attached) {
+			e.update({reload: true})
+			return
+		}
+		init_param_vals()
+		if (!e.rowset_url || e.param_vals === false) {
+			e.reset()
+			return
+		}
+		let url = e.param_vals ? url(e.rowset_url, {params: json(e.param_vals)}) : e.rowset_url
+		if (requests && requests.size && !e.load_request) {
+			e.notify('error',
+				S('error_load_while_saving', 'Cannot reload while saving is in progress.'))
+			return
+		}
+		e.abort_loading()
+		let req = ajax({
+			url: url,
+			progress: load_progress,
+			success: load_success,
+			fail: load_fail,
+			done: load_done,
+			slow: load_slow,
+			slow_timeout: e.slow_timeout,
+		})
+		add_request(req)
+		e.load_request = req
+		e.loading = true
+		loading(true)
+	}
+
+	e.abort_loading = function() {
+		if (!e.load_request)
+			return
+		e.load_request.abort()
+		e.load_request = null
+	}
+
+	function load_progress(p, loaded, total) {
+		e.do_update_load_progress(p, loaded, total)
+		e.fire('load_progress', p, loaded, total)
+	}
+
+	function load_slow(show) {
+		e.do_update_load_slow(show)
+		e.fire('load_slow', show)
+	}
+
+	function load_done() {
+		requests.delete(this)
+		e.load_request = null
+		e.loading = false
+		loading(false)
 	}
 
 	function load_fail(type, status, message, body) {
@@ -2602,12 +2611,16 @@ function nav_widget(e) {
 		e.fire('saving', true)
 	}
 
+	e.can_save_changes = function() {
+		return !!(e.rowset_url || e.static_rowset)
+	}
+
 	e.save = function(row) {
 		if (!e.changed_rows)
 			return
 		if (e.rowset_url)
 			save_to_server(row)
-		else if (e.row_vals)
+		else if (e.static_rowset)
 			save_to_row_vals(row)
 	}
 
@@ -2936,8 +2949,6 @@ global_val_nav = function() {
 		editable: true,
 		sortable: true,
 		maxlen: 256,
-		true_text: () => H('<div class="fa fa-check"></div>'),
-		false_text: '',
 		null_text: S('null_text', ''),
 		empty_text: S('empty_text', 'empty text'),
 		lookup_failed_display_val: function(v) {
@@ -3060,8 +3071,11 @@ global_val_nav = function() {
 
 	// booleans
 
-	let bool = {align: 'center'}
+	let bool = {align: 'center', w: 20}
 	field_types.bool = bool
+
+	bool.true_text = () => H('<div class="fa fa-check"></div>')
+	bool.false_text = ''
 
 	bool.validate = function(val, field) {
 		if (typeof val != 'boolean')
