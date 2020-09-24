@@ -205,7 +205,8 @@ updating row state:
 
 updating rowset:
 	publishes:
-		e.revert()
+		e.commit_changes()
+		e.revert_changes()
 		e.set_null_selected_cells()
 
 editing:
@@ -2651,10 +2652,11 @@ function nav_widget(e) {
 		e.fire('save_fail', err, type, status, message, body)
 	}
 
-	e.revert = function() {
+	e.revert_changes = function() {
 		if (!e.changed_rows)
 			return
-			/*
+		e.begin_update()
+		/*
 		for (let row of e.changed_rows)
 			if (row.is_new)
 				//
@@ -2662,26 +2664,56 @@ function nav_widget(e) {
 				//
 			else if (row.modified)
 				//
-			*/
+		*/
 		e.changed_rows = null
+		e.end_update()
+	}
+
+	e.commit_changes = function() {
+		if (!e.changed_rows)
+			return
+		e.begin_update()
+		let rows_to_remove = []
+		for (let row of e.changed_rows) {
+			e.set_row_error(row, undefined)
+			if (row.removed) {
+				rows_to_remove.push(row)
+			} else if (row.is_new || row.modified) {
+				for (let field of e.all_fields)
+					if (e.set_cell_state(row, field, 'modified', false, false))
+						cell_state_changed(row, field, 'modified', false)
+				let is_new_changed   = e.set_row_state(row, 'is_new'  , false, false)
+				let modified_changed = e.set_row_state(row, 'modified', false, false)
+				if (is_new_changed)
+					row_state_changed(row, 'is_new', false)
+				if (modified_changed)
+					row_state_changed(row, 'modified', false)
+			}
+		}
+		e.remove_rows(rows_to_remove, {forever: true, refocus: true})
+		e.changed_rows = null
+		e.end_update()
 	}
 
 	function save_to_row_vals() {
-		e.changed_rows = null
+
 		let rows = []
 		for (let row of e.all_rows) {
 			let vals = {}
-			for (let fi = 0; fi < e.all_fields.length; fi++) {
-				let v = row[fi]
+			for (let field of e.all_fields) {
+				let v = e.cell_val(row, field)
 				if (v != null)
-					vals[e.all_fields[fi].name] = v
+					vals[field.name] = v
 			}
 			rows.push(vals)
 		}
+
 		let f = e.set_row_vals
 		e.set_row_vals = noop
 		e.row_vals = rows
 		e.set_row_vals = f
+
+		e.commit_changes()
 	}
 
 	// responding to notifications from the server ----------------------------
@@ -2942,7 +2974,7 @@ global_val_nav = function() {
 
 	all_field_types = {
 		w: 100,
-		min_w: 20,
+		min_w: 22,
 		max_w: 2000,
 		align: 'left',
 		allow_null: true,

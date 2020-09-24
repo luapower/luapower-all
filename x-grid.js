@@ -41,7 +41,8 @@ component('x-grid', function(e) {
 	// mouse behavior
 	e.prop('can_reorder_fields'            , {store: 'var', type: 'bool', default: true})
 	e.prop('enter_edit_on_click'           , {store: 'var', type: 'bool', default: false})
-	e.prop('enter_edit_on_click_focused'   , {store: 'var', type: 'bool', default: true})
+	e.prop('enter_edit_on_click_focused'   , {store: 'var', type: 'bool', default: false})
+	e.prop('enter_edit_on_dblclick'        , {store: 'var', type: 'bool', default: true})
 	e.prop('focus_cell_on_click_header'    , {store: 'var', type: 'bool', default: false})
 	e.prop('can_change_parent'             , {store: 'var', type: 'bool', default: true})
 
@@ -1688,11 +1689,11 @@ component('x-grid', function(e) {
 		return false
 	})
 
-	e.cells.on('dblclick', function(ev) {
-		let cell = ev.target.closest('.x-grid-cell')
-		if (!cell) return
-		ev.row_index = cell.ri
-		e.fire('cell_dblclick', e.rows[cell.ri], ev)
+	e.on('dblclick', function(ev) {
+		if (!hit.cell) return
+		if (e.enter_edit_on_dblclick)
+			e.enter_edit('select_all')
+		e.fire('cell_dblclick', hit.cell.ri, hit.cell.fi, ev)
 	})
 
 	// keyboard bindings ------------------------------------------------------
