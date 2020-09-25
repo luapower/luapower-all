@@ -978,7 +978,7 @@ component('x-grid', function(e) {
 		if (!horiz && abs(hit.mx - mx) < 8) return
 		if (!horiz && e.parent_field) return
 		if (e.order_by) return
-		if (e.filter_rowsets && e.filter_rowsets.size > 0) return
+		if (e.is_filtered) return
 		return true
 	}
 
@@ -995,35 +995,24 @@ component('x-grid', function(e) {
 			hit_my = hit.my - r.y
 		}
 
-		let move_fi = hit.cell.fi
-		let move_ri1 = hit.cell.ri
-		let move_n = 1 + e.child_row_count(move_ri1)
-		let move_ri2 = move_ri1 + move_n
+		// initial state
+
+		let state = e.start_move_selected_rows()
+		let ri1 = state.ri1
+		let ri2 = state.ri2
+		let move_ri1 = state.move_ri1
+		let move_ri2 = state.move_ri2
+		let move_n = state.move_n
 
 		let w = horiz ? e.cell_h : e.cell_w
-
-		let parent_row = e.rows[move_ri1].parent_row
-
 		let tree_fi = e.field_index(e.tree_field)
+		let move_fi = hit.cell.fi
 
-		let ri1 = 0
-		let ri2 = e.rows.length
-		if (!e.can_change_parent && e.parent_field) {
-			if (parent_row) {
-				let parent_ri = e.row_index(parent_row)
-				ri1 = parent_ri + 1
-				ri2 = parent_ri + 1 + e.child_row_count(parent_ri)
-			}
-		}
-		ri2 -= move_n // adjust to after removal.
-
-		let move_state = e.start_move_selected_rows()
-
-		// state
+		// move state
 
 		let hit_x
 		let hit_ri = move_ri1
-		let hit_parent_row = parent_row
+		let hit_parent_row = state.parent_row
 		let hit_indent
 
 		let xof       = (ri => ri * w)
@@ -1052,7 +1041,7 @@ component('x-grid', function(e) {
 				if (moving && row && field_has_indent(e.fields[fi]))
 					indent = hit_indent
 						+ row_indent(row)
-						- row_indent(move_state.rows[0])
+						- row_indent(state.rows[0])
 
 				if (cell.ri != ri || ri == null)
 					update_cell_content(cell, row, ri, fi, focused, indent)
@@ -1082,11 +1071,11 @@ component('x-grid', function(e) {
 				return 1
 			if (before_ri == ri2 - 1)
 				return 1
-			let hit_row = move_state.rows[0]
+			let hit_row = state.rows[0]
 			let over_row = e.rows[before_ri+1]
 			if ((over_row && over_row.parent_row) == hit_row.parent_row)
 				return 1
-			return 1 + e.child_row_count(before_ri)
+			return 1 + e.expanded_child_row_count(before_ri)
 		}
 
 		function update_hit_parent_row(hit_p) {
@@ -1236,7 +1225,7 @@ component('x-grid', function(e) {
 					let vri = 0
 					let x = move_vri1x
 					for (let ri = move_vri1; ri < move_vri2; ri++) {
-						update_row(true, vri++, move_state.rows[ri - move_ri1], ri, x, vri1x, ri == move_ri1)
+						update_row(true, vri++, state.rows[ri - move_ri1], ri, x, vri1x, ri == move_ri1)
 						x += w
 					}
 
@@ -1304,12 +1293,13 @@ component('x-grid', function(e) {
 			mm_row_move = null
 			mu_row_move = null
 			update_cells_moving = null
+			hit.state = null // update() would call update_cells_moving() otherwise.
 
 			e.class('row-moving', false)
 			if (e.editor)
 				e.editor.class('row-moving', false)
 
-			move_state.finish(hit_ri, hit_parent_row)
+			state.finish(hit_ri, hit_parent_row)
 		}
 
 		// post-init

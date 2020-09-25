@@ -32,7 +32,7 @@ rowset field attributes:
 
 	editing:
 		client_default : default value that new rows are initialized with.
-		server_default : default value that the server sets.
+		default        : default value that the server sets for new rows.
 		editable       : allow modifying (true).
 		editor         : f() -> editor instance
 		from_text      : f(s) -> v
@@ -117,7 +117,7 @@ tree:
 		e.name_col
 	publishes:
 		e.each_child_row(row, f)
-		e.child_row_count(ri) -> n
+		e.expanded_child_row_count(ri) -> n
 
 focusing and selection:
 	publishes:
@@ -334,8 +334,10 @@ function nav_widget(e) {
 		let rows = []
 		for (vals of e.row_vals) {
 			let row = []
-			for (let fi = 0; fi < e.all_fields.length; fi++)
-				row[fi] = strict_or(vals[e.all_fields[fi].name], null)
+			for (let fi = 0; fi < e.all_fields.length; fi++) {
+				let field = e.all_fields[fi]
+				row[fi] = strict_or(vals[field.name], or(field.default, null))
+			}
 			rows.push(row)
 		}
 		return rows
@@ -1154,11 +1156,11 @@ function nav_widget(e) {
 			if (how == 'val' && e.val_field && e.nav && e.field) {
 				ri = e.row_index(e.lookup(e.val_field, e.input_val))
 				unfocus_if_not_found = true
-			} else if (how == 'pk' && e.pk_fields && e.pk_fields.length)
+			} else if (how == 'pk' && e.pk_fields && e.pk_fields.length) {
 				ri = e.row_index(e.lookup(e.pk_fields, refocus_pk))
-			else if (how == 'row')
+			} else if (how == 'row') {
 				ri = e.row_index(refocus_row)
-			else if (!how) { // TODO: not used (unfocus)
+			} else if (!how) { // TODO: not used (unfocus)
 				ri = false
 				must_not_move_row = true
 				unfocus_if_not_found = true
@@ -1217,6 +1219,7 @@ function nav_widget(e) {
 	e.lookup = function(field, v) {
 		if (isarray(field)) {
 			field = field[0]
+			v = v[0]
 			// TODO: multi-key indexing
 		}
 		if (!field.lookup)
@@ -1608,6 +1611,7 @@ function nav_widget(e) {
 	}
 
 	function row_filter() {
+		e.is_filtered = true
 		if (e.param_vals === false)
 			return return_false
 		let expr = ['&&']
@@ -1619,7 +1623,8 @@ function nav_widget(e) {
 			if (field.exclude_vals)
 				for (let v of field.exclude_vals)
 					expr.push(['!==', field.name, v])
-		return expr.length > 1 ? expr_filter(expr) : return_true
+		e.is_filtered = expr.length > 1
+		return e.is_filtered ? expr_filter(expr) : return_true
 	}
 
 	// exclude filter UI ------------------------------------------------------
@@ -1944,8 +1949,10 @@ function nav_widget(e) {
 			return false
 
 		if (editor_state == 'toggle' && e.focused_field && e.focused_field.type == 'bool') {
-			e.set_cell_val(e.focused_row, e.focused_field,
-				!e.cell_val(e.focused_row, e.focused_field), {input: e})
+			if (e.set_cell_val(e.focused_row, e.focused_field,
+					!e.cell_val(e.focused_row, e.focused_field), {input: e}))
+				if (e.save_row_on == 'exit_edit')
+					e.save(e.focused_row)
 			return false
 		}
 		if (editor_state == 'toggle')
@@ -2124,12 +2131,12 @@ function nav_widget(e) {
 
 			let vals = isarray(values) ? values[i] : null
 			let row = []
-			// add server_default values or null
+			// add server default values or null
 			for (let fi = 0; fi < e.all_fields.length; fi++) {
 				let field = e.all_fields[fi]
 				let val = isobject(vals) ? vals[field.name] : vals && vals[fi]
 				let param_val = e.param_vals && e.param_vals[field.name]
-				let default_val = field.server_default
+				let default_val = field.default
 				row[fi] = or(or(or(val, param_val), default_val), null)
 			}
 			row.is_new = true
@@ -2294,7 +2301,7 @@ function nav_widget(e) {
 
 	// row moving -------------------------------------------------------------
 
-	e.child_row_count = function(ri) {
+	e.expanded_child_row_count = function(ri) {
 		let n = 0
 		if (e.parent_field) {
 			let row = e.rows[ri]
@@ -2323,24 +2330,59 @@ function nav_widget(e) {
 
 	e.start_move_selected_rows = function() {
 
-		//let move_rows = []
-		//for (let [row] of e.selected_rows)
-		//	e.row_index(row)
+		let focused_ri  = e.focused_row_index
+		let selected_ri = or(e.selected_row_index, focused_ri)
 
-		let ri1 = e.focused_row_index
-		let ri2 = or(e.selected_row_index, ri1)
+		let move_ri1 = min(focused_ri, selected_ri)
+		let move_ri2 = max(focused_ri, selected_ri)
+		move_ri2 += 1 + e.expanded_child_row_count(move_ri2)
+		let move_n = move_ri2 - move_ri1
 
-		let move_ri1 = min(ri1, ri2)
-		let move_ri2 = max(ri1, ri2)
-		let move_n = move_ri2 - move_ri1 + 1
+		let top_row = e.rows[move_ri1]
+		let parent_row = top_row.parent_row
+
+		// check to see that all selected rows are siblings or children of the first one.
+		if (e.parent_field)
+			for (let ri = move_ri1; ri < move_ri2; ri++)
+				if (e.rows[ri].parent_rows.length < top_row.parent_rows.length)
+					return
+
+		// compute allowed row range in which to move the rows.
+		let ri1 = 0
+		let ri2 = e.rows.length
+		if (!e.can_change_parent && e.parent_field && parent_row) {
+			let parent_ri = e.row_index(parent_row)
+			ri1 = parent_ri + 1
+			ri2 = parent_ri + 1 + e.expanded_child_row_count(parent_ri)
+		}
+		ri2 -= move_n // adjust to after removal.
 
 		let move_rows = e.rows.splice(move_ri1, move_n)
 
-		let state = {}
+		let state = {
+			move_ri1: move_ri1,
+			move_ri2: move_ri2,
+			move_n: move_n,
+			parent_row: parent_row,
+			ri1: ri1,
+			ri2: ri2,
+		}
 
 		state.rows = move_rows
 
 		state.finish = function(insert_ri, parent_row) {
+
+			if (e.row_vals) {
+				let row_vals = e.row_vals.slice()
+				let move_row_vals = row_vals.splice(move_ri1, move_n)
+				row_vals.splice(insert_ri, 0, ...move_row_vals)
+				e.begin_update()
+				let refocus = refocus_state('pk')
+				e.row_vals = row_vals
+				refocus()
+				e.end_update()
+				return
+			}
 
 			e.rows.splice(insert_ri, 0, ...move_rows)
 
@@ -2351,7 +2393,7 @@ function nav_widget(e) {
 
 			update_row_index()
 
-			e.focused_row_index = insert_ri + (move_ri1 == ri1 ? 0 : move_n - 1)
+			e.focused_row_index = insert_ri + (move_ri1 == focused_ri ? 0 : move_n - 1)
 
 			if (e.index_field) {
 
@@ -2367,7 +2409,7 @@ function nav_widget(e) {
 
 			}
 
-			e.update({vals: true, state: true})
+			e.update({rows: true})
 
 		}
 
@@ -2513,7 +2555,7 @@ function nav_widget(e) {
 			for (let fi = 0; fi < e.all_fields.length; fi++) {
 				let field = e.all_fields[fi]
 				let val = row[fi]
-				if (val !== field.server_default)
+				if (val !== field.default)
 					t.values[field.name] = val
 			}
 			rows.push(t)

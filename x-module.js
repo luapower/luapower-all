@@ -12,8 +12,8 @@ function xmodule(opt) {
 
 	e.slots = opt.slots || {} // {name -> {color:, }}
 	e.modules = opt.modules || {} // {name -> {icon:, }}
-	e.layers = {} // {name -> {name:, props: {gid -> {prop -> val}}}}
-	e.widgets = {} // {gid -> e}
+	e.layers = {} // {name -> {name:, props: {gid -> {k -> v}}}}
+	e.widgets = {} // {gid -> [e1,...]}
 	e.selected_module = null
 	e.selected_slot = null
 	e.active_layers = {} // {'module:slot' -> layer} in override order
@@ -34,7 +34,8 @@ function xmodule(opt) {
 		}
 
 		for (let gid in e.widgets)
-			update_widget(e.widgets[gid])
+			for (let te of e.widgets[gid])
+				update_widget(te)
 
 		document.fire('prop_layer_slots_changed')
 	}
@@ -75,35 +76,38 @@ function xmodule(opt) {
 		let pv = e.prop_vals(te.gid).__pv
 		let pv0 = attr(te, '__pv0') // initial vals of overriden props.
 		// restore prop vals that are not present in this override.
-		for (let prop in pv0)
-			if (!(prop in pv)) {
-				te.set_prop(prop, pv0[prop])
-				delete pv0[prop]
+		for (let k in pv0)
+			if (!(k in pv)) {
+				te.set_prop(k, pv0[k])
+				delete pv0[k]
 			}
 		// apply this override, saving current vals that were not saved before.
-		for (let prop in pv) {
-			if (!(prop in pv0))
-				pv0[prop] = te.get_prop(prop)
-			te.set_prop(prop, pv[prop])
+		for (let k in pv) {
+			if (!(k in pv0))
+				pv0[k] = te.get_prop(k)
+			te.set_prop(k, pv[k])
 		}
 		te.end_update()
 		te.xmodule_updating_props = false
 	}
 
 	document.on('widget_attached', function(te) {
-		e.widgets[te.gid] = te
+		array_attr(e.widgets, te.gid).push(te)
 		update_widget(te)
 		document.fire('widget_tree_changed')
 	})
 
 	document.on('widget_detached', function(te) {
-		delete e.widgets[te.gid]
+		let t = e.widgets[te.gid]
+		t.remove_value(te)
+		if (!t.length)
+			delete e.widgets[te.gid]
 		document.fire('widget_tree_changed')
 	})
 
 	// saving prop vals into prop layers --------------------------------------
 
-	document.on('prop_changed', function(te, k, v, v0, slot) {
+	e.set_prop = function(te, k, v, v0, slot) {
 		if (!te.gid) return
 		if (te.xmodule_updating_props) return
 		slot = e.selected_slot || slot || 'base'
@@ -122,7 +126,7 @@ function xmodule(opt) {
 		layer.modified = true
 		let pv0 = attr(te, '__pv0')
 		if (v === undefined) { // `undefined` signals removal.
-			if (t[k] !== undefined) {
+			if (k in t) {
 				print('prop-val-deleted', '['+module+':'+slot+'='+layer.name+']', te.gid, k)
 				delete t[k]
 				delete pv0[k] // no need to keep this anymore.
@@ -134,6 +138,22 @@ function xmodule(opt) {
 			print('prop-val-set', '['+module+':'+slot+'='+layer.name+']', te.gid, k, json(v))
 		}
 
+		// synchronize other instances of this gid.
+		for (let te1 of e.widgets[te.gid]) {
+			if (te1 != te) {
+				te1.xmodule_updating_props = true
+				let pv0 = attr(te1, '__pv0')
+
+				if (!(k in pv0)) // save current val if it wasn't saved before.
+					pv0[k] = te1.get_prop(k)
+				te1.set_prop(k, v)
+				te1.xmodule_updating_props = false
+			}
+		}
+	}
+
+	document.on('prop_changed', function(te, k, v, v0, slot) {
+		e.set_prop(te, k, v, v0, slot)
 	})
 
 	// loading prop layers and assigning to slots -----------------------------
@@ -141,7 +161,8 @@ function xmodule(opt) {
 	e.update_widgets = function(gids1, gids2) {
 		for (let gid in e.widgets)
 			if ((gids1 && gids1[gid]) || (gids2 && gids2[gid]))
-				update_widget(e.widgets[gid])
+				for (let te of e.widgets[gid])
+					update_widget(te)
 	}
 
 	e.set_prop_layer = function(slot, layer, opt) {
@@ -228,7 +249,7 @@ function xmodule(opt) {
 
 	// gid-based dynamic prop binding -----------------------------------------
 
-	e.resolve = gid => e.widgets[gid]
+	e.resolve = gid => e.widgets[gid][0]
 
 	e.nav_editor = function(...options) {
 		return widget_select_editor(e.widgets, e => e.isnav, ...options)
@@ -454,11 +475,10 @@ function widget_select_editor(widgets_gid_map, filter, ...options) {
 	}, ...options)
 	function reset_nav() {
 		let rows = []
-		for (let gid in widgets_gid_map) {
-			let te = widgets_gid_map[gid]
-			if (te.can_select_widget && filter(te))
-				rows.push([gid])
-		}
+		for (let gid in widgets_gid_map)
+			for (let te of widgets_gid_map[gid])
+				if (te.can_select_widget && filter(te))
+					rows.push([gid])
 		dd.picker.rowset.rows = rows
 		dd.picker.reset()
 	}
