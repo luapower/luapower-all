@@ -137,11 +137,12 @@ component('x-listbox', function(e) {
 				e.do_update_item(e.at[i], e.rows[i])
 
 		if (opt.rows || opt.state)
-			for (let i = 0; i < e.rows.length; i++) {
-				let item = e.at[i]
-				item.class('focused', e.focused_row_index == i)
-				item.class('selected', !!e.selected_rows.get(e.rows[i]))
-			}
+			if (e.at.length)
+				for (let i = 0; i < e.rows.length; i++) {
+					let item = e.at[i]
+					item.class('focused', e.focused_row_index == i)
+					item.class('selected', !!e.selected_rows.get(e.rows[i]))
+				}
 
 		if (opt.scroll_to_cell)
 			e.scroll_to_cell(...opt.scroll_to_cell)
@@ -350,7 +351,8 @@ component('x-list-dropdown', function(e) {
 	init = e.init
 	e.init = function() {
 
-		e.picker = e.picker || listbox(update({
+		e.picker = e.picker || component.create(update({
+			type: 'listbox',
 			items: e.items,
 			rowset: e.rowset,
 			rowset_name: e.rowset_name,

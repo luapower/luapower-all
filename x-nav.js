@@ -716,7 +716,7 @@ function nav_widget(e) {
 			return
 		if (!(nav && params))
 			return
-		nav.on('focused_row_changed', params_changed, on)
+		nav.on('selected_rows_changed', params_changed, on)
 		for (let param of params.split(/\s+/))
 			nav.on('focused_row_cell_val_changed_for_'+(param.replace(/[^=]*=/, '')), params_changed, on)
 	}
@@ -746,17 +746,21 @@ function nav_widget(e) {
 		} else if (!(e.param_nav && e.param_nav.focused_row)) {
 			e.param_vals = false
 		} else {
-			e.param_vals = {}
-			for (let s of e.params.split(/\s+/)) {
-				let p = s.split('=')
-				let param = p && p[0] || s
-				let col = p && (p[1] || p[0]) || param
-				let field = e.param_nav.all_fields[col]
-				if (!field)
-					print('param nav is missing col', col)
-				let row = e.param_nav.focused_row
-				let v = field && row ? e.param_nav.cell_val(row, field) : null
-				e.param_vals[param] = v
+			let params = e.params.split(/\s+/)
+			e.param_vals = []
+			for (let [row] of e.param_nav.selected_rows) {
+				let vals = {}
+				for (let s of params) {
+					let p = s.split('=')
+					let param = p && p[0] || s
+					let col = p && (p[1] || p[0]) || param
+					let field = e.param_nav.all_fields[col]
+					if (!field)
+						print('param nav is missing col', col)
+					let v = field && row ? e.param_nav.cell_val(row, field) : null
+					vals[param] = v
+				}
+				e.param_vals.push(vals)
 			}
 		}
 	}
@@ -843,12 +847,13 @@ function nav_widget(e) {
 				|| row.parent_row == e.selected_rows.keys().next().value.parent_row)
 	}
 
-	e.first_focusable_cell = function(ri, fi, rows, cols, options) {
+	e.first_focusable_cell = function(ri, fi, rows, cols, opt) {
 
-		let editable = options && options.editable // skip non-editable cells.
-		let must_move = options && options.must_move // return only if moved.
-		let must_not_move_row = options && options.must_not_move_row // return only if row not moved.
-		let must_not_move_col = options && options.must_not_move_col // return only if col not moved.
+		opt = opt || empty
+		let editable = opt.editable // skip non-editable cells.
+		let must_move = opt.must_move // return only if moved.
+		let must_not_move_row = opt.must_not_move_row // return only if row not moved.
+		let must_not_move_col = opt.must_not_move_col // return only if col not moved.
 
 		rows = or(rows, 0) // by default find the first focusable row.
 		cols = or(cols, 0) // by default find the first focusable col.
@@ -950,6 +955,7 @@ function nav_widget(e) {
 		let invert_selection = ev.invert_selection && e.can_select_multiple
 
 		let opt = update({editable: editable}, ev)
+
 		;[ri, fi] = e.first_focusable_cell(ri, fi, rows, cols, opt)
 
 		// failure to find cell means cancel.
@@ -1616,8 +1622,19 @@ function nav_widget(e) {
 			return return_false
 		let expr = ['&&']
 		if (e.param_vals) {
-			for (let k in e.param_vals)
-				expr.push(['===', k, e.param_vals[k]])
+			if (e.param_vals.length == 1) {
+				for (let k in e.param_vals[0])
+					expr.push(['===', k, e.param_vals[0][k]])
+			} else {
+				let or_expr = ['||']
+				for (let vals of e.param_vals) {
+					let and_expr = ['&&']
+					for (let k in vals)
+						and_expr.push(['===', k, vals[k]])
+					or_expr.push(and_expr.length > 1 ? and_expr : and_expr[1])
+				}
+				expr.push(or_expr)
+			}
 		}
 		for (let field of e.all_fields)
 			if (field.exclude_vals)
@@ -2136,7 +2153,7 @@ function nav_widget(e) {
 			for (let fi = 0; fi < e.all_fields.length; fi++) {
 				let field = e.all_fields[fi]
 				let val = isobject(vals) ? vals[field.name] : vals && vals[fi]
-				let param_val = e.param_vals && e.param_vals[field.name]
+				let param_val = e.param_vals && e.param_vals[0][field.name]
 				row[fi] = or(or(val, param_val), field.default)
 			}
 			row.is_new = true
@@ -2998,18 +3015,37 @@ function nav_widget(e) {
 // ---------------------------------------------------------------------------
 
 component('x-bare-nav', function(e) {
+
 	nav_widget(e)
+
 	e.scroll_to_cell = noop
 	e.do_update_cell_state = noop
 	e.do_update_row_state = noop
+
 	let init = e.init
 	e.init = function() {
 		init()
 		e.bind(true)
 	}
+
 	e.free = function() {
 		e.bind(false)
 	}
+
+	let val_widget_do_update = e.do_update
+	e.do_update = function(opt) {
+		if (!opt) {
+			val_widget_do_update()
+			return
+		}
+		if (!e.attached)
+			return
+		if (opt.reload) {
+			e.reload()
+			return
+		}
+	}
+
 })
 
 // ---------------------------------------------------------------------------
@@ -3024,7 +3060,7 @@ global_val_nav = function() {
 			rows: [[]],
 		},
 	})
-	nav.focus_cell(true, true)
+	nav.focus_cell(true, false)
 	return nav
 }
 
@@ -3059,8 +3095,8 @@ global_val_nav = function() {
 		return String(v)
 	}
 
-	all_field_types.editor = function(...options) {
-		return input({nolabel: true}, ...options)
+	all_field_types.editor = function(...opt) {
+		return input({nolabel: true}, ...opt)
 	}
 
 	all_field_types.to_text = function(v) {
@@ -3093,11 +3129,11 @@ global_val_nav = function() {
 			}
 	}
 
-	number.editor = function(...options) {
+	number.editor = function(...opt) {
 		return spin_input(update({
 			nolabel: true,
 			button_placement: 'left',
-		}, ...options))
+		}, ...opt))
 	}
 
 	number.from_text = function(s) {
@@ -3129,12 +3165,12 @@ global_val_nav = function() {
 	date.date_format =
 		{weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }
 
-	date.editor = function(...options) {
+	date.editor = function(...opt) {
 		return date_dropdown(update({
 			nolabel: true,
 			align: 'right',
 			mode: 'fixed',
-		}, ...options))
+		}, ...opt))
 	}
 
 	// datetime
@@ -3160,12 +3196,12 @@ global_val_nav = function() {
 	datetime.date_format =
 		{weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }
 
-	datetime.editor = function(...options) {
+	datetime.editor = function(...opt) {
 		return date_dropdown(update({
 			nolabel: true,
 			align: 'right',
 			mode: 'fixed',
-		}, ...options))
+		}, ...opt))
 	}
 
 	// booleans
@@ -3185,10 +3221,10 @@ global_val_nav = function() {
 		return val ? this.true_text : this.false_text
 	}
 
-	bool.editor = function(...options) {
+	bool.editor = function(...opt) {
 		return checkbox(update({
 			center: true,
-		}, ...options))
+		}, ...opt))
 	}
 
 	// enums
