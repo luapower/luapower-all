@@ -34,7 +34,7 @@ rowset field attributes:
 		client_default : default value that new rows are initialized with.
 		default        : default value that the server sets for new rows.
 		editable       : allow modifying (true).
-		editor         : f() -> editor instance
+		editor         : f({nav:, col:}, ...opt) -> editor instance
 		from_text      : f(s) -> v
 		to_text        : f(v) -> s
 		enum_values    : [v1, ...]
@@ -60,8 +60,9 @@ rowset field attributes:
 		empty_text     : display value for ''
 
 	vlookup:
-		lookup_nav     : nav to look up values of this field into
-		lookup_col     : field in lookup_nav that matches this field
+		lookup_nav     : nav to look up values of this field into.
+		lookup_nav_gid : nav gid for creating lookup_nav.
+		lookup_col     : field in lookup_nav that matches this field.
 		display_col    : field in lookup_nav to use as display_val of this field.
 		lookup_failed_display_val : f(v) -> s; what to use when lookup fails.
 
@@ -1948,6 +1949,7 @@ function nav_widget(e) {
 				nav: e,
 				col: field.name,
 				can_select_widget: false,
+				nolabel: true,
 			}, ...opt)
 			if (!e.editor)
 				return
@@ -2065,6 +2067,11 @@ function nav_widget(e) {
 
 	function bind_lookup_navs(on) {
 		for (let field of e.all_fields) {
+			let ln_gid = field.lookup_nav_gid
+			if (ln_gid) {
+				field.lookup_nav = component.create(ln_gid)
+				field.lookup_nav.gid = null // make changes to its props non-persistent.
+			}
 			let ln = field.lookup_nav
 			if (ln) {
 				if (on && !field.lookup_nav_loaded) {
@@ -2102,7 +2109,7 @@ function nav_widget(e) {
 			if (lf) {
 				let row = ln.lookup(lf, v)
 				if (row)
-					return ln.display_val(row, field.display_field)
+					return ln.cell_display_val(row, field.display_field)
 			}
 			return field.lookup_failed_display_val(v)
 		} else
@@ -3096,7 +3103,14 @@ global_val_nav = function() {
 	}
 
 	all_field_types.editor = function(...opt) {
-		return input({nolabel: true}, ...opt)
+		if (this.lookup_nav) {
+			this.lookup_nav.val_col     = this.lookup_col
+			this.lookup_nav.display_col = this.display_col
+			return lookup_dropdown(update({
+					picker: this.lookup_nav,
+				}, ...opt))
+		}
+		return input(...opt)
 	}
 
 	all_field_types.to_text = function(v) {
@@ -3131,7 +3145,6 @@ global_val_nav = function() {
 
 	number.editor = function(...opt) {
 		return spin_input(update({
-			nolabel: true,
 			button_placement: 'left',
 		}, ...opt))
 	}
@@ -3167,7 +3180,6 @@ global_val_nav = function() {
 
 	date.editor = function(...opt) {
 		return date_dropdown(update({
-			nolabel: true,
 			align: 'right',
 			mode: 'fixed',
 		}, ...opt))
@@ -3198,7 +3210,6 @@ global_val_nav = function() {
 
 	datetime.editor = function(...opt) {
 		return date_dropdown(update({
-			nolabel: true,
 			align: 'right',
 			mode: 'fixed',
 		}, ...opt))
@@ -3234,7 +3245,6 @@ global_val_nav = function() {
 
 	enm.editor = function(...opt) {
 		return list_dropdown(update({
-			nolabel: true,
 			items: this.enum_values,
 			mode: 'fixed',
 			val_col: 0,
@@ -3252,7 +3262,6 @@ global_val_nav = function() {
 
 	color.editor = function(...opt) {
 		return color_dropdown(update({
-			nolabel: true,
 			mode: 'fixed',
 		}, ...opt))
 	}
@@ -3268,7 +3277,6 @@ global_val_nav = function() {
 
 	icon.editor = function(...opt) {
 		return icon_dropdown(update({
-			nolabel: true,
 			mode: 'fixed',
 		}, ...opt))
 	}

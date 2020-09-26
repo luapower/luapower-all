@@ -44,6 +44,7 @@
 		s.upper()
 		s.lower()
 	arrays:
+		empty_array
 		a.insert(i, v)
 		a.remove(i) -> v
 		a.remove_value(v) -> v
@@ -274,6 +275,8 @@ if (!S)
 	}
 
 // arrays --------------------------------------------------------------------
+
+empty_array = []
 
 method(Array, 'insert', function(i, v) {
 	if (i >= this.length)

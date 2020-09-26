@@ -107,39 +107,40 @@ function xmodule(opt) {
 
 	// saving prop vals into prop layers --------------------------------------
 
-	e.set_prop = function(te, k, v, v0, slot) {
-		if (!te.gid) return
-		if (te.xmodule_updating_props) return
+	e.set_val = function(te, gid, k, v, v0, slot, module, serialize) {
 		slot = e.selected_slot || slot || 'base'
 		if (slot == 'none')
 			return
-		let module = e.selected_module || te.module
+		module = e.selected_module || module
 		let layer = e.active_layers[module+':'+slot]
 		if (!layer) {
-			print('prop-val-lost', '['+module+':'+slot+']', te.gid, k, json(v))
+			print('prop-val-lost', '['+module+':'+slot+']', gid, k, json(v))
 			return
 		}
-		v = te.serialize_prop(k, v)
-		let t = attr(layer.props, te.gid)
+		v = serialize(k, v)
+		let t = attr(layer.props, gid)
 		if (t[k] === v) // value already stored.
 			return
 		layer.modified = true
-		let pv0 = attr(te, '__pv0')
+		let pv0 = te && attr(te, '__pv0')
 		if (v === undefined) { // `undefined` signals removal.
 			if (k in t) {
-				print('prop-val-deleted', '['+module+':'+slot+'='+layer.name+']', te.gid, k)
+				print('prop-val-deleted', '['+module+':'+slot+'='+layer.name+']', gid, k)
 				delete t[k]
-				delete pv0[k] // no need to keep this anymore.
+				if (pv0)
+					delete pv0[k] // no need to keep this anymore.
 			}
 		} else {
-			if (!(k in pv0)) // save current val if it wasn't saved before.
-				pv0[k] = v0
+			if (pv0)
+				if (!(k in pv0)) // save current val if it wasn't saved before.
+					pv0[k] = v0
 			t[k] = v
-			print('prop-val-set', '['+module+':'+slot+'='+layer.name+']', te.gid, k, json(v))
+			print('prop-val-set', '['+module+':'+slot+'='+layer.name+']', gid, k, json(v))
 		}
 
 		// synchronize other instances of this gid.
-		for (let te1 of e.widgets[te.gid]) {
+		let widgets = e.widgets[gid] || empty_array
+		for (let te1 of widgets) {
 			if (te1 != te) {
 				te1.xmodule_updating_props = true
 				let pv0 = attr(te1, '__pv0')
@@ -153,7 +154,9 @@ function xmodule(opt) {
 	}
 
 	document.on('prop_changed', function(te, k, v, v0, slot) {
-		e.set_prop(te, k, v, v0, slot)
+		if (!te.gid) return
+		if (te.xmodule_updating_props) return
+		e.set_val(te, te.gid, k, v, v0, slot, te.module, te.serialize_prop)
 	})
 
 	// loading prop layers and assigning to slots -----------------------------

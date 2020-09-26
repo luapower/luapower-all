@@ -828,6 +828,31 @@ component('x-grid', function(e) {
 		e.fire('val_picked', {input: e})
 	}
 
+	e.picker_options = function(e) {
+		return {
+			gid: e.gid && e.gid + '.dropdown',
+			rowset: e.rowset,
+			rowset_name: e.rowset_name,
+			nav: e.nav,
+			col: e.col,
+			val_col: e.val_col,
+			display_col: e.display_col,
+			can_edit: false,
+			can_focus_cells: false,
+			auto_focus_first_cell: false,
+			enable_context_menu: false,
+			auto_w: true,
+			auto_h: true,
+		}
+	}
+
+	e.init_as_picker = function() {
+		e.begin_update()
+		update(e, e.picker_options(e.dropdown))
+		e.update({sizes: true})
+		e.end_update()
+	}
+
 	// vgrid header resizing --------------------------------------------------
 
 	function ht_header_resize(mx, my, hit) {
@@ -2060,21 +2085,7 @@ component('x-grid-dropdown', function(e) {
 
 	init = e.init
 	e.init = function() {
-		e.picker = grid(update({
-			gid: e.gid && e.gid + '.dropdown',
-			rowset: e.rowset,
-			rowset_name: e.rowset_name,
-			nav: e.nav,
-			col: e.col,
-			val_col: e.val_col,
-			display_col: e.display_col,
-			can_edit: false,
-			can_focus_cells: false,
-			auto_focus_first_cell: false,
-			enable_context_menu: false,
-			auto_w: true,
-			auto_h: true,
-		}, e.grid))
+		e.picker = e.picker || component.create(update(e.picker_options(e), e.grid))
 		init()
 	}
 

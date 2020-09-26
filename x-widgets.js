@@ -121,7 +121,7 @@ function component(tag, cons) {
 		let assign_gid = opt.gid === true
 		if (assign_gid) { // assign new gid.
 			opt.gid = xmodule.next_gid(opt.module)
-		} else if (opt.gid && !opt.type) { // put prop_vals on top of instance options.
+		} else if (opt.gid && !opt.__pv) { // put prop_vals on top of instance options.
 			update(opt, xmodule.prop_vals(opt.gid))
 		}
 		component_prop_system(e, opt.props)
@@ -2211,6 +2211,7 @@ component('x-dropdown', function(e) {
 	}
 
 	e.init = function() {
+		e.picker = component.create(e.picker)
 		e.picker.dropdown = e
 		e.picker.nav = e.nav
 		e.picker.col = e.col
@@ -2218,6 +2219,8 @@ component('x-dropdown', function(e) {
 		e.picker.can_select_widget = false
 		e.picker.on('val_picked', picker_val_picked)
 		e.picker.on('keydown'   , picker_keydown)
+		if (e.picker.init_as_picker)
+			e.picker.init_as_picker()
 
 		let picker_do_update = e.picker.do_update
 		e.picker.do_update = function(opt) {
@@ -2443,6 +2446,21 @@ function nav_dropdown_widget(e) {
 	e.prop('rowset_name', {store: 'var', type: 'rowset'})
 
 }
+
+// ---------------------------------------------------------------------------
+// lookup dropdown (for field editors of fields with lookup_nav_gid)
+// ---------------------------------------------------------------------------
+
+component('x-lookup-dropdown', function(e) {
+
+	nav_dropdown_widget(e)
+
+	init = e.init
+	e.init = function() {
+		init()
+	}
+
+})
 
 // ---------------------------------------------------------------------------
 // calendar widget
