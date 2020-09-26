@@ -336,7 +336,7 @@ function nav_widget(e) {
 			let row = []
 			for (let fi = 0; fi < e.all_fields.length; fi++) {
 				let field = e.all_fields[fi]
-				row[fi] = strict_or(vals[field.name], or(field.default, null))
+				row[fi] = strict_or(vals[field.name], field.default)
 			}
 			rows.push(row)
 		}
@@ -1611,7 +1611,7 @@ function nav_widget(e) {
 	}
 
 	function row_filter() {
-		e.is_filtered = true
+		e.is_filtered = false
 		if (e.param_vals === false)
 			return return_false
 		let expr = ['&&']
@@ -1621,10 +1621,11 @@ function nav_widget(e) {
 		}
 		for (let field of e.all_fields)
 			if (field.exclude_vals)
-				for (let v of field.exclude_vals)
+				for (let v of field.exclude_vals) {
 					expr.push(['!==', field.name, v])
-		e.is_filtered = expr.length > 1
-		return e.is_filtered ? expr_filter(expr) : return_true
+					e.is_filtered = true
+				}
+		return expr.length > 1 ? expr_filter(expr) : return_true
 	}
 
 	// exclude filter UI ------------------------------------------------------
@@ -2136,8 +2137,7 @@ function nav_widget(e) {
 				let field = e.all_fields[fi]
 				let val = isobject(vals) ? vals[field.name] : vals && vals[fi]
 				let param_val = e.param_vals && e.param_vals[field.name]
-				let default_val = field.default
-				row[fi] = or(or(or(val, param_val), default_val), null)
+				row[fi] = or(or(val, param_val), field.default)
 			}
 			row.is_new = true
 			e.all_rows.push(row)
@@ -2373,14 +2373,38 @@ function nav_widget(e) {
 		state.finish = function(insert_ri, parent_row) {
 
 			if (e.row_vals) {
-				let row_vals = e.row_vals.slice()
+
+				let row_vals
+				if (e.param_vals && !e.rowset_url) {
+					// client-side master-detail: move visible row_vals to index 0
+					// so that move_ri1, move_ri2 and insert_ri match.
+					function match_param_vals(row_vals) {
+						for (let k in e.param_vals)
+							if (strict_or(row_vals[k], e.all_fields[k].default) !== e.param_vals[k])
+								return false
+						return true
+					}
+					let t1 = []
+					let t2 = []
+					for (let vals of e.row_vals)
+						if (match_param_vals(vals))
+							t1.push(vals)
+						else
+							t2.push(vals)
+					row_vals = [...t1, ...t2]
+				} else {
+					row_vals = e.row_vals.slice()
+				}
+
 				let move_row_vals = row_vals.splice(move_ri1, move_n)
 				row_vals.splice(insert_ri, 0, ...move_row_vals)
+
 				e.begin_update()
 				let refocus = refocus_state('pk')
 				e.row_vals = row_vals
 				refocus()
 				e.end_update()
+
 				return
 			}
 
@@ -2744,7 +2768,7 @@ function nav_widget(e) {
 			let vals = {}
 			for (let field of e.all_fields) {
 				let v = e.cell_val(row, field)
-				if (v != null)
+				if (v !== field.default)
 					vals[field.name] = v
 			}
 			rows.push(vals)
@@ -3015,6 +3039,7 @@ global_val_nav = function() {
 	}
 
 	all_field_types = {
+		default: null,
 		w: 100,
 		min_w: 22,
 		max_w: 2000,
