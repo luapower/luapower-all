@@ -8,6 +8,8 @@ function xmodule(opt) {
 	let e = {}
 	xmodule = e // singleton.
 
+	xmodule_rowsets(e)
+
 	let generation = 1
 
 	e.slots = opt.slots || {} // {name -> {color:, }}
@@ -54,7 +56,7 @@ function xmodule(opt) {
 	}
 
 	e.init_widget = function(te) {
-		te.xmodule_updating_props = true
+		te.xmodule_noupdate = true
 		te.begin_update()
 		let pv = te.__pv // the props set via prop_vals().
 		te.__pv = null // don't need them after this.
@@ -64,14 +66,14 @@ function xmodule(opt) {
 		for (let k in pv)
 			te.set_prop(k, pv[k])
 		te.end_update()
-		te.xmodule_updating_props = false
+		te.xmodule_noupdate = false
 	}
 
 	function update_widget(te) {
 		if (te.prop_layers_generation == generation)
 			return
 		te.prop_layers_generation = generation
-		te.xmodule_updating_props = true
+		te.xmodule_noupdate = true
 		te.begin_update()
 		let pv = e.prop_vals(te.gid).__pv
 		let pv0 = attr(te, '__pv0') // initial vals of overriden props.
@@ -88,7 +90,7 @@ function xmodule(opt) {
 			te.set_prop(k, pv[k])
 		}
 		te.end_update()
-		te.xmodule_updating_props = false
+		te.xmodule_noupdate = false
 	}
 
 	document.on('widget_attached', function(te) {
@@ -142,20 +144,20 @@ function xmodule(opt) {
 		let widgets = e.widgets[gid] || empty_array
 		for (let te1 of widgets) {
 			if (te1 != te) {
-				te1.xmodule_updating_props = true
+				te1.xmodule_noupdate = true
 				let pv0 = attr(te1, '__pv0')
 
 				if (!(k in pv0)) // save current val if it wasn't saved before.
 					pv0[k] = te1.get_prop(k)
 				te1.set_prop(k, v)
-				te1.xmodule_updating_props = false
+				te1.xmodule_noupdate = false
 			}
 		}
 	}
 
 	document.on('prop_changed', function(te, k, v, v0, slot) {
 		if (!te.gid) return
-		if (te.xmodule_updating_props) return
+		if (te.xmodule_noupdate) return
 		e.set_val(te, te.gid, k, v, v0, slot, te.module, te.serialize_prop)
 	})
 
@@ -234,6 +236,7 @@ function xmodule(opt) {
 				},
 			})
 			e.layers[name] = t
+			e.create_rowsets(t.props)
 		}
 		return t
 	}

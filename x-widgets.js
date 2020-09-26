@@ -132,10 +132,10 @@ function component(tag, cons) {
 		cons(e)
 		e.initialized = false
 		e.begin_update()
-		e.xmodule_updating_props = true
+		e.xmodule_noupdate = true
 		for (let k in opt)
 			e.set_prop(k, opt[k])
-		e.xmodule_updating_props = false
+		e.xmodule_noupdate = false
 		if (e.gid)
 			xmodule.init_widget(e)
 		e.end_update()
@@ -2211,7 +2211,11 @@ component('x-dropdown', function(e) {
 	}
 
 	e.init = function() {
+
 		e.picker = component.create(e.picker)
+
+		e.picker.xmodule_noupdate = true
+
 		e.picker.dropdown = e
 		e.picker.nav = e.nav
 		e.picker.col = e.col
@@ -2219,6 +2223,7 @@ component('x-dropdown', function(e) {
 		e.picker.can_select_widget = false
 		e.picker.on('val_picked', picker_val_picked)
 		e.picker.on('keydown'   , picker_keydown)
+
 		if (e.picker.init_as_picker)
 			e.picker.init_as_picker()
 
@@ -2235,6 +2240,7 @@ component('x-dropdown', function(e) {
 			e.val_div.set(empty ? H('&nbsp;') : text)
 		}
 
+		e.picker.xmodule_noupdate = false
 	}
 
 	e.on('bind', function(on) {

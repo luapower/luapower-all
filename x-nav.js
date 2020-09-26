@@ -361,6 +361,12 @@ function nav_widget(e) {
 	}
 	e.prop('rowset_name', {store: 'var', type: 'rowset'})
 
+	e.set_rowset_gid = function(v) {
+		e.rowset = xmodule.rowset(v)
+		e.reload()
+	}
+	e.prop('rowset_gid', {store: 'var', type: 'rowset'})
+
 	// fields array matching 1:1 to row contents ------------------------------
 
 	let convert_field_attr = {}
@@ -1946,6 +1952,9 @@ function nav_widget(e) {
 	e.do_create_editor = function(field, ...opt) {
 		if (!field.editor_instance) {
 			e.editor = field.editor({
+				// TODO: use original gid as template but
+				// load/save to this gid after instantiation.
+				//gid: e.gid && e.gid+'.editor.'+field.name,
 				nav: e,
 				col: field.name,
 				can_select_widget: false,
@@ -2070,7 +2079,9 @@ function nav_widget(e) {
 			let ln_gid = field.lookup_nav_gid
 			if (ln_gid) {
 				field.lookup_nav = component.create(ln_gid)
-				field.lookup_nav.gid = null // make changes to its props non-persistent.
+				field.lookup_nav.gid = null // not saving into the original.
+				field.lookup_nav.hide()
+				e.add(field.lookup_nav)
 			}
 			let ln = field.lookup_nav
 			if (ln) {
@@ -3104,11 +3115,14 @@ global_val_nav = function() {
 
 	all_field_types.editor = function(...opt) {
 		if (this.lookup_nav) {
+			this.lookup_nav.xmodule_noupdate = true
 			this.lookup_nav.val_col     = this.lookup_col
 			this.lookup_nav.display_col = this.display_col
-			return lookup_dropdown(update({
+			let editor = lookup_dropdown(update({
 					picker: this.lookup_nav,
 				}, ...opt))
+			this.lookup_nav.xmodule_noupdate = false
+			return editor
 		}
 		return input(...opt)
 	}
