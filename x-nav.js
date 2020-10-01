@@ -1,7 +1,7 @@
 
 /* ---------------------------------------------------------------------------
-	nav widget mixin
-------------------------------------------------------------------------------
+//	nav widget mixin
+// ---------------------------------------------------------------------------
 
 implements:
 	val widget mixin.
@@ -79,7 +79,7 @@ rowset row attributes:
 	row[error_i]       : error message if cell is invalid.
 	row.error          : error message if row is invalid.
 	row[modified_i]    : value was modified, change not on server yet.
-	row[old_value_i]   : initial value before modifying.
+	row[initial_val_i] : initial value before modifying.
 	row.is_new         : new row, not added on server yet.
 	row.modified       : one or more row cells were modified.
 	row.removed        : removed row, not removed on server yet.
@@ -173,7 +173,7 @@ cell values & state:
 		e.cell_state()
 		e.cell_val()
 		e.cell_input_val()
-		e.cell_old_val()
+		e.cell_initial_val()
 		e.cell_prev_val()
 		e.cell_error()
 		e.cell_modified()
@@ -328,21 +328,6 @@ function nav_widget(e) {
 			init_all()
 		}
 	})
-
-	function rows_from_row_vals() {
-		if (!e.row_vals)
-			return
-		let rows = []
-		for (vals of e.row_vals) {
-			let row = []
-			for (let fi = 0; fi < e.all_fields.length; fi++) {
-				let field = e.all_fields[fi]
-				row[fi] = strict_or(vals[field.name], field.default)
-			}
-			rows.push(row)
-		}
-		return rows
-	}
 
 	e.set_static_rowset = function(rs) {
 		e.rowset = rs
@@ -589,7 +574,7 @@ function nav_widget(e) {
 			e.update({fields: true})
 		}
 
-		e.fire('col_'+k+'_changed_for_'+col)
+		e.fire('col_'+k+'_changed_for_'+col, col, k)
 
 		let attrs = field_prop_attrs[k]
 		let slot = attrs && attrs.slot
@@ -718,14 +703,57 @@ function nav_widget(e) {
 		e.reload()
 	}
 
+	function param_nav_initial_val_changed(master_row, master_field, initial_val, ev) {
+		if (!e.rowset_url && e.row_vals) {
+			// detail nav with client-side rowset: cascade-update forein keys.
+			let prev_initial_val = this.cell_prev_initial_val(master_row, master_field)
+			let col = param_map(e.params).get(master_field.name)
+			let field = e.all_fields[col]
+			for (let row of e.all_rows)
+				if (e.cell_val(row, field) === prev_initial_val)
+					e.set_cell_val(row, field, initial_val)
+			e.save()
+		}
+		e.reload()
+	}
+
+	function param_vals_match(master_nav, e, params, master_row, row) {
+		for (let [master_col, col] of params) {
+			let master_field = master_nav.all_fields[master_col]
+			let master_val = master_nav.cell_initial_val(master_row, master_field)
+			let field = e.all_fields[col]
+			let val = e.cell_val(row, field)
+			if (master_val !== val)
+				return false
+		}
+		return true
+	}
+
+	function param_nav_rows_removed(removed_rows) {
+		if (!e.rowset_url && e.row_vals) {
+			// detail nav with client-side rowset: cascade-remove detail rows.
+			let params = param_map(e.params)
+			let remset = new Set()
+			for (let master_row of removed_rows)
+				for (let row of e.all_rows)
+					if (param_vals_match(this, e, params, master_row, row))
+						remset.add(row)
+			e.remove_rows(remset)
+			e.save()
+			e.reload()
+		}
+	}
+
 	function bind_param_nav_cols(nav, params, on) {
 		if (on && !e.attached)
 			return
 		if (!(nav && params))
 			return
 		nav.on('selected_rows_changed', params_changed, on)
-		for (let param of params.split(/\s+/))
-			nav.on('focused_row_cell_val_changed_for_'+(param.replace(/[^=]*=/, '')), params_changed, on)
+		for (let [col, param] of param_map(params)) {
+			nav.on('cell_initial_val_changed_for_'+col, param_nav_initial_val_changed, on)
+		}
+		nav.on('rows_removed', param_nav_rows_removed, on)
 	}
 
 	function bind_param_nav(on) {
@@ -747,24 +775,31 @@ function nav_widget(e) {
 	}
 	e.prop('params', {store: 'var'})
 
+	function param_map(params) {
+		let m = new Map()
+		for (let s of params.split(/\s+/)) {
+			let p = s.split('=')
+			let param = p && p[0] || s
+			let col = p && (p[1] || p[0]) || param
+			m.set(col, param)
+		}
+		return m
+	}
+
 	function init_param_vals() {
 		if (!e.params) {
 			e.param_vals = null
 		} else if (!(e.param_nav && e.param_nav.focused_row)) {
 			e.param_vals = false
 		} else {
-			let params = e.params.split(/\s+/)
 			e.param_vals = []
 			for (let [row] of e.param_nav.selected_rows) {
 				let vals = {}
-				for (let s of params) {
-					let p = s.split('=')
-					let param = p && p[0] || s
-					let col = p && (p[1] || p[0]) || param
+				for (let [col, param] of param_map(e.params)) {
 					let field = e.param_nav.all_fields[col]
 					if (!field)
 						print('param nav is missing col', col)
-					let v = field && row ? e.param_nav.cell_val(row, field) : null
+					let v = field && row ? e.param_nav.cell_initial_val(row, field) : null
 					vals[param] = v
 				}
 				e.param_vals.push(vals)
@@ -774,9 +809,26 @@ function nav_widget(e) {
 
 	// all rows in load order -------------------------------------------------
 
+	function convert_rows(row_vals) {
+		if (!row_vals)
+			return
+		if (row_vals.length && isarray(row_vals[0])) // already in the right format.
+			return row_vals
+		let rows = []
+		for (vals of row_vals) {
+			let row = []
+			for (let fi = 0; fi < e.all_fields.length; fi++) {
+				let field = e.all_fields[fi]
+				row[fi] = strict_or(vals[field.name], field.default)
+			}
+			rows.push(row)
+		}
+		return rows
+	}
+
 	function init_all_rows() {
 		e.do_update_load_fail(false)
-		e.all_rows = e.attached && e.rowset && (rows_from_row_vals() || e.rowset.rows) || []
+		e.all_rows = e.attached && e.rowset && (convert_rows(e.row_vals) || convert_rows(e.rowset.rows)) || []
 		init_tree()
 		init_rows()
 	}
@@ -1746,16 +1798,16 @@ function nav_widget(e) {
 		if (ev && ev.fire_changed_events === false)
 			return
 		e.fire('cell_state_changed', row, field, prop, val, ev)
-		e.fire('cell_state_changed_for_'+field.name, row, prop, val, ev)
+		e.fire('cell_state_changed_for_'+field.name, row, field, prop, val, ev)
 		e.fire('cell_'+prop+'_changed', row, field, val, ev)
-		e.fire('cell_'+prop+'_changed_for_'+field.name, row, val, ev)
+		e.fire('cell_'+prop+'_changed_for_'+field.name, row, field, val, ev)
 
 		let ri = e.row_index(row)
 		let fi = e.field_index(field)
 		e.do_update_cell_state(ri, fi, prop, val, ev)
 		if (row == e.focused_row) {
-			e.fire('focused_row_cell_state_changed_for_'+field.name, prop, val, ev)
-			e.fire('focused_row_cell_'+prop+'_changed_for_'+field.name, val, ev)
+			e.fire('focused_row_cell_state_changed_for_'+field.name, field, prop, val, ev)
+			e.fire('focused_row_cell_'+prop+'_changed_for_'+field.name, field, val, ev)
 		}
 	}
 
@@ -1773,12 +1825,13 @@ function nav_widget(e) {
 
 	// get/set cell vals and cell & row state ---------------------------------
 
-	e.cell_val       = (row, field) => row[field.val_index]
-	e.cell_input_val = (row, field) => e.cell_state(row, field, 'input_val', row[field.val_index])
-	e.cell_old_val   = (row, field) => e.cell_state(row, field, 'old_val'  , row[field.val_index])
-	e.cell_prev_val  = (row, field) => e.cell_state(row, field, 'prev_val' , row[field.val_index])
-	e.cell_error     = (row, field) => e.cell_state(row, field, 'error')
-	e.cell_modified  = (row, field) => e.cell_state(row, field, 'modified', false)
+	e.cell_val              = (row, field) => row[field.val_index]
+	e.cell_input_val        = (row, field) => e.cell_state(row, field, 'input_val'       , row[field.val_index])
+	e.cell_initial_val      = (row, field) => e.cell_state(row, field, 'initial_val'     , row[field.val_index])
+	e.cell_prev_initial_val = (row, field) => e.cell_state(row, field, 'prev_initial_val', row[field.val_index])
+	e.cell_prev_val         = (row, field) => e.cell_state(row, field, 'prev_val'        , row[field.val_index])
+	e.cell_error            = (row, field) => e.cell_state(row, field, 'error')
+	e.cell_modified         = (row, field) => e.cell_state(row, field, 'modified', false)
 
 	e.pk_vals = (row) => e.pk_fields.map((field) => row[field.val_index])
 
@@ -1862,12 +1915,12 @@ function nav_widget(e) {
 
 		if (val_changed) {
 			let was_modified = e.cell_modified(row, field)
-			let modified = val !== e.cell_old_val(row, field)
+			let modified = val !== e.cell_initial_val(row, field)
 
 			row[field.val_index] = val
 			e.set_cell_state(row, field, 'prev_val', cur_val)
 			if (!was_modified)
-				e.set_cell_state(row, field, 'old_val', cur_val)
+				e.set_cell_state(row, field, 'initial_val', cur_val)
 			let cell_modified_changed = e.set_cell_state(row, field, 'modified', modified, false)
 			let row_modified_changed = modified && (!(ev && ev.row_not_modified))
 				&& e.set_row_state(row, 'modified', true, false)
@@ -1905,11 +1958,13 @@ function nav_widget(e) {
 		let invalid = err != null
 
 		let cur_val = row[field.val_index]
+		let initial_val = e.cell_initial_val(row, field)
+		e.set_cell_state(row, field, 'prev_initial_val', initial_val)
 		let input_val_changed = e.set_cell_state(row, field, 'input_val', val, cur_val)
+		let initial_val_changed = e.set_cell_state(row, field, 'initial_val', val, initial_val)
 		let cell_modified_changed = e.set_cell_state(row, field, 'modified', false, false)
 		let cell_err_changed = e.set_cell_state(row, field, 'error', err)
 		let row_err_changed = e.set_row_state(row, 'error')
-		e.set_cell_state(row, field, 'old_val', val)
 		if (val !== cur_val) {
 			row[field.val_index] = val
 			e.set_cell_state(row, field, 'prev_val', cur_val)
@@ -1917,6 +1972,8 @@ function nav_widget(e) {
 			cell_state_changed(row, field, 'val', val, ev)
 		}
 
+		if (initial_val_changed)
+			cell_state_changed(row, field, 'initial_val', val, ev)
 		if (input_val_changed)
 			cell_state_changed(row, field, 'input_val', val, ev)
 		if (cell_modified_changed)
@@ -2090,11 +2147,11 @@ function nav_widget(e) {
 						field.lookup_field  = ln.all_fields[field.lookup_col]
 						field.display_field = ln.all_fields[field.display_col || ln.name_col]
 						e.fire('display_vals_changed', field)
-						e.fire('display_vals_changed_for_'+field.name)
+						e.fire('display_vals_changed_for_'+field.name, field)
 					}
 					field.lookup_nav_display_vals_changed = function() {
 						e.fire('display_vals_changed', field)
-						e.fire('display_vals_changed_for_'+field.name)
+						e.fire('display_vals_changed_for_'+field.name, field)
 					}
 					field.lookup_nav_loaded()
 				}
@@ -2167,11 +2224,12 @@ function nav_widget(e) {
 
 			let vals = isarray(values) ? values[i] : null
 			let row = []
-			// add server default values or null
+			// set server default values or null.
+			// also set current param values if it's a client-side detail rowset.
 			for (let fi = 0; fi < e.all_fields.length; fi++) {
 				let field = e.all_fields[fi]
 				let val = isobject(vals) ? vals[field.name] : vals && vals[fi]
-				let param_val = e.param_vals && e.param_vals[0][field.name]
+				let param_val = !e.rowset_url && e.param_vals ? e.param_vals[0][field.name] : null
 				row[fi] = or(or(val, param_val), field.default)
 			}
 			row.is_new = true
@@ -2411,8 +2469,8 @@ function nav_widget(e) {
 
 				let row_vals
 				if (e.param_vals && !e.rowset_url) {
-					// client-side master-detail: move visible row_vals to index 0
-					// so that move_ri1, move_ri2 and insert_ri match.
+					// detail nav with client-side rowset: move visible row_vals
+					// to index 0 so that move_ri1, move_ri2 and insert_ri match.
 					function match_param_vals(row_vals) {
 						for (let k in e.param_vals)
 							if (strict_or(row_vals[k], e.all_fields[k].default) !== e.param_vals[k])
@@ -2526,6 +2584,7 @@ function nav_widget(e) {
 		}
 		init_param_vals()
 		if (!e.rowset_url || e.param_vals === false) {
+			// client-side rowset or param vals not available: reset it.
 			e.reset()
 			return
 		}
@@ -2621,7 +2680,7 @@ function nav_widget(e) {
 		} else if (row.removed) {
 			let t = {type: 'remove', values: {}}
 			for (let field of e.pk_fields)
-				t.values[field.name] = e.cell_old_val(row, field)
+				t.values[field.name] = e.cell_initial_val(row, field)
 			rows.push(t)
 		} else if (row.modified) {
 			let t = {type: 'update', values: {}}
@@ -2634,7 +2693,7 @@ function nav_widget(e) {
 			}
 			if (found) {
 				for (let field of e.pk_fields)
-					t.values[field.name+':old'] = e.cell_old_val(row, field)
+					t.values[field.name+':old'] = e.cell_initial_val(row, field)
 				rows.push(t)
 			}
 		}
@@ -2779,16 +2838,9 @@ function nav_widget(e) {
 			e.set_row_error(row, undefined)
 			if (row.removed) {
 				rows_to_remove.push(row)
-			} else if (row.is_new || row.modified) {
+			} else {
 				for (let field of e.all_fields)
-					if (e.set_cell_state(row, field, 'modified', false, false))
-						cell_state_changed(row, field, 'modified', false)
-				let is_new_changed   = e.set_row_state(row, 'is_new'  , false, false)
-				let modified_changed = e.set_row_state(row, 'modified', false, false)
-				if (is_new_changed)
-					row_state_changed(row, 'is_new', false)
-				if (modified_changed)
-					row_state_changed(row, 'modified', false)
+					e.reset_cell_val(row, field, e.cell_val(row, field))
 			}
 		}
 		e.remove_rows(rows_to_remove, {forever: true, refocus: true})
@@ -2800,13 +2852,15 @@ function nav_widget(e) {
 
 		let rows = []
 		for (let row of e.all_rows) {
-			let vals = {}
-			for (let field of e.all_fields) {
-				let v = e.cell_val(row, field)
-				if (v !== field.default)
-					vals[field.name] = v
+			if (!row.removed) {
+				let vals = {}
+				for (let field of e.all_fields) {
+					let v = e.cell_val(row, field)
+					if (v !== field.default)
+						vals[field.name] = v
+				}
+				rows.push(vals)
 			}
-			rows.push(vals)
 		}
 
 		let f = e.set_row_vals

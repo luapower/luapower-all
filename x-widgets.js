@@ -23,7 +23,7 @@ publishes:
 fires:
 	e.'bind' (t|f)
 	document.'global_attached', document.'global_detached'
-	document.'widget_attached', document.'widget_detached'
+	document.'widget_bind'
 ------------------------------------------------------------------------------
 NOTE: the only reason for using this web components "technology" instead
 of creating normal elements is because of connectedCallback and
@@ -81,7 +81,7 @@ function component(tag, cons) {
 				if (this.id)
 					document.fire('global_attached', this, this.id)
 				if (this.gid)
-					document.fire('widget_attached', this)
+					document.fire('widget_bind', this, true)
 				this.end_update()
 
 				if (DEBUG_ATTACH_TIME) {
@@ -98,7 +98,7 @@ function component(tag, cons) {
 				if (this.id)
 					document.fire('global_detached', this, this.id)
 				if (this.gid)
-					document.fire('widget_detached', this)
+					document.fire('widget_bind', this, false)
 			}
 		}
 
@@ -118,31 +118,24 @@ function component(tag, cons) {
 	function init(e, opt) {
 		if (e.initialized)
 			return
-		let assign_gid = opt.gid === true
-		if (assign_gid) { // assign new gid.
-			opt.gid = xmodule.next_gid(opt.module)
-		} else if (opt.gid && !opt.__pv) { // put prop_vals on top of instance options.
-			update(opt, xmodule.prop_vals(opt.gid))
-		}
-		component_prop_system(e, opt.props)
+		props_mixin(e, opt.props)
 		component_deferred_updating(e)
+		e.isinstance = true
 		e.iswidget = true
 		e.type = type
 		e.init = noop
 		cons(e)
 		e.initialized = false
-		e.begin_update()
-		e.xmodule_noupdate = true
-		for (let k in opt)
-			e.set_prop(k, opt[k])
-		e.xmodule_noupdate = false
-		if (e.gid)
-			xmodule.init_widget(e)
-		e.end_update()
+		if (!opt.gid) {
+			e.begin_update()
+			for (let k in opt)
+				e.set_prop(k, opt[k])
+			e.end_update()
+		} else {
+			xmodule.init_instance(e, opt)
+		}
 		e.initialized = true
 		e.init()
-		if (assign_gid)
-			document.fire('prop_changed', e, 'type', e.type, undefined, null)
 	}
 
 	function create(...args) {
@@ -163,15 +156,24 @@ function component(tag, cons) {
 component.types = {} // {type -> create}
 
 component.create = function(e, e0) {
-	if (e instanceof HTMLElement)
+	if (isobject(e) && e.isinstance)
 		return e
 	if (typeof e == 'string') { // e is a gid
 		if (e0 && e0.gid == e)
 			return e0  // already created (called from a prop's `convert()`).
-		e = xmodule.prop_vals(e) // to get e.type
+		let type = xmodule.instance_type(e)
+		if (!type) {
+			print('gid not found', gid)
+			return
+		}
+		e = {gid: e, type: type}
 	}
 	let create = component.types[e.type]
-	return create && create(e)
+	if (!create) {
+		print('component type not found', e.type, e.gid)
+		return
+	}
+	return create(e)
 }
 
 /* ---------------------------------------------------------------------------
@@ -269,7 +271,7 @@ global_widget_resolver = memoize(function(type) {
 	}
 })
 
-function component_prop_system(e, iprops) {
+function props_mixin(e, iprops) {
 
 	/* TODO: use this or scrape it
 	e.bind_ext = function(te, ev, f) {
