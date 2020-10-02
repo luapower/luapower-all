@@ -563,9 +563,23 @@ function cut_selected_widgets() {
 		e.remove_widget()
 }
 
-function paste_copied_widgets(parent_widget) {
-	for (let e of copied_widgets)
-		parent_widget.add_widget(e)
+function paste_copied_widgets() {
+	if (!copied_widgets.size)
+		return
+	if (editing_widget) {
+		editing_widget.add_widgets(copied_widgets)
+		copied_widgets.clear()
+	} else {
+		for (let e of selected_widgets) {
+			let ce = copied_widgets.values().next().value
+			if (!ce)
+				break
+			let pe = e.parent_widget
+			if (pe)
+				pe.replace_child_widget(e, ce)
+			copied_widgets.delete(ce)
+		}
+	}
 }
 
 document.on('keydown', function(key, shift, ctrl) {
@@ -575,6 +589,8 @@ document.on('keydown', function(key, shift, ctrl) {
 		copy_selected_widgets()
 	else if (ctrl && key == 'x')
 		cut_selected_widgets()
+	else if (ctrl && key == 'v')
+		paste_copied_widgets()
 	else if (ctrl && key == 'z')
 		if (shift)
 			redo()
@@ -3060,7 +3076,7 @@ component('x-widget-placeholder', function(e) {
 //   e.child_widgets()
 //   e.remove_child_widget()
 // calls:
-//   e.do_init_items(items)
+//   e.do_init_items()
 //   e.do_remove_item(item)
 // ---------------------------------------------------------------------------
 
@@ -3111,9 +3127,6 @@ widget_items_widget = function(e) {
 				e.do_remove_item(item)
 
 		items = [...items]
-
-		e.do_init_items(items)
-
 		return items
 	}
 
@@ -3124,7 +3137,10 @@ widget_items_widget = function(e) {
 		return t
 	}
 
-	e.set_items = e.update
+	e.set_items = function(items) {
+		e.do_init_items()
+		e.update()
+	}
 
 	e.prop('items', {store: 'var', convert: diff_items, serialize: serialize_items, default: []})
 
@@ -3143,7 +3159,9 @@ widget_items_widget = function(e) {
 
 	// parent-of selectable widget protocol.
 	e.remove_child_widget = function(item) {
-		e.items = [...e.items].remove_value(item)
+		let items = [...e.items]
+		items.remove_value(item)
+		e.items = items
 	}
 
 	// widget-items widget protocol.
@@ -3206,20 +3224,22 @@ component('x-pagelist', function(e) {
 	}
 
 	// widget-items widget protocol.
-	e.do_init_items = function(items) {
+	e.do_init_items = function() {
 
 		let sel_tab = e.selected_tab
 
 		e.header.clear()
-		for (let item of items)
+		for (let item of e.items)
 			add_item(item)
 		e.header.add(e.selection_bar)
 		e.header.add(e.add_button)
 
 		if (sel_tab && sel_tab.parent) // tab was kept
 			select_tab(sel_tab)
-		else
+		else {
+			e.selected_tab = null
 			select_default_tab()
+		}
 	}
 
 	// widget-items widget protocol.

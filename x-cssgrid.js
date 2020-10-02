@@ -13,9 +13,9 @@ component('x-cssgrid', function(e) {
 	e.classes = 'x-widget x-cssgrid'
 
 	// widget-items widget protocol.
-	e.do_init_items = function(items) {
+	e.do_init_items = function() {
 		e.clear()
-		for (let item of items)
+		for (let item of e.items)
 			e.add(item)
 	}
 

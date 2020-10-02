@@ -335,26 +335,9 @@ component('x-listbox', function(e) {
 
 	// picker protocol --------------------------------------------------------
 
-	e.picker_options = function(e) {
-		return {
-			type: 'listbox',
-			gid: e.gid && e.gid + '.picker',
-			items: e.items,
-			rowset: e.rowset,
-			rowset_name: e.rowset_name,
-			nav: e.nav,
-			col: e.col,
-			val_col: e.val_col,
-			display_col: e.display_col,
-			auto_focus_first_cell: false,
-			can_select_multiple: false,
-			can_move_items: false,
-		}
-	}
-
 	e.init_as_picker = function() {
 		e.begin_update()
-		update(e, e.picker_options(e.dropdown))
+		update(e, listbox_picker_options(e.dropdown))
 		e.update()
 		e.end_update()
 	}
@@ -369,6 +352,24 @@ hlistbox = function(...options) {
 // list dropdown
 // ---------------------------------------------------------------------------
 
+function listbox_picker_options(e) {
+	return {
+		type: 'listbox',
+		gid: e.gid && e.gid + '.picker',
+		items: e.items,
+		rowset: e.rowset,
+		rowset_name: e.rowset_name,
+		nav: e.nav,
+		col: e.col,
+		val_col: e.val_col,
+		display_col: e.display_col,
+		auto_focus_first_cell: false,
+		can_select_multiple: false,
+		can_move_items: false,
+	}
+}
+
+
 component('x-list-dropdown', function(e) {
 
 	nav_dropdown_widget(e)
@@ -376,7 +377,7 @@ component('x-list-dropdown', function(e) {
 
 	init = e.init
 	e.init = function() {
-		e.picker = e.picker || component.create(update(e.picker_options(e), e.listbox))
+		e.picker = e.picker || component.create(update(listbox_picker_options(e), e.listbox))
 		e.on('opened', function() {
 			e.picker.scroll_to_focused_cell()
 		})

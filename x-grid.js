@@ -48,7 +48,7 @@ component('x-grid', function(e) {
 
 	// context menu features
 	e.prop('enable_context_menu'           , {store: 'var', type: 'bool', default: true})
-	e.prop('can_change_header_visibility'  , {store: 'var', type: 'bool', default: false})
+	e.prop('can_change_header_visibility'  , {store: 'var', type: 'bool', default: true})
 	e.prop('can_change_filters_visibility' , {store: 'var', type: 'bool', default: true})
 	e.prop('can_change_fields_visibility'  , {store: 'var', type: 'bool', default: true})
 
@@ -106,8 +106,9 @@ component('x-grid', function(e) {
 			let hcell = e.header.at[fi]
 
 			let min_col_w = col_resizing ? hcell._w : field.w
+			let max_col_w = col_resizing ? hcell._w : field.max_w
 			let free_w = total_free_w * (min_col_w / cols_w)
-			let col_w = floor(min_col_w + free_w)
+			let col_w = min(floor(min_col_w + free_w), max_col_w)
 			if (fi == e.fields.length - 1) {
 				let remaining_w = cw - col_x
 				if (total_free_w > 0)
@@ -283,13 +284,6 @@ component('x-grid', function(e) {
 
 	function row_indent(row) {
 		return row.parent_rows ? row.parent_rows.length : 0
-	}
-
-	function set_col_w(fi, w) { // hgrid
-		let field = e.fields[fi]
-		w = clamp(w, field.min_w, field.max_w)
-		e.set_prop(`col.${field.name}.w`, w)
-		e.header.at[fi]._w = w
 	}
 
 	function update_header_w(w) { // vgrid
@@ -828,27 +822,9 @@ component('x-grid', function(e) {
 		e.fire('val_picked', {input: e})
 	}
 
-	e.picker_options = function(e) {
-		return {
-			gid: e.gid && e.gid + '.dropdown',
-			rowset: e.rowset,
-			rowset_name: e.rowset_name,
-			nav: e.nav,
-			col: e.col,
-			val_col: e.val_col,
-			display_col: e.display_col,
-			can_edit: false,
-			can_focus_cells: false,
-			auto_focus_first_cell: false,
-			enable_context_menu: false,
-			auto_w: true,
-			auto_h: true,
-		}
-	}
-
 	e.init_as_picker = function() {
 		e.begin_update()
-		update(e, e.picker_options(e.dropdown))
+		update(e, grid_picker_options(e.dropdown))
 		e.update({sizes: true})
 		e.end_update()
 	}
@@ -919,7 +895,9 @@ component('x-grid', function(e) {
 			mm_col_resize = function(mx, my, hit) {
 				let r = e.cells_ct.rect()
 				let w = mx - r.x - e.header.at[hit.fi]._x - hit.x
-				set_col_w(hit.fi, w)
+				let field = e.fields[hit.fi]
+				field.w = clamp(w, field.min_w, field.max_w)
+				e.header.at[hit.fi]._w = field.w
 				e.update({sizes: true, col_resizing: true})
 			}
 
@@ -937,11 +915,12 @@ component('x-grid', function(e) {
 		e.class('col-resize', true)
 
 		mu_col_resize = function() {
+			let field = e.fields[hit.fi]
 			mm_col_resize = null
 			mu_col_resize = null
 			e.class('col-resizing', false)
 			remove_resize_guides()
-			e.update({sizes: true})
+			e.set_prop(`col.${field.name}.w`, field.w)
 		}
 
 	}
@@ -2078,6 +2057,24 @@ component('x-grid', function(e) {
 // grid dropdown
 // ---------------------------------------------------------------------------
 
+function grid_picker_options(e) {
+	return {
+		gid: e.gid && e.gid + '.dropdown',
+		rowset: e.rowset,
+		rowset_name: e.rowset_name,
+		nav: e.nav,
+		col: e.col,
+		val_col: e.val_col,
+		display_col: e.display_col,
+		can_edit: false,
+		can_focus_cells: false,
+		auto_focus_first_cell: false,
+		enable_context_menu: false,
+		auto_w: true,
+		auto_h: true,
+	}
+}
+
 component('x-grid-dropdown', function(e) {
 
 	nav_dropdown_widget(e)
@@ -2085,7 +2082,7 @@ component('x-grid-dropdown', function(e) {
 
 	init = e.init
 	e.init = function() {
-		e.picker = e.picker || component.create(update(e.picker_options(e), e.grid))
+		e.picker = e.picker || component.create(update(grid_picker_options(e), e.grid))
 		init()
 	}
 

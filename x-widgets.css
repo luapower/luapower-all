@@ -2083,10 +2083,12 @@
 
 /* xmodule stuff ---------------------------------------------------------- */
 
-x-prop-layers-inspector,
-x-prop-inspector,
-x-widget-tree {
+.x-inspector {
 	font-size: 90% !important;
+}
+
+.x-inspector .fa-eye, .x-inspector .fa-chevron, .x-inspector .fa-chevron-right {
+	font-size: 80%;
 }
 
 x-prop-layers-inspector > .x-grid-header {

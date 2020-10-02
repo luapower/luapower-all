@@ -26,6 +26,9 @@ rowset field attributes:
 	rendering:
 		text           : field name for display purposes (auto-generated default).
 		visible        : field can be visible in a grid (true).
+		w              : field's width.
+		min_w          : field's minimum width.
+		max_w          : field's maximum width.
 
 	navigation:
 		focusable      : field can be focused (true).
@@ -1246,14 +1249,15 @@ function nav_widget(e) {
 
 	function lookup_function(field, on) {
 
-		let index
+		let index = new Map() // {val->Set(row)}
 
 		function lookup(v) {
 			return index.get(v)
 		}
 
+		// TODO: multiple equal values.
 		lookup.rebuild = function() {
-			index = new Map()
+			index.clear()
 			let fi = field.val_index
 			for (let row of e.all_rows) {
 				index.set(row[fi], row)
@@ -1309,9 +1313,9 @@ function nav_widget(e) {
 			}
 	}
 
-	function init_parents_for_row(row, parent_rows) {
+	function init_parent_rows_for_row(row, parent_rows) {
 
-		if (!init_parents_for_rows(row.child_rows))
+		if (!init_parent_rows_for_rows(row.child_rows))
 			return // circular ref: abort.
 
 		if (!parent_rows) {
@@ -1336,10 +1340,10 @@ function nav_widget(e) {
 		return parent_rows
 	}
 
-	function init_parents_for_rows(rows) {
+	function init_parent_rows_for_rows(rows) {
 		let parent_rows
 		for (let row of rows) {
-			parent_rows = init_parents_for_row(row, parent_rows)
+			parent_rows = init_parent_rows_for_row(row, parent_rows)
 			if (!parent_rows)
 				return // circular ref: abort.
 		}
@@ -1380,10 +1384,13 @@ function nav_widget(e) {
 			row.child_rows = []
 
 		let p_fi = e.parent_field.val_index
-		for (let row of e.all_rows)
-			add_row_to_tree(row, e.lookup(e.id_field, row[p_fi]))
+		for (let row of e.all_rows) {
+			let parent_id = row[p_fi]
+			let parent_row = parent_id != null ? e.lookup(e.id_field, parent_id) : null
+			add_row_to_tree(row, parent_row)
+		}
 
-		if (!init_parents_for_rows(e.child_rows)) {
+		if (!init_parent_rows_for_rows(e.child_rows)) {
 			// circular refs detected: revert to flat mode.
 			for (let row of e.all_rows) {
 				row.child_rows = null
@@ -1413,7 +1420,7 @@ function nav_widget(e) {
 		remove_row_from_tree(row)
 		add_row_to_tree(row, parent_row)
 
-		assert(init_parents_for_row(row))
+		assert(init_parent_rows_for_row(row))
 	}
 
 	// row collapsing ---------------------------------------------------------
@@ -1525,18 +1532,19 @@ function nav_widget(e) {
 			let i = field.val_index
 			cmps[i] = field_comparator(field)
 			let r = dir == 'desc' ? -1 : 1
+			let err_i = cell_state_val_index('error', field)
 			if (field != e.index_field) {
 				// invalid rows come first
 				s.push('{')
-				s.push('  let v1 = r1.row_error == null')
-				s.push('  let v2 = r2.row_error == null')
+				s.push('  let v1 = r1.error == null')
+				s.push('  let v2 = r2.error == null')
 				s.push('  if (v1 < v2) return -1')
 				s.push('  if (v1 > v2) return  1')
 				s.push('}')
 				// invalid vals come after
 				s.push('{')
-				s.push('  let v1 = !(r1.error && r1.error['+i+'] != null)')
-				s.push('  let v2 = !(r2.error && r2.error['+i+'] != null)')
+				s.push('  let v1 = r1['+err_i+'] == null')
+				s.push('  let v2 = r2['+err_i+'] == null')
 				s.push('  if (v1 < v2) return -1')
 				s.push('  if (v1 > v2) return  1')
 				s.push('}')
@@ -1763,18 +1771,18 @@ function nav_widget(e) {
 		return i
 	}
 
-	function cell_state_val_index(row, key, field) {
+	function cell_state_val_index(key, field) {
 		let fn = e.all_fields.length
 		return fn + 1 + cell_state_key_index(key) * fn + field.val_index
 	}
 
 	e.cell_state = function(row, field, key, default_val) {
-		let v = row[cell_state_val_index(row, key, field)]
+		let v = row[cell_state_val_index(key, field)]
 		return v !== undefined ? v : default_val
 	}
 
 	e.set_cell_state = function(row, field, key, val, default_val) {
-		let vi = cell_state_val_index(row, key, field)
+		let vi = cell_state_val_index(key, field)
 		let old_val = row[vi]
 		if (old_val === undefined)
 			old_val = default_val
@@ -1891,7 +1899,7 @@ function nav_widget(e) {
 	}
 
 	e.row_has_errors = function(row) {
-		if (row.row_error != null)
+		if (row.error != null)
 			return true
 		for (let field of e.all_fields)
 			if (e.cell_error(row, field) != null)
@@ -2246,7 +2254,7 @@ function nav_widget(e) {
 					e.set_cell_val(row, e.parent_field, parent_id,
 						update({fire_changed_events: false}, ev))
 				}
-				assert(init_parents_for_row(row))
+				assert(init_parent_rows_for_row(row))
 			}
 
 			each_lookup('row_added', row)
@@ -3285,7 +3293,7 @@ global_val_nav = function() {
 
 	// booleans
 
-	let bool = {align: 'center', w: 20}
+	let bool = {align: 'center', w: 24, max_w: 24}
 	field_types.bool = bool
 
 	bool.true_text = () => H('<div class="fa fa-check"></div>')
