@@ -296,6 +296,12 @@ method(Array, 'remove_value', function(v) {
 	return v
 })
 
+// move the n elements at i1 to a new position which is an index in the
+// array as it stands after the removal of the elements to be moved.
+method(Array, 'move', function(i1, n, insert_i) {
+	this.splice(insert_i, 0, ...this.splice(i1, n))
+})
+
 property(Array, 'last', {get: function() { return this[this.length-1] } })
 
 // binary search for an insert position that keeps the array sorted.

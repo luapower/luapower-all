@@ -363,6 +363,12 @@ function nav_widget(e) {
 	}
 	e.prop('rowset_gid', {store: 'var', type: 'rowset'})
 
+	// utils ------------------------------------------------------------------
+
+	let fld     = col => typeof col == 'string' ? e.all_fields[col] : col
+	let fldname = col => typeof col == 'string' ? col : col.name
+	let flds    = cols => (typeof cols == 'string' ? cols.split(/\s+/) : cols).map(fld)
+
 	// fields array matching 1:1 to row contents ------------------------------
 
 	let convert_field_attr = {}
@@ -520,11 +526,12 @@ function nav_widget(e) {
 
 		bind_lookup_navs(true)
 
+		e.pk_cols = e.pk_fields.map(fldname).join(' ')
 		e.id_field = e.pk_fields.length == 1 && e.pk_fields[0]
 		e.parent_field = e.id_field && e.all_fields[rs.parent_col]
 		init_tree_field()
 
-		e.val_field = e.all_fields[e.val_col]
+		e.val_field   = e.all_fields[e.val_col]
 		e.index_field = e.all_fields[rs.index_col]
 
 		init_fields()
@@ -847,7 +854,7 @@ function nav_widget(e) {
 		e.rows = []
 		if (e.attached) {
 			let i = 0
-			let passes = row_filter()
+			let passes = all_rows_filter()
 			for (let row of e.all_rows)
 				if (!row.parent_collapsed && passes(row))
 					e.rows.push(row)
@@ -1227,10 +1234,10 @@ function nav_widget(e) {
 			let must_not_move_row = !e.auto_focus_first_cell
 			let ri, unfocus_if_not_found
 			if (how == 'val' && e.val_field && e.nav && e.field) {
-				ri = e.row_index(e.lookup(e.val_field, e.input_val))
+				ri = e.row_index(e.lookup(e.val_col, [e.input_val])[0])
 				unfocus_if_not_found = true
-			} else if (how == 'pk' && e.pk_fields && e.pk_fields.length) {
-				ri = e.row_index(e.lookup(e.pk_fields, refocus_pk))
+			} else if (how == 'pk' && e.pk_cols) {
+				ri = e.row_index(e.lookup(e.pk_cols, refocus_pk)[0])
 			} else if (how == 'row') {
 				ri = e.row_index(refocus_row)
 			} else if (!how) { // TODO: not used (unfocus)
@@ -1252,6 +1259,7 @@ function nav_widget(e) {
 
 	// vlookup ----------------------------------------------------------------
 
+	/*
 	function lookup_function(field, on) {
 
 		let index = new Map() // {val->Set(row)}
@@ -1289,20 +1297,56 @@ function nav_widget(e) {
 
 		return lookup
 	}
+	*/
 
-	e.lookup = function(col, v) {
-		let field = fld(col)
-		if (isarray(field)) {
-			field = field[0]
-			v = v[0]
-			// TODO: multi-key indexing
+	function create_index(cols) {
+
+		let index = new Map() // Map(f1_val->Map(f2_val->[row1,...]))
+
+		let fis = cols.split(/\s+/).map(fld).map(f => f.val_index)
+		let last_fi = fis.last
+		for (let row of e.all_rows) {
+			let index0 = index
+			for (let fi of fis) {
+				let v = row[fi]
+				let index1 = index0.get(v)
+				if (!index1) {
+					index1 = fi < last_fi ? new Map() : []
+					index0.set(v, index1)
+				}
+				index0 = index1
+			}
+			index0.push(row)
 		}
-		if (!field.lookup)
-			field.lookup = lookup_function(field, true)
-		return field.lookup(v)
+
+		return function(vals) {
+			let t = index
+			let i = 0
+			for (let fi of fis) {
+				t = t.get(vals[i++])
+				if (!t)
+					return empty_array
+			}
+			return t
+		}
+	}
+
+	let indices = {} // {cols->index}
+
+	// e.lookup('col1 ...' || fi, [v1, ...])
+	e.lookup = function(cols, v) {
+		if (typeof cols == 'number')
+			cols = e.all_fields[cols].name
+		let index = indices[cols]
+		if (!index) {
+			index = create_index(cols)
+			indices[cols] = index
+		}
+		return index(v)
 	}
 
 	function each_lookup(method, ...args) {
+		return
 		if (e.all_fields)
 			for (let field of e.all_fields)
 				if (field.lookup)
@@ -1392,7 +1436,7 @@ function nav_widget(e) {
 		let p_fi = e.parent_field.val_index
 		for (let row of e.all_rows) {
 			let parent_id = row[p_fi]
-			let parent_row = parent_id != null ? e.lookup(e.id_field, parent_id) : null
+			let parent_row = parent_id != null ? e.lookup(e.id_field.name, [parent_id])[0] : null
 			add_row_to_tree(row, parent_row)
 		}
 
@@ -1689,7 +1733,7 @@ function nav_widget(e) {
 		return eval(s)
 	}
 
-	function row_filter() {
+	function all_rows_filter() {
 		e.is_filtered = false
 		if (e.param_vals === false)
 			return return_false
@@ -1843,8 +1887,6 @@ function nav_widget(e) {
 
 	// get/set cell vals and cell & row state ---------------------------------
 
-	let fld = col => typeof col == 'string' ? e.all_fields[col] : col
-
 	e.cell_val          = (row, col) => row[fld(col).val_index]
 	e.cell_input_val    = (row, col) => e.cell_state(row, fld(col), 'input_val'   , row[fld(col).val_index])
 	e.cell_old_val      = (row, col) => e.cell_state(row, fld(col), 'old_val'     , row[fld(col).val_index])
@@ -1874,9 +1916,8 @@ function nav_widget(e) {
 
 		let ln = field.lookup_nav
 		if (ln) {
-			field.lookup_field = field.lookup_field || ln.all_fields[field.lookup_col]
 			field.display_field = field.display_field || ln.all_fields[field.display_col || ln.name_col]
-			if (!ln.lookup(field.lookup_field, val))
+			if (!ln.lookup(field.lookup_cols, val))
 				return S('error_lookup', 'Value not found in lookup nav')
 		}
 
@@ -2020,7 +2061,7 @@ function nav_widget(e) {
 			return // coming from focus_cell(), avoid recursion.
 		if (!e.val_field)
 			return // fields not initialized yet.
-		let row = e.lookup(e.val_field, v)
+		let row = e.lookup(e.val_col, v)[0]
 		let ri = e.row_index(row)
 		e.focus_cell(ri, true, 0, 0,
 			update({
@@ -2200,9 +2241,8 @@ function nav_widget(e) {
 			return field.empty_text
 		let ln = field.lookup_nav
 		if (ln) {
-			let lf = field.lookup_field
-			if (lf) {
-				let row = ln.lookup(lf, v)
+			if (field.lookup_cols) {
+				let row = ln.lookup(field.lookup_cols, v)
 				if (row)
 					return ln.cell_display_val(row, field.display_field)
 			}
@@ -2492,42 +2532,6 @@ function nav_widget(e) {
 
 		state.finish = function(insert_ri, parent_row) {
 
-			if (e.row_vals) {
-
-				let row_vals
-				if (e.param_vals && !e.rowset_url) {
-					// detail nav with client-side rowset: move visible row_vals
-					// to index 0 so that move_ri1, move_ri2 and insert_ri match.
-					function match_param_vals(row_vals) {
-						for (let k in e.param_vals)
-							if (strict_or(row_vals[k], e.all_fields[k].default) !== e.param_vals[k])
-								return false
-						return true
-					}
-					let t1 = []
-					let t2 = []
-					for (let vals of e.row_vals)
-						if (match_param_vals(vals))
-							t1.push(vals)
-						else
-							t2.push(vals)
-					row_vals = [...t1, ...t2]
-				} else {
-					row_vals = e.row_vals.slice()
-				}
-
-				let move_row_vals = row_vals.splice(move_ri1, move_n)
-				row_vals.splice(insert_ri, 0, ...move_row_vals)
-
-				e.begin_update()
-				let refocus = refocus_state('pk')
-				e.row_vals = row_vals
-				refocus()
-				e.end_update()
-
-				return
-			}
-
 			e.rows.splice(insert_ri, 0, ...move_rows)
 
 			let row = move_rows[0]
@@ -2551,6 +2555,44 @@ function nav_widget(e) {
 						e.set_cell_val(e.rows[ri], e.index_field, index++)
 				}
 
+			}
+
+			let row_arr = e.row_states || e.row_vals
+			if (row_arr) {
+
+				if (e.param_vals && !e.rowset_url) {
+					// detail nav with client-side rowset: move visible rows to index 0
+					// in the unfiltered rows array so that move_ri1, move_ri2 and insert_ri
+					// point to the same rows in both unfiltered and filtered arrays.
+					let r1 = []
+					let r2 = []
+					let a1 = []
+					let a2 = []
+					let passes = all_rows_filter()
+					for (let ri = 0; ri < e.all_rows.length; ri++) {
+						let visible = passes(e.all_rows[ri])
+						;(visible ? a1 : a2).push(row_arr[ri])
+						;(visible ? r1 : r2).push(e.all_rows[ri])
+					}
+					row_arr    = [].concat(a1, a2)
+					e.all_rows = [].concat(r1, r2)
+
+					e.all_rows.move(move_ri1, move_n, insert_ri)
+
+					update_row_index()
+
+				} else {
+					row_arr = row_arr.slice()
+				}
+
+				row_arr.move(move_ri1, move_n, insert_ri)
+
+				save_barrier = true
+				if (e.row_states)
+					e.row_states = row_arr
+				else if (e.row_vals)
+					e.row_vals = row_arr
+				save_barrier = false
 			}
 
 			e.update({rows: true})
@@ -3401,7 +3443,7 @@ global_val_nav = function() {
 
 	// booleans
 
-	let bool = {align: 'center', w: 24, max_w: 24}
+	let bool = {align: 'center', w: 26, max_w: 28}
 	field_types.bool = bool
 
 	bool.true_text = () => H('<div class="fa fa-check"></div>')
