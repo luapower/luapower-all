@@ -468,7 +468,7 @@ component('x-grid', function(e) {
 
 	e.do_update_cell_val = function(cell, row, field, input_val) {
 		let v = e.cell_display_val_for(row, field, input_val)
-		cell.input_val = v
+		cell.qs_val = v
 		let node = cell.childNodes[cell.indent ? 1 : 0]
 		if (cell.qs_div) { // value is wrapped
 			node.replace(node.childNodes[0], v)
@@ -583,7 +583,7 @@ component('x-grid', function(e) {
 		let cell = e.cells.at[cell_index(e.row_index(row), field.index)]
 		if (!cell)
 			return
-		if (typeof cell.input_val != 'string')
+		if (typeof cell.qs_val != 'string')
 			return
 		if (!cell.qs_div) {
 			if (s) {
@@ -802,9 +802,9 @@ component('x-grid', function(e) {
 		if (ci == null)
 			return
 		let cls
-		if (prop == 'row_is_new')
+		if (prop == 'is_new')
 			cls = 'new'
-		else if (prop == 'row_removed')
+		else if (prop == 'removed')
 			cls = 'removed'
 		if (cls)
 			each_cell_of_row(ri, function(cell, fi, cls, val) {
@@ -1525,7 +1525,7 @@ component('x-grid', function(e) {
 				tabSize: 3,
 				enableBasicAutocompletion: true,
 			})
-			sql_editor_ct.on('blur'        , exit_widget_editing, on)
+			sql_editor_ct.on('blur'            , exit_widget_editing, on)
 			sql_editor_ct.on('raw:pointerdown' , prevent_bubbling, on)
 			sql_editor_ct.on('raw:pointerup'   , prevent_bubbling, on)
 			sql_editor_ct.on('raw:click'       , prevent_bubbling, on)
@@ -2012,7 +2012,7 @@ component('x-grid', function(e) {
 			}
 			let items_added
 			for (let field of e.all_fields) {
-				if (e.fields.indexOf(field) == -1) {
+				if (field.visible && e.fields.indexOf(field) == -1) {
 					items_added = true
 					items.push({
 						field: field,

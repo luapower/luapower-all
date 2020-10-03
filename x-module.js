@@ -108,8 +108,6 @@ function xmodule(opt) {
 				e.__pv0[k] = e.get_prop(k)
 			for (let k in pv)
 				e.set_prop(k, pv[k])
-
-
 		}
 		e.end_update()
 		e.xmodule_noupdate = false
@@ -127,7 +125,6 @@ function xmodule(opt) {
 		for (let k in pv0)
 			if (!(k in pv)) {
 				e.set_prop(k, pv0[k])
-				//print(e.gid, k, pv0[k])
 				delete pv0[k]
 			}
 		// apply this override, saving current vals that were not saved before.
@@ -135,7 +132,6 @@ function xmodule(opt) {
 			if (!(k in pv0))
 				pv0[k] = e.get_prop(k)
 			e.set_prop(k, pv[k])
-			//print(e.gid, k, pv[k])
 		}
 		e.end_update()
 		e.xmodule_noupdate = false
@@ -143,6 +139,7 @@ function xmodule(opt) {
 
 	xm.bind_instance = function(e, on) {
 		if (on) {
+			window[e.gid] = e
 			array_attr(xm.instances, e.gid).push(e)
 			update_instance(e)
 		} else {
@@ -150,6 +147,7 @@ function xmodule(opt) {
 			t.remove_value(e)
 			if (!t.length)
 				delete xm.instances[e.gid]
+			delete window[e.gid]
 		}
 	}
 
@@ -159,6 +157,14 @@ function xmodule(opt) {
 	})
 
 	// saving prop vals into prop layers --------------------------------------
+
+	xm.prop_module_slot_layer = function(e, prop) {
+		let attrs = e.get_prop_attrs(prop)
+		let slot = xm.selected_slot || attrs.slot || 'base'
+		let module = xm.selected_module || attrs.module
+		let layer = xm.active_layers[module+':'+slot]
+		return [module, slot, layer]
+	}
 
 	xm.set_val = function(e, gid, k, v, v0, slot, module, serialize) {
 		slot = xm.selected_slot || slot || 'base'
@@ -420,8 +426,9 @@ component('x-prop-layers-inspector', function(e) {
 	let can_change_val = e.can_change_val
 	e.can_change_val = function(row, field) {
 		return can_change_val(row, field)
-			&& (!row || !field || e.cell_val(row, e.all_fields.slot) != 'base'
-					|| field.name == 'selected' || field.name == 'active')
+			// TODO: restrict hiding `base` slots?
+			//&& (!row || !field || e.cell_val(row, e.all_fields.slot) != 'base'
+			//		|| field.name == 'selected' || field.name == 'active')
 	}
 
 	e.on('bind', function(on) {
@@ -497,7 +504,7 @@ component('x-prop-layers-inspector', function(e) {
 
 	e.on('cell_val_changed_for_color', function(row, field, val) {
 		let slot = e.cell_val(row, e.all_fields.slot)
-		xmodule.prop_layer_slot_colors[slot] = val
+		xmodule.slots[slot].color = val
 		document.fire('selected_widgets_changed')
 	})
 
@@ -634,7 +641,7 @@ component('x-prop-inspector', function(e) {
 	})
 	*/
 
-	let widgets
+	let widgets, prop_colors
 
 	function reset() {
 
@@ -655,18 +662,20 @@ component('x-prop-inspector', function(e) {
 		let defs = {}
 		let pv0 = {}
 		let pv1 = {}
-		let slots = {}
+		prop_colors = {}
 
 		for (let te of widgets)
 			for (let prop in te.props)
 				if (widgets.size == 1 || !te.props[prop].unique) {
 					prop_counts[prop] = (prop_counts[prop] || 0) + 1
-					defs[prop] = te.props[prop]
+					defs[prop] = te.get_prop_attrs(prop)
 					let v1 = te.serialize_prop(prop, te[prop], true)
 					let v0 = te.serialize_prop(prop, defs[prop].default, true)
 					pv0[prop] = prop in pv0 && pv0[prop] !== v0 ? undefined : v0
 					pv1[prop] = prop in pv1 && pv1[prop] !== v1 ? undefined : v1
-					slots[prop] = defs[prop].slot
+					let [module, slot, layer] = xmodule.prop_module_slot_layer(te, prop)
+					let sl = xmodule.slots[slot]
+					prop_colors[prop] = sl && sl.color || '#f0f'
 				}
 
 		for (let prop in prop_counts)
@@ -681,15 +690,6 @@ component('x-prop-inspector', function(e) {
 		e.rowset = rs
 		e.reset()
 
-		let inh_do_update_cell_val = e.do_update_cell_val
-		e.do_update_cell_val = function(cell, row, field, input_val) {
-			inh_do_update_cell_val(cell, row, field, input_val)
-			let slot = xmodule.slots[slots[field.name]]
-			let color = slot && slot.color || '#fff'
-			let hcell = e.header.at[field.index]
-			hcell.style['border-right'] = '4px solid'+color
-		}
-
 		if (e.all_rows.length) {
 			let row = e.all_rows[0]
 			for (let field of e.all_fields)
@@ -699,6 +699,14 @@ component('x-prop-inspector', function(e) {
 		e.title_text = ([...widgets].map(e => e.type + (e.gid ? ' ' + e.gid : ''))).join(' ')
 
 		e.fire('prop_inspector_changed')
+	}
+
+	let inh_do_update_cell_val = e.do_update_cell_val
+	e.do_update_cell_val = function(cell, row, field, input_val) {
+		inh_do_update_cell_val(cell, row, field, input_val)
+		let color = prop_colors[field.name]
+		let hcell = e.header.at[field.index]
+		hcell.style['border-right'] = '4px solid'+color
 	}
 
 	// prevent unselecting all widgets by default on document.pointerdown.
@@ -740,7 +748,7 @@ component('x-widget-tree', function(e) {
 	}
 	function type_icon(type) {
 		let icon = type_icons[type]
-		return () => icon ? div({class: 'fa fa-'+icon}) : type
+		return icon ? div({class: 'fa fa-'+icon}) : type
 	}
 
 	let rs = {

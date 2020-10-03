@@ -80,8 +80,10 @@ function component(tag, cons) {
 				this.fire('bind', true)
 				if (this.id)
 					document.fire('global_attached', this, this.id)
-				if (this.gid)
+				if (this.gid) {
 					document.fire('widget_bind', this, true)
+					document.fire(this.gid+'.bind', this, true)
+				}
 				this.end_update()
 
 				if (DEBUG_ATTACH_TIME) {
@@ -97,8 +99,10 @@ function component(tag, cons) {
 				this.fire('bind', false)
 				if (this.id)
 					document.fire('global_detached', this, this.id)
-				if (this.gid)
+				if (this.gid) {
 					document.fire('widget_bind', this, false)
+					document.fire(this.gid+'.bind', this, false)
+				}
 			}
 		}
 
@@ -3019,6 +3023,7 @@ component('x-widget-placeholder', function(e) {
 		['CB', 'checkbox'],
 		['RG', 'radiogroup'],
 		['SL', 'slider'],
+		['SQL', 'sql_editor'],
 		['LD', 'list_dropdown'],
 		['GD', 'grid_dropdown'],
 		['DD', 'date_dropdown', true],
@@ -4281,3 +4286,48 @@ function richtext_widget_editing(e) {
 
 }
 
+// ---------------------------------------------------------------------------
+// sql editor widget
+// ---------------------------------------------------------------------------
+
+component('x-sql-editor', function(e) {
+
+	e.props.align_x = {default: 'stretch'}
+	e.props.align_y = {default: 'stretch'}
+
+	val_widget(e)
+
+	e.classes = 'x-sql-editor'
+
+	e.do_update_val = function(val, ev) {
+		e.editor.getSession().setValue(val || '')
+	}
+
+	e.do_update_error = function(err, ev) {
+		// TODO
+	}
+
+	e.on('bind', function(on) {
+		if (on) {
+			e.editor = ace.edit(e, {
+					mode: 'ace/mode/mysql',
+					highlightActiveLine: false,
+					printMargin: false,
+					displayIndentGuides: false,
+					tabSize: 3,
+					enableBasicAutocompletion: true,
+				})
+			//sql_editor_ct.on('blur'            , exit_widget_editing, on)
+			//sql_editor_ct.on('raw:pointerdown' , prevent_bubbling, on)
+			//sql_editor_ct.on('raw:pointerup'   , prevent_bubbling, on)
+			//sql_editor_ct.on('raw:click'       , prevent_bubbling, on)
+			//sql_editor_ct.on('raw:contextmenu' , prevent_bubbling, on)
+			e.do_update_val(e.val)
+			//sql_editor.getSession().getValue()
+		} else {
+			e.editor.destroy()
+			e.editor = null
+		}
+	})
+
+})
