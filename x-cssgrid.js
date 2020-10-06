@@ -7,7 +7,7 @@ component('x-cssgrid', function(e) {
 	serializable_widget(e)
 	selectable_widget(e)
 	editable_widget(e)
-	cssgrid_item_widget(e)
+	contained_widget(e)
 	widget_items_widget(e)
 
 	e.classes = 'x-widget x-cssgrid'

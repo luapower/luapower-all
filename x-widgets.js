@@ -871,8 +871,6 @@ function pagelist_item_widget(e) {
 
 function cssgrid_item_widget(e) {
 
-	pagelist_item_widget(e)
-
 	e.prop('pos_x'  , {style: 'grid-column-start' , type: 'number', default: 1})
 	e.prop('pos_y'  , {style: 'grid-row-start'    , type: 'number', default: 1})
 	e.prop('span_x' , {style: 'grid-column-end'   , type: 'number', default: 1, style_format: v => 'span '+v, style_parse: v => num((v || 'span 1').replace('span ', '')) })
@@ -899,6 +897,11 @@ function cssgrid_item_widget(e) {
 		do_unselect_widget(focus_prev)
 	}
 
+}
+
+function contained_widget(e) {
+	pagelist_item_widget(e)
+	cssgrid_item_widget(e)
 }
 
 // ---------------------------------------------------------------------------
@@ -1189,7 +1192,7 @@ calls:
 function val_widget(e, enabled_without_nav) {
 
 	selectable_widget(e)
-	cssgrid_item_widget(e)
+	contained_widget(e)
 	serializable_widget(e)
 
 	// nav dynamic binding ----------------------------------------------------
@@ -1490,7 +1493,7 @@ component('x-button', function(e) {
 	selectable_widget(e)
 	focusable_widget(e)
 	editable_widget(e)
-	cssgrid_item_widget(e)
+	contained_widget(e)
 
 	e.classes = 'x-widget x-button'
 
@@ -1662,6 +1665,10 @@ component('x-checkbox', function(e) {
 		}
 		if (key == 'Enter' || key == ' ') {
 			e.toggle({input: e})
+			return false
+		}
+		if (key == 'Delete') {
+			e.val = null
 			return false
 		}
 	})
@@ -2232,7 +2239,9 @@ component('x-dropdown', function(e) {
 			e.picker.col = v
 	}
 
-	e.init = function() {
+	function create_picker() {
+
+		create_picker = noop // call once.
 
 		e.picker = component.create(e.picker)
 
@@ -2265,16 +2274,33 @@ component('x-dropdown', function(e) {
 		e.picker.xmodule_noupdate = false
 	}
 
-	e.on('bind', function(on) {
+	function bind_picker(on) {
+		if (!e.picker)
+			return
 		if (on) {
-			document.on('pointerdown'     , document_pointerdown, on)
-			document.on('rightpointerdown', document_pointerdown, on)
-			document.on('stopped_event'   , document_stopped_event, on)
+			create_picker()
 			e.picker.bind(true)
-		} else {
-			e.close()
+		} else  {
 			e.picker.bind(false)
 			e.picker.popup(false)
+		}
+		document.on('pointerdown'     , document_pointerdown, on)
+		document.on('rightpointerdown', document_pointerdown, on)
+		document.on('stopped_event'   , document_stopped_event, on)
+	}
+
+	e.set_picker = function(v) {
+		bind_picker(!!v)
+	}
+
+	e.prop('picker', {store: 'var', private: true})
+
+	e.on('bind', function(on) {
+		if (on) {
+			bind_picker(true)
+		} else {
+			e.close()
+			bind_picker(false)
 		}
 	})
 
@@ -2445,6 +2471,7 @@ function nav_dropdown_widget(e) {
 	e.set_nav = function(v, ...args) {
 		set_nav(v, ...args)
 		if (!e.initialized) return
+		if (!e.picker) return
 		e.picker.nav = v
 	}
 
@@ -2452,23 +2479,27 @@ function nav_dropdown_widget(e) {
 	e.set_col = function(v, ...args) {
 		set_col(v, ...args)
 		if (!e.initialized) return
+		if (!e.picker) return
 		e.picker.col = v
 	}
 
 	e.set_val_col = function(v) {
 		if (!e.initialized) return
+		if (!e.picker) return
 		e.picker.val_col = v
 	}
 	e.prop('val_col', {store: 'var'})
 
 	e.set_display_col = function(v) {
 		if (!e.initialized) return
+		if (!e.picker) return
 		e.picker.display_col = v
 	}
 	e.prop('display_col', {store: 'var'})
 
 	e.set_rowset_name = function(v) {
 		if (!e.initialized) return
+		if (!e.picker) return
 		e.picker.rowset_name = v
 	}
 	e.prop('rowset_name', {store: 'var', type: 'rowset'})
@@ -2476,7 +2507,7 @@ function nav_dropdown_widget(e) {
 }
 
 // ---------------------------------------------------------------------------
-// lookup dropdown (for field editors of fields with lookup_nav_gid)
+// lookup dropdown (for editing fields with lookup_nav_gid)
 // ---------------------------------------------------------------------------
 
 component('x-lookup-dropdown', function(e) {
@@ -2487,6 +2518,32 @@ component('x-lookup-dropdown', function(e) {
 	e.init = function() {
 		init()
 	}
+
+	let set_picker = e.set_picker
+	e.set_picker = function(...args) {
+		set_picker(...args)
+		e.xmodule_noupdate = true
+		if (e.picker) {
+			//e.picker.nav         = e.lookup_nav
+			e.picker.val_col     = e.field.lookup_cols.split(/\s+/)[0]
+			e.picker.display_col = e.field.display_col
+		}
+		e.xmodule_noupdate = false
+	}
+
+	e.on('bind', function(on) {
+		if (on) {
+			if (!e.field)
+				return
+			let ln_gid = e.field.lookup_nav_gid
+			if (ln_gid) {
+				e.lookup_nav = component.create(ln_gid)
+				e.lookup_nav.gid = null // not saving into the original.
+				e.lookup_nav.hide()
+				e.add(e.lookup_nav)
+			}
+		}
+	})
 
 })
 
@@ -3004,7 +3061,7 @@ component('x-widget-placeholder', function(e) {
 
 	serializable_widget(e)
 	selectable_widget(e)
-	cssgrid_item_widget(e)
+	contained_widget(e)
 
 	e.classes = 'x-widget x-widget-placeholder'
 
@@ -3014,6 +3071,7 @@ component('x-widget-placeholder', function(e) {
 		['PL', 'pagelist', true],
 		['L', 'listbox'],
 		['G', 'grid', true],
+		['WSW', 'widget_switcher'],
 	]
 
 	let form_widgets = [
@@ -3024,6 +3082,7 @@ component('x-widget-placeholder', function(e) {
 		['RG', 'radiogroup'],
 		['SL', 'slider'],
 		['SQL', 'sql_editor'],
+		['KD', 'lookup_dropdown'],
 		['LD', 'list_dropdown'],
 		['GD', 'grid_dropdown'],
 		['DD', 'date_dropdown', true],
@@ -3189,7 +3248,7 @@ component('x-pagelist', function(e) {
 
 	selectable_widget(e)
 	editable_widget(e)
-	cssgrid_item_widget(e)
+	contained_widget(e)
 	serializable_widget(e)
 	widget_items_widget(e)
 
@@ -3560,7 +3619,7 @@ component('x-split', function(e) {
 
 	serializable_widget(e)
 	selectable_widget(e)
-	cssgrid_item_widget(e)
+	contained_widget(e)
 
 	e.align_x = 'stretch'
 	e.align_y = 'stretch'
@@ -4084,7 +4143,7 @@ component('x-richtext', function(e) {
 	serializable_widget(e)
 	selectable_widget(e)
 	editable_widget(e)
-	cssgrid_item_widget(e)
+	contained_widget(e)
 
 	e.classes = 'x-widget x-richtext'
 
@@ -4287,7 +4346,7 @@ function richtext_widget_editing(e) {
 }
 
 // ---------------------------------------------------------------------------
-// sql editor widget
+// sql editor
 // ---------------------------------------------------------------------------
 
 component('x-sql-editor', function(e) {
@@ -4331,3 +4390,68 @@ component('x-sql-editor', function(e) {
 	})
 
 })
+
+// ---------------------------------------------------------------------------
+// widget switcher
+// ---------------------------------------------------------------------------
+
+component('x-widget-switcher', function(e) {
+
+	e.props.align_x = {default: 'stretch'}
+	e.props.align_y = {default: 'stretch'}
+
+	e.classes = 'x-widget-switcher'
+
+	serializable_widget(e)
+	selectable_widget(e)
+	contained_widget(e)
+
+	// nav dynamic binding ----------------------------------------------------
+
+	function bind_nav(nav, on) {
+		if (!nav)
+			return
+		nav.on('focused_row_changed'     , refresh, on)
+		nav.on('focused_row_val_changed' , refresh, on)
+		nav.on('loaded'                  , refresh, on)
+	}
+
+	e.on('bind', function(on) {
+		bind_nav(e.nav, on)
+	})
+
+	e.set_nav = function(nav1, nav0) {
+		assert(nav1 != e)
+		if (e.attached) {
+			bind_nav(nav0, false)
+			bind_nav(nav1, true)
+		}
+		e.update()
+	}
+	e.prop('nav', {store: 'var', private: true})
+	e.prop('nav_gid' , {store: 'var', bind_gid: 'nav', type: 'nav'})
+
+	// view -------------------------------------------------------------------
+
+	e.format_item_gid = function(vals) {
+		return e.module + '_' + e.item_gid_format.subst(vals)
+	}
+
+	e.item_create_options = noop // stub
+
+	e.prop('item_gid_format', {store: 'var'})
+
+	e.do_update = function() {
+		let row = e.nav && e.nav.focused_row
+		let vals = row && e.nav.serialize_row_vals(row)
+		let gid = vals && e.format_item_gid(vals)
+		let item = gid && component.create(update({gid: gid}, e.item_create_options(vals))) || null
+		e.set(item)
+	}
+
+	function refresh() {
+		e.update()
+	}
+
+})
+

@@ -1533,7 +1533,7 @@ component('x-grid', function(e) {
 			sql_editor.getSession().setValue(e.sql_select || '')
 			e.cells_view.add(sql_editor_ct)
 		} else {
-			e.sql_select = sql_editor.getSession().getValue()
+			e.sql_select = repl(sql_editor.getSession().getValue(), '', undefined)
 			sql_editor.destroy()
 			sql_editor = null
 			sql_editor_ct.remove()
@@ -1664,9 +1664,12 @@ component('x-grid', function(e) {
 			mu_col_move()
 		} else if (hit.state == 'row_moving') {
 			mu_row_move()
-		} else if (hit.state == 'row_dragging')
+		} else if (hit.state == 'row_dragging') {
 			e.pick_val()
+		}
 
+		if (hit.state != 'row_dragging') // keep hit.cell for dblclick on header only
+			hit.cell = null
 		hit.state = null
 		return false
 	}
@@ -1749,7 +1752,7 @@ component('x-grid', function(e) {
 		// insert with the arrow down key on the last focusable row.
 		if (key == down_arrow) {
 			if (e.is_last_row_focused())
-				if (e.insert_rows(1, null, true))
+				if (e.insert_rows(1, {input: e, focus_it: true}))
 					return false
 		}
 
@@ -1757,7 +1760,7 @@ component('x-grid', function(e) {
 		if (key == up_arrow) {
 			if (e.is_last_row_focused()) {
 				let row = e.focused_row
-				if (row.is_new && !row.modified) {
+				if (row.is_new && !e.row_is_user_modified(row)) {
 					if (e.remove_selected_rows({refocus: true}))
 						return false
 				}
@@ -1834,7 +1837,7 @@ component('x-grid', function(e) {
 
 		// insert key: insert row
 		if (key == 'Insert')
-			if (e.insert_rows(1, true, true))
+			if (e.insert_rows(1, {input: e, at_focused_row: true, focus_it: true}))
 				return false
 
 		if (!e.editor && key == 'Delete') {
@@ -2012,7 +2015,7 @@ component('x-grid', function(e) {
 			}
 			let items_added
 			for (let field of e.all_fields) {
-				if (field.visible && e.fields.indexOf(field) == -1) {
+				if (field.visible !== false && !e.fields.includes(field)) {
 					items_added = true
 					items.push({
 						field: field,
@@ -2059,6 +2062,7 @@ component('x-grid', function(e) {
 
 function grid_picker_options(e) {
 	return {
+		type: 'grid',
 		gid: e.gid && e.gid + '.dropdown',
 		rowset: e.rowset,
 		rowset_name: e.rowset_name,

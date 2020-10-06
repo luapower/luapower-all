@@ -478,7 +478,7 @@ local function _parse_row_data_packet(data, cols, compact)
 
         if compact then
             row[i] = value
-        else
+        elseif value ~= null then
             row[name] = value
         end
     end

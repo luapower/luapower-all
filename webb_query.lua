@@ -207,10 +207,9 @@ end
 local function process_result(t, cols)
 	if cols and #cols == 1 then --single column result: return it as array
 		local t0 = t
-		local name = cols[1].name
 		t = {}
 		for i,row in ipairs(t0) do
-			t[i] = row[name]
+			t[i] = row[1]
 		end
 	end
 	return t
@@ -245,6 +244,10 @@ end
 
 function query_on(ns, ...) --execute, iterate rows, close
 	return run_query_on(ns, true, ...)
+end
+
+function kv_query_on(ns, ...) --execute, iterate rows, close
+	return run_query_on(ns, false, ...)
 end
 
 function query(...)

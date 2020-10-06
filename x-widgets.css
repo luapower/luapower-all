@@ -14,8 +14,9 @@
 	--x-inverted-fg-color           : white; /* fg color for inverted backgrounds */
 
 	--x-input-focused-bg-color      : #fff;  /* bg color for focused inputs, dropdowns and pickers */
-	--x-modified-bg-color           : #ddffdd;
 	--x-new-bg-color                : #eeeeff;
+	--x-modified-bg-color           : #ddffdd;
+	--x-new-modified-bg-color       : #ccf0f0;
 	--x-search-bg-color             : #ff9;
 	--x-info-bg-color               : #069;  /* bg color for info bubbles */
 	--x-error-bg-color              : #a33;  /* bg color for invalid inputs and error bubbles */
@@ -44,7 +45,7 @@
 
 .x-widget {
 	font-size: 13px;
-	font-family: x-widget, sans-serif;
+	font-family: x-widget, Arial, sans-serif;
 }
 
 .x-widget:focus {
@@ -119,8 +120,12 @@
 	background-color: var(--x-new-bg-color);
 }
 
-.x-item:not(.focused):not(.selected):not(.invalid).modified {
+.x-item:not(.focused):not(.selected):not(.invalid):not(.new).modified {
 	background-color: var(--x-modified-bg-color);
+}
+
+.x-item:not(.focused):not(.selected):not(.invalid).new.modified {
+	background-color: var(--x-new-modified-bg-color);
 }
 
 .x-focusable .x-item:not(.focused).selected:not(.invalid) {
@@ -2053,6 +2058,12 @@
 
 .x-richtext-button-selected {
 	background-color: #F0F0F0;
+}
+
+/* items switcher --------------------------------------------------------- */
+
+.x-widget-switcher {
+	display: grid;
 }
 
 /* countries listbox ------------------------------------------------------ */

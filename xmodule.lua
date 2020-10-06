@@ -25,8 +25,13 @@ end
 
 --xmodule --------------------------------------------------------------------
 
-function xmodule_file(layer)
+function xmodule_layer_file(layer)
 	return _('x-%s.json', layer)
+end
+
+function xmodule_layer(layer)
+	local s = readfile(xmodule_layer_file(layer))
+	return s and json(s)
 end
 
 function action.xmodule_next_gid(module)
@@ -42,7 +47,7 @@ end
 action['xmodule_layer.json'] = function(layer)
 	layer = check(str_arg(layer))
 	assert(layer:find'^[%w_%-]+$')
-	local file = xmodule_file(layer)
+	local file = xmodule_layer_file(layer)
 
 	if method'post' then
 		writefile(file, post(), nil, file..'.tmp')
@@ -53,7 +58,7 @@ end
 
 action['sql_rowset.json'] = function(gid, ...)
 	local module = check(gid:match'^[^_%d]+')
-	local layer = json(check(readfile(xmodule_file(_('%s-server', module)))))
+	local layer = check(xmodule_layer(_('%s-server', module)))
 	local t = check(layer[gid])
 	local rs = {}
 	for k,v in pairs(t) do

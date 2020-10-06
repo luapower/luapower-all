@@ -284,7 +284,7 @@ function xmodule(opt) {
 
 	// gid-based dynamic prop binding -----------------------------------------
 
-	xm.resolve = gid => xm.instances[gid][0]
+	xm.resolve = gid => { let t = xm.instances[gid]; return t && t[0] }
 
 	xm.nav_editor = function(...options) {
 		return widget_select_editor(xm.instances, e => e.isnav, ...options)
@@ -779,7 +779,7 @@ component('x-widget-tree', function(e) {
 		return e.focused_row && e.focused_row[0]
 	}
 	function set_widget(widget) {
-		let row = e.lookup(e.all_fields[0], widget)
+		let row = e.lookup(0, [widget])[0]
 		let ri = e.row_index(row)
 		e.focus_cell(ri, 0)
 	}
@@ -805,11 +805,11 @@ component('x-widget-tree', function(e) {
 	function select_widgets(widgets) {
 		let rows = new Map()
 		for (let ce of widgets) {
-			let row = e.lookup(e.all_fields[0], ce)
+			let row = e.lookup(0, [ce])[0]
 			rows.set(row, true)
 		}
 		let focused_widget = [...widgets].pop()
-		let row = e.lookup(e.all_fields[0], focused_widget)
+		let row = e.lookup(0, [focused_widget])[0]
 		let ri = e.row_index(row)
 		e.focus_cell(ri, null, 0, 0, {
 			selected_rows: rows,
