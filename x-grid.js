@@ -753,25 +753,9 @@ component('x-grid', function(e) {
 	let update_val = e.do_update
 	e.do_update = function(opt) {
 
-		//print(e.gid, e.type, e.rowset.fields, e.attached, opt)
-		//trace()
-
-		opt = opt || {val: true}
-
 		if (opt.reload) {
 			e.reload()
-			create_fields()
-			update_sort_icons()
-			update_sizes()
-			create_cells()
-			update_cell_sizes()
-			update_cells()
-			update_quicksearch_cell()
-			if (opt.enter_edit)
-				e.enter_edit(...opt.enter_edit)
-			if (opt.scroll_to_cell)
-					e.scroll_to_cell(...opt.scroll_to_cell)
-			return
+			opt.fields = true
 		}
 
 		if (opt.fields)

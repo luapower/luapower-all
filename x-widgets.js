@@ -215,29 +215,19 @@ let component_deferred_updating = function(e) {
 		assert(e.updating)
 		e.updating--
 		if (!e.updating)
-			if (invalid)
+			if (opt)
 				e.update()
 	}
 
 	e.do_update = noop
 
-	let invalid, opt, in_update
+	let opt, in_update
 
 	e.update = function(opt1) {
 		if (in_update)
 			return
-		if (opt1) {
-			if (opt) {
-				update(opt, opt1)
-			} else {
-				opt = opt1
-				if (invalid)
-					opt.val = true
-			}
-		} else if (opt) {
-			opt.val = true
-		}
-		invalid = true
+		opt1 = opt1 || {val: true}
+		opt = opt ? update(opt, opt1) : opt1
 		if (e.updating)
 			return
 		if (!e.attached)
@@ -246,7 +236,6 @@ let component_deferred_updating = function(e) {
 		e.do_update(opt)
 		opt = null
 		in_update = false
-		invalid = false
 	}
 
 }
@@ -1313,9 +1302,7 @@ function val_widget(e, enabled_without_nav) {
 
 	let enabled = true
 
-	e.do_update = function(opt) {
-		if (opt && !opt.val)
-			return
+	e.do_update = function() {
 		enabled = !!(enabled_without_nav || (e.row && e.field))
 		e.class('disabled', !enabled)
 		e.focusable = enabled
@@ -3544,7 +3531,6 @@ component('x-split', function(e) {
 				w = 0
 
 			e.fixed_size = round(w)
-			e.tooltip.text = round(w)
 
 			return false
 
@@ -3576,11 +3562,6 @@ component('x-split', function(e) {
 		if (!hit)
 			return
 
-		e.tooltip = e.tooltip || tooltip()
-		e.tooltip.side = horiz ? (left ? 'right' : 'left') : (left ? 'bottom' : 'top')
-		e.tooltip.target = e.sizer
-		e.tooltip.text = e.fixed_size
-
 		resizing = true
 		e.class('resizing')
 
@@ -3596,9 +3577,6 @@ component('x-split', function(e) {
 
 		if (resist) // reset width
 			e.fixed_size = w0
-
-		if (e.tooltip)
-			e.tooltip.target = false
 
 		return false
 	})

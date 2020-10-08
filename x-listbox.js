@@ -103,11 +103,9 @@ component('x-listbox', function(e) {
 	let update_val = e.do_update
 	e.do_update = function(opt) {
 
-		opt = opt || {val: true}
-
 		if (opt.reload) {
 			e.reload()
-			return
+			opt.rows = true
 		}
 
 		if (opt.rows) {
