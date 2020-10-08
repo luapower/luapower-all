@@ -1160,7 +1160,7 @@ function val_widget(e, enabled_without_nav) {
 		e.update()
 	}
 
-	function loaded() {
+	function nav_reset() {
 		bind_field(true)
 		e.update()
 	}
@@ -1192,7 +1192,7 @@ function val_widget(e, enabled_without_nav) {
 		nav.on('focused_row_changed', val_changed, on)
 		nav.on('focused_row_cell_state_changed_for_'+col, cell_state_changed, on)
 		nav.on('display_vals_changed_for_'+col, val_changed, on)
-		nav.on('loaded', loaded, on)
+		nav.on('reset', nav_reset, on)
 		nav.on('col_text_changed_for_'+col, label_changed, on)
 		bind_field(on)
 	}
@@ -4208,7 +4208,7 @@ component('x-widget-switcher', function(e) {
 			return
 		nav.on('focused_row_changed'     , refresh, on)
 		nav.on('focused_row_val_changed' , refresh, on)
-		nav.on('loaded'                  , refresh, on)
+		nav.on('reset'                   , refresh, on)
 	}
 
 	e.on('bind', function(on) {

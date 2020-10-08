@@ -340,7 +340,7 @@ field_types.col.editor = function(...options) {
 	let rs_name = e.nav.rowset.value(e.nav.focused_row, rs_field)
 	let rs = rs_name && global_rowset(rs_name)
 	if (rs) {
-		rs.once('loaded', function() {
+		rs.once('reset', function() {
 			let rows = rs.fields.map(field => [field.name])
 			e.lookup_rowset.reset({
 				rows: rows,

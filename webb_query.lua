@@ -257,7 +257,7 @@ end
 --query frontends ------------------------------------------------------------
 
 function query1_on(ns, ...) --query first row (or first row/column) and close
-	local t, cols, params = run_query_on(ns, false, ...)
+	local t, cols, params = run_query_on(ns, true, ...)
 	local row = t[1]
 	if not row then return end
 	if #cols == 1 then
