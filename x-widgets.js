@@ -13,6 +13,7 @@ DEBUG_ATTACH_TIME = false
 uses:
 	bind_events <- t|f
 publishes:
+	e.isinstance: t
 	e.iswidget: t
 	e.type
 	e.initialized: t|f
@@ -78,8 +79,6 @@ function component(tag, cons) {
 				this.attached = true
 				this.begin_update()
 				this.fire('bind', true)
-				if (this.id)
-					document.fire('global_attached', this, this.id)
 				if (this.gid) {
 					document.fire('widget_bind', this, true)
 					document.fire(this.gid+'.bind', this, true)
@@ -97,8 +96,6 @@ function component(tag, cons) {
 					return
 				this.attached = false
 				this.fire('bind', false)
-				if (this.id)
-					document.fire('global_detached', this, this.id)
 				if (this.gid) {
 					document.fire('widget_bind', this, false)
 					document.fire(this.gid+'.bind', this, false)
@@ -108,7 +105,7 @@ function component(tag, cons) {
 
 		debug_name(prefix) {
 			prefix = (prefix && prefix + ' < ' || '') + this.type
-				+ (this.id || this.gid != null ? ' ' + (this.id || this.gid) : '')
+				+ (this.gid != null ? ' ' + this.gid : '')
 			let p = this; do { p = p.popup_target || p.parent } while (p && !p.debug_name)
 			if (!(p && p.debug_name))
 				return prefix
@@ -119,17 +116,25 @@ function component(tag, cons) {
 
 	customElements.define(tag, cls)
 
+	// override cons() so that calling `parent_widget.construct()` always
+	// sets the css class for parent_widget.
+	function construct(e) {
+		e.class(tag)
+		cons(e)
+	}
+
 	function init(e, opt) {
 		if (e.initialized)
 			return
 		props_mixin(e, opt.props)
 		component_deferred_updating(e)
-		e.isinstance = true
-		e.iswidget = true
-		e.type = type
-		e.init = noop
-		cons(e)
-		e.initialized = false
+		e.isinstance = true   // because you can have non-widget instances.
+		e.iswidget = true     // to diff from normal html elements.
+		e.type = type         // for serialization.
+		e.init = noop         // init point when all props are set.
+		e.class('x-widget')
+		construct(e)
+		e.initialized = false // setter barrier to delay init to e.init().
 		if (!opt.gid) {
 			e.begin_update()
 			for (let k in opt)
@@ -149,7 +154,7 @@ function component(tag, cons) {
 	}
 
 	create.class = cls
-	create.construct = cons
+	create.construct = construct
 
 	component.types[type] = create
 	window[type] = create
@@ -161,16 +166,18 @@ component.types = {} // {type -> create}
 
 component.create = function(e, e0) {
 	if (isobject(e) && e.isinstance)
-		return e
-	if (typeof e == 'string') { // e is a gid
-		if (e0 && e0.gid == e)
-			return e0  // already created (called from a prop's `convert()`).
-		let type = xmodule.instance_type(e)
-		if (!type) {
+		return e // instances pass through.
+	let gid = typeof e == 'string' ? e : e.gid
+	if (e0 && e0.gid == gid)
+		return e0  // already created (called from a prop's `convert()`).
+	if (typeof e == 'string') // e is a gid
+		e = {gid: e}
+	if (!e.type) {
+		e.type = xmodule.instance_type(gid)
+		if (!e.type) {
 			print('gid not found', gid)
 			return
 		}
-		e = {gid: e, type: type}
 	}
 	let create = component.types[e.type]
 	if (!create) {
@@ -187,9 +194,9 @@ publishes:
 	e.updating
 	e.begin_update()
 	e.end_update()
-	e.update()
+	e.update([opt])
 calls:
-	e.do_update()
+	e.do_update([opt])
 --------------------------------------------------------------------------- */
 
 let component_deferred_updating = function(e) {
@@ -214,22 +221,31 @@ let component_deferred_updating = function(e) {
 
 	e.do_update = noop
 
-	let invalid, opt
+	let invalid, opt, in_update
 
 	e.update = function(opt1) {
-		invalid = true
-		if (opt1)
-			if (opt)
+		if (in_update)
+			return
+		if (opt1) {
+			if (opt) {
 				update(opt, opt1)
-			else
+			} else {
 				opt = opt1
+				if (invalid)
+					opt.val = true
+			}
+		} else if (opt) {
+			opt.val = true
+		}
+		invalid = true
 		if (e.updating)
 			return
 		if (!e.attached)
 			return
-		let opt_arg = opt
+		in_update = true
+		e.do_update(opt)
 		opt = null
-		e.do_update(opt_arg)
+		in_update = false
 		invalid = false
 	}
 
@@ -428,48 +444,6 @@ function props_mixin(e, iprops) {
 				gid_changed(e[GID])
 		}
 
-		// id-based dynamic binding.
-
-		if (opt.bind_id) {
-			let resolve = opt.resolve || global_widget_resolver(type)
-			let NAME = prop
-			let REF = opt.bind_id
-			function global_changed(te, name, last_name) {
-				// NOTE: changing the name from something to nothing
-				// will unbind dependants forever.
-				if (e[NAME] == last_name)
-					e[NAME] = name
-			}
-			function global_attached(te, name) {
-				if (e[NAME] == name)
-					e[REF] = te
-			}
-			function global_detached(te, name) {
-				if (e[REF] == te)
-					e[REF] = null
-			}
-			function bind(on) {
-				e[REF] = on ? resolve(e[NAME]) : null
-				document.on('global_changed' , global_changed, on)
-				document.on('global_attached', global_attached, on)
-				document.on('global_detached', global_detached, on)
-			}
-			function name_changed(name, last_name) {
-				if (e.attached)
-					e[REF] = resolve(name)
-				if ((name != null) != (last_name != null)) {
-					e.on('bind', bind, name != null)
-				}
-			}
-			prop_changed = function(e, k, v1, v0, slot) {
-				fire_prop_changed(e, k, v1, v0, slot)
-				if (k == NAME)
-					name_changed(v1, v0)
-			}
-			if (e[NAME] != null)
-				name_changed(e[NAME])
-		}
-
 		e.property(prop, get, set)
 
 		if (!priv)
@@ -644,25 +618,6 @@ function up_widget_which(e, which) {
 }
 
 function selectable_widget(e) {
-
-	e.props.id = {
-		name: 'id',
-		unique: true, // don't show in prop inspector when selecting multiple objects.
-		default: '',
-		validate: function(id) {
-			return window[id] === undefined || window[id] == e || 'id already in use'
-		},
-	}
-
-	override_property_setter(e, 'id', function(inherited, id) {
-		if (!id) id = ''
-		let id0 = e.id
-		inherited.call(this, id)
-		if (id === id0)
-			return
-		document.fire('prop_changed', e, 'id', id, id0, null)
-		document.fire('global_changed', this, id, id0)
-	})
 
 	e.property('parent_widget', function() {
 		return parent_widget_which(this, p => p.child_widgets)
@@ -1129,6 +1084,8 @@ publishes:
 function focusable_widget(e, fe) {
 	fe = fe || e
 
+	e.class('x-focusable')
+
 	let focusable = true
 	fe.attr('tabindex', 0)
 
@@ -1180,7 +1137,7 @@ publishes:
 	e.reset_val(v, ev)
 	e.display_val()
 implements:
-	e.do_update(opt)
+	e.do_update([opt])
 calls:
 	e.do_update_val(val, ev)
 	e.do_update_error(err, ev)
@@ -1197,24 +1154,25 @@ function val_widget(e, enabled_without_nav) {
 
 	// nav dynamic binding ----------------------------------------------------
 
-	function init_field() {
-		e.field = nav && nav.all_fields[col] || null
-	}
-
-	function init_val() {
-		if (initial_val !== undefined) {
-			let v = initial_val
-			initial_val = undefined
-			e.reset_val(v, {validate: true})
-		}
+	function bind_field(on) {
+		let field0 = e.field
+		let field1 = on && e.nav && e.nav.all_fields[e.col] || null
+		if (field0 == field1)
+			return
+		if (field0)
+			e.fire('bind_field', false)
+		e.field = field1
+		if (field1)
+			e.fire('bind_field', true)
 	}
 
 	function val_changed() {
+		bind_field(true)
 		e.update()
 	}
 
 	function loaded() {
-		init_field()
+		bind_field(true)
 		e.update()
 	}
 
@@ -1222,22 +1180,24 @@ function val_widget(e, enabled_without_nav) {
 		e.update()
 	}
 
-	function cell_state_changed(prop, val, ev) {
+	function cell_state_changed(field, prop, val, ev) {
 		if (e.updating)
 			return
 		if (prop == 'input_val')
 			e.do_update_val(val, ev)
 		else if (prop == 'val')
 			e.fire('val_changed', val, ev)
-		else if (prop == 'cell_error') {
+		else if (prop == 'error') {
 			e.invalid = val != null
 			e.class('invalid', e.invalid)
 			e.do_update_error(val, ev)
-		} else if (prop == 'cell_modified')
+		} else if (prop == 'modified')
 			e.class('modified', val)
 	}
 
 	function bind_nav(nav, col, on) {
+		if (!e.attached)
+			return
 		if (!(nav && col != null))
 			return
 		nav.on('focused_row_changed', val_changed, on)
@@ -1245,54 +1205,52 @@ function val_widget(e, enabled_without_nav) {
 		nav.on('display_vals_changed_for_'+col, val_changed, on)
 		nav.on('loaded', loaded, on)
 		nav.on('col_text_changed_for_'+col, label_changed, on)
+		bind_field(on)
 	}
 
 	let field_opt
 	e.on('bind', function(on) {
-		if (on) {
-			if (e.field && !e.standalone) {
-				field_opt = e.field
-				e.standalone = true
-			}
-			if (e.standalone) {
-				e.nav = global_val_nav()
-				e.field = e.nav.add_field(field_opt)
-				e.col = e.field.name
-				init_val()
+		if (on && e.field && !e.owns_field) {
+			// `field` option enables standalone mode.
+			field_opt = e.field
+			e.owns_field = true
+		}
+		if (e.owns_field) {
+			if (on) {
+				let nav = global_val_nav()
+				let field = nav.add_field(field_opt)
+				if (initial_val !== undefined)
+					nav.reset_cell_val(nav.all_rows[0], field, initial_val, {validate: true})
+				initial_val = undefined
+				e.nav = nav
+				e.col = field.name
 			} else {
-				init_field()
-				bind_nav(nav, col, true)
+				let nav = e.nav
+				let field = e.field
+				e.nav = null
+				e.col = null
+				nav.remove_field(field)
 			}
 		} else {
-			bind_nav(nav, col, false)
-			if (e.standalone)
-				e.nav.remove_field(e.field)
-			e.field = null
+			bind_nav(e.nav, e.col, on)
 		}
 	})
 
 	function set_nav_col(nav1, nav0, col1, col0) {
-		if (e.attached) {
-			bind_nav(nav0, col0, false)
-			bind_nav(nav1, col1, true)
-			init_field()
-		}
+		bind_nav(nav0, col0, false)
+		bind_nav(nav1, col1, true)
 		e.update()
 	}
 
-	let nav
 	e.set_nav = function(nav1, nav0) {
 		assert(nav1 != e)
-		nav = nav1
-		set_nav_col(nav1, nav0, col, col)
+		set_nav_col(nav1, nav0, e.col, e.col)
 	}
 	e.prop('nav', {store: 'var', private: true})
 	e.prop('nav_gid' , {store: 'var', bind_gid: 'nav', type: 'nav'})
 
-	let col
 	e.set_col = function(col1, col0) {
-		col = col1
-		set_nav_col(nav, nav, col1, col0)
+		set_nav_col(e.nav, e.nav, col1, col0)
 	}
 	e.prop('col', {store: 'var', type: 'col', col_nav: () => e.nav})
 
@@ -1301,19 +1259,19 @@ function val_widget(e, enabled_without_nav) {
 	e.to_val = function(v) { return v; }
 	e.from_val = function(v) { return v; }
 
-	e.property('row', () => nav && nav.focused_row)
+	e.property('row', () => e.nav && e.nav.focused_row)
 
 	function get_val() {
 		let row = e.row
-		return row && e.field ? nav.cell_val(row, e.field) : null
+		return row && e.field ? e.nav.cell_val(row, e.field) : null
 	}
 	let initial_val
 	e.set_val = function(v, ev) {
 		v = e.to_val(v)
 		if (v === undefined)
 			v = null
-		if (nav && e.field)
-			nav.set_cell_val(e.row, e.field, v, ev)
+		if (e.nav && e.field)
+			e.nav.set_cell_val(e.row, e.field, v, ev)
 		else
 			initial_val = v
 	}
@@ -1324,22 +1282,22 @@ function val_widget(e, enabled_without_nav) {
 		if (v === undefined)
 			v = null
 		if (e.row && e.field)
-			nav.reset_cell_val(e.row, e.field, v, ev)
+			e.nav.reset_cell_val(e.row, e.field, v, ev)
 	}
 
 	e.property('input_val', function() {
 		let row = e.row
-		return row && e.field ? e.from_val(nav.cell_input_val(e.row, e.field)) : null
+		return row && e.field ? e.from_val(e.nav.cell_input_val(e.row, e.field)) : null
 	})
 
 	e.property('error', function() {
 		let row = e.row
-		return row && e.field ? nav.cell_error(row, e.field) : undefined
+		return row && e.field ? e.nav.cell_error(row, e.field) : undefined
 	})
 
 	e.property('modified', function() {
 		let row = e.row
-		return row && e.field ? nav.cell_modified(row, e.field) : false
+		return row && e.field ? e.nav.cell_modified(row, e.field) : false
 	})
 
 	e.display_val = function() {
@@ -1348,22 +1306,23 @@ function val_widget(e, enabled_without_nav) {
 		let row = e.row
 		if (!row)
 			return 'no row'
-		return nav.cell_display_val(row, e.field)
+		return e.nav.cell_display_val(row, e.field)
 	}
 
 	// view -------------------------------------------------------------------
 
 	let enabled = true
 
-	e.do_update = function() {
-		init_field()
+	e.do_update = function(opt) {
+		if (opt && !opt.val)
+			return
 		enabled = !!(enabled_without_nav || (e.row && e.field))
 		e.class('disabled', !enabled)
 		e.focusable = enabled
-		cell_state_changed('input_val', e.input_val)
-		cell_state_changed('val', e.val)
-		cell_state_changed('cell_error', e.error)
-		cell_state_changed('cell_modified', e.modified)
+		cell_state_changed(e.field, 'input_val', e.input_val)
+		cell_state_changed(e.field, 'val', e.val)
+		cell_state_changed(e.field, 'error', e.error)
+		cell_state_changed(e.field, 'modified', e.modified)
 	}
 
 	{
@@ -1399,8 +1358,6 @@ function val_widget(e, enabled_without_nav) {
 // ---------------------------------------------------------------------------
 
 component('x-tooltip', function(e) {
-
-	e.classes = 'x-widget x-tooltip'
 
 	e.text_div = div({class: 'x-tooltip-text'})
 	e.content = div({class: 'x-tooltip-content'}, e.text_div)
@@ -1494,8 +1451,6 @@ component('x-button', function(e) {
 	focusable_widget(e)
 	editable_widget(e)
 	contained_widget(e)
-
-	e.classes = 'x-widget x-button'
 
 	e.icon_div = span({class: 'x-button-icon', style: 'display: none'})
 	e.text_div = span({class: 'x-button-text'})
@@ -1598,7 +1553,8 @@ component('x-checkbox', function(e) {
 	editable_widget(e)
 	val_widget(e)
 
-	e.classes = 'x-widget x-markbox x-checkbox'
+	e.class('x-markbox')
+
 	e.prop('align', {store: 'attr', type: 'enum', enum_values: ['left', 'right'], default: 'left'})
 
 	e.checked_val = true
@@ -1708,8 +1664,6 @@ component('x-checkbox', function(e) {
 
 component('x-radiogroup', function(e) {
 
-	e.classes = 'x-widget x-radiogroup'
-
 	val_widget(e)
 
 	e.set_items = function(items) {
@@ -1809,8 +1763,6 @@ component('x-input', function(e) {
 
 	val_widget(e)
 	input_widget(e)
-
-	e.classes = 'x-widget x-input'
 
 	e.input = H.input({class: 'x-input-value'})
 	e.inner_label_div = div({class: 'x-input-inner-label'})
@@ -1949,7 +1901,6 @@ component('x-input', function(e) {
 component('x-spin-input', function(e) {
 
 	input.construct(e)
-	e.classes = 'x-spin-input'
 
 	e.align = 'right'
 	e.field_type = 'number'
@@ -2068,7 +2019,6 @@ component('x-spin-input', function(e) {
 component('x-slider', function(e) {
 
 	focusable_widget(e)
-	e.classes = 'x-widget x-slider'
 
 	e.prop('from', {store: 'var', default: 0})
 	e.prop('to', {store: 'var', default: 1})
@@ -2193,11 +2143,11 @@ component('x-slider', function(e) {
 
 component('x-dropdown', function(e) {
 
+	e.class('x-input')
+
 	val_widget(e)
 	input_widget(e)
 	focusable_widget(e)
-
-	e.classes = 'x-widget x-input x-dropdown'
 
 	e.props.mode.enum_values = ['default', 'inline', 'wrap', 'fixed']
 
@@ -2239,76 +2189,48 @@ component('x-dropdown', function(e) {
 			e.picker.col = v
 	}
 
-	function create_picker() {
-
-		create_picker = noop // call once.
-
-		e.picker = component.create(e.picker)
-
-		e.picker.xmodule_noupdate = true
-
-		e.picker.dropdown = e
-		e.picker.nav = e.nav
-		e.picker.col = e.col
-		e.picker.class('picker', true)
-		e.picker.can_select_widget = false
-		e.picker.on('val_picked', picker_val_picked)
-		e.picker.on('keydown'   , picker_keydown)
-
-		if (e.picker.init_as_picker)
-			e.picker.init_as_picker()
-
-		let picker_do_update = e.picker.do_update
-		e.picker.do_update = function(opt) {
-			picker_do_update(opt)
-			let text = e.picker.dropdown_display_val()
-			if (text == null)
-				text = e.display_val()
-			let empty = text === ''
-			e.val_div.class('empty', empty)
-			e.val_div.class('null', false)
-			e.inner_label_div.class('empty', empty)
-			e.val_div.set(empty ? H('&nbsp;') : text)
-		}
-
-		e.picker.xmodule_noupdate = false
-	}
-
 	function bind_picker(on) {
-		if (!e.picker)
+		if (!e.attached)
 			return
 		if (on) {
-			create_picker()
+			e.picker = e.create_picker({
+				id: e.id && e.id + '_dropdown',
+				dropdown: e,
+				nav: e.nav,
+				col: e.col,
+				can_select_widget: false,
+			})
+			e.picker.class('picker', true)
+			e.picker.on('val_picked', picker_val_picked)
+			e.picker.on('keydown'   , picker_keydown)
 			e.picker.bind(true)
-		} else  {
-			e.picker.bind(false)
+		} else if (e.picker) {
 			e.picker.popup(false)
+			e.picker.bind(false)
+			e.picker = null
 		}
 		document.on('pointerdown'     , document_pointerdown, on)
 		document.on('rightpointerdown', document_pointerdown, on)
 		document.on('stopped_event'   , document_stopped_event, on)
 	}
 
-	e.set_picker = function(v) {
-		bind_picker(!!v)
-	}
-
-	e.prop('picker', {store: 'var', private: true})
-
-	e.on('bind', function(on) {
-		if (on) {
-			bind_picker(true)
-		} else {
+	e.on('bind_field', function(on) {
+		if (!on)
 			e.close()
-			bind_picker(false)
-		}
+		bind_picker(on)
 	})
 
 	// val updating
 
 	e.do_update_val = function(v, ev) {
-		// nothing: wait for when the picker updates itself
-		// and use picker-provided value.
+		let text = e.picker && e.picker.dropdown_display_val()
+		if (text == null)
+			text = e.display_val()
+		let empty = text === ''
+		e.val_div.class('empty', empty)
+		e.val_div.class('null', false)
+		e.inner_label_div.class('empty', empty)
+		e.val_div.set(empty ? H('&nbsp;') : text)
 	}
 
 	let do_error_tooltip_check = e.do_error_tooltip_check
@@ -2460,94 +2382,6 @@ component('x-dropdown', function(e) {
 })
 
 // ---------------------------------------------------------------------------
-// nav dropdown mixin
-// ---------------------------------------------------------------------------
-
-function nav_dropdown_widget(e) {
-
-	dropdown.construct(e)
-
-	let set_nav = e.set_nav
-	e.set_nav = function(v, ...args) {
-		set_nav(v, ...args)
-		if (!e.initialized) return
-		if (!e.picker) return
-		e.picker.nav = v
-	}
-
-	let set_col = e.set_col
-	e.set_col = function(v, ...args) {
-		set_col(v, ...args)
-		if (!e.initialized) return
-		if (!e.picker) return
-		e.picker.col = v
-	}
-
-	e.set_val_col = function(v) {
-		if (!e.initialized) return
-		if (!e.picker) return
-		e.picker.val_col = v
-	}
-	e.prop('val_col', {store: 'var'})
-
-	e.set_display_col = function(v) {
-		if (!e.initialized) return
-		if (!e.picker) return
-		e.picker.display_col = v
-	}
-	e.prop('display_col', {store: 'var'})
-
-	e.set_rowset_name = function(v) {
-		if (!e.initialized) return
-		if (!e.picker) return
-		e.picker.rowset_name = v
-	}
-	e.prop('rowset_name', {store: 'var', type: 'rowset'})
-
-}
-
-// ---------------------------------------------------------------------------
-// lookup dropdown (for editing fields with lookup_nav_gid)
-// ---------------------------------------------------------------------------
-
-component('x-lookup-dropdown', function(e) {
-
-	nav_dropdown_widget(e)
-
-	init = e.init
-	e.init = function() {
-		init()
-	}
-
-	let set_picker = e.set_picker
-	e.set_picker = function(...args) {
-		set_picker(...args)
-		e.xmodule_noupdate = true
-		if (e.picker) {
-			//e.picker.nav         = e.lookup_nav
-			e.picker.val_col     = e.field.lookup_cols.split(/\s+/)[0]
-			e.picker.display_col = e.field.display_col
-		}
-		e.xmodule_noupdate = false
-	}
-
-	e.on('bind', function(on) {
-		if (on) {
-			if (!e.field)
-				return
-			let ln_gid = e.field.lookup_nav_gid
-			if (ln_gid) {
-				e.lookup_nav = component.create(ln_gid)
-				e.lookup_nav.gid = null // not saving into the original.
-				e.lookup_nav.hide()
-				e.add(e.lookup_nav)
-			}
-		}
-	})
-
-})
-
-// ---------------------------------------------------------------------------
 // calendar widget
 // ---------------------------------------------------------------------------
 
@@ -2555,7 +2389,6 @@ component('x-calendar', function(e) {
 
 	focusable_widget(e)
 	val_widget(e)
-	e.classes = 'x-widget x-focusable x-calendar'
 
 	function format_month(i) {
 		return month_name(time(0, i), 'short')
@@ -2791,7 +2624,7 @@ component('x-calendar', function(e) {
 component('x-date-dropdown', function(e) {
 	dropdown.construct(e)
 	e.field_type = 'date'
-	e.picker = calendar()
+	e.create_picker = calendar
 })
 
 // ---------------------------------------------------------------------------
@@ -3063,8 +2896,6 @@ component('x-widget-placeholder', function(e) {
 	selectable_widget(e)
 	contained_widget(e)
 
-	e.classes = 'x-widget x-widget-placeholder'
-
 	let stretched_widgets = [
 		['SP', 'split'],
 		['CG', 'cssgrid'],
@@ -3240,8 +3071,6 @@ widget_items_widget = function(e) {
 // ---------------------------------------------------------------------------
 
 component('x-pagelist', function(e) {
-
-	e.classes = 'x-widget x-pagelist'
 
 	e.props.align_x = {default: 'stretch'}
 	e.props.align_y = {default: 'stretch'}
@@ -3617,13 +3446,12 @@ component('x-pagelist', function(e) {
 
 component('x-split', function(e) {
 
+	e.props.align_x = {default: 'stretch'}
+	e.props.align_y = {default: 'stretch'}
+
 	serializable_widget(e)
 	selectable_widget(e)
 	contained_widget(e)
-
-	e.align_x = 'stretch'
-	e.align_y = 'stretch'
-	e.classes = 'x-widget x-split'
 
 	e.pane1 = div({class: 'x-split-pane'})
 	e.pane2 = div({class: 'x-split-pane'})
@@ -3803,8 +3631,6 @@ function vsplit(...options) { return split(update({orientation: 'vertical'}, ...
 
 component('x-toaster', function(e) {
 
-	e.classes = 'x-widget x-toaster'
-
 	e.tooltips = new Set()
 
 	e.target = document.body
@@ -3878,7 +3704,6 @@ component('x-toaster', function(e) {
 
 component('x-action-band', function(e) {
 
-	e.classes = 'x-widget x-action-band'
 	e.layout = 'ok:ok cancel:cancel'
 
 	e.init = function() {
@@ -3951,8 +3776,6 @@ component('x-dialog', function(e) {
 
 	focusable_widget(e)
 
-	e.classes = 'x-widget x-dialog'
-
 	e.x_button = true
 
 	e.init = function() {
@@ -4017,7 +3840,7 @@ component('x-toolbox', function(e) {
 	focusable_widget(e)
 
 	e.istoolbox = true
-	e.classes = 'x-widget x-toolbox pinned'
+	e.class('pinned')
 
 	e.pin_button = div({class: 'x-toolbox-button x-toolbox-pin-button fa fa-thumbtack'})
 	e.xbutton = div({class: 'x-toolbox-button x-toolbox-xbutton fa fa-times'})
@@ -4144,8 +3967,6 @@ component('x-richtext', function(e) {
 	selectable_widget(e)
 	editable_widget(e)
 	contained_widget(e)
-
-	e.classes = 'x-widget x-richtext'
 
 	e.content_div = div({class: 'x-richedit-content'})
 	e.add(e.content_div)
@@ -4356,8 +4177,6 @@ component('x-sql-editor', function(e) {
 
 	val_widget(e)
 
-	e.classes = 'x-sql-editor'
-
 	e.do_update_val = function(val, ev) {
 		e.editor.getSession().setValue(val || '')
 	}
@@ -4399,8 +4218,6 @@ component('x-widget-switcher', function(e) {
 
 	e.props.align_x = {default: 'stretch'}
 	e.props.align_y = {default: 'stretch'}
-
-	e.classes = 'x-widget-switcher'
 
 	serializable_widget(e)
 	selectable_widget(e)

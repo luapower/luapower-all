@@ -10,8 +10,6 @@ component('x-cssgrid', function(e) {
 	contained_widget(e)
 	widget_items_widget(e)
 
-	e.classes = 'x-widget x-cssgrid'
-
 	// widget-items widget protocol.
 	e.do_init_items = function() {
 		e.clear()

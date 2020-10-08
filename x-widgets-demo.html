@@ -946,24 +946,24 @@ function p(mode, ...args) {
 
 main.add(
 	p('default', 'variable-width, no-wrap with min-width aligned with other inputs'),
-	date_dropdown({val: time()}),
+	date_dropdown({field: {type: 'date'}, val: time()}),
 	H.div(),
-	list_dropdown({items: items()}),
+	list_dropdown({field: {}, items: items()}),
 
 	p('inline', 'variable-width, no-wrap, with no min-width (shrink-wrapped), baseline-aligned'),
-	date_dropdown({mode: 'inline', val: time()}),
+	date_dropdown({field: {type: 'date'}, mode: 'inline', val: time()}),
 	H.div(),
-	list_dropdown({mode: 'inline', items: items()}),
+	list_dropdown({field: {}, mode: 'inline', items: items()}),
 
 	p('wrap', 'fixed-width, auto-wrap'),
-	date_dropdown({mode: 'wrap', val: time()}),
+	date_dropdown({field: {type: 'date'}, mode: 'wrap', val: time()}),
 	H.div(),
-	list_dropdown({mode: 'wrap', items: items(), val: 'Something Else Entirely'}),
+	list_dropdown({field: {}, mode: 'wrap', items: items(), val: 'Something Else Entirely'}),
 
 	p('fixed', 'fixed-width, no-wrap, overflow hidden'),
-	date_dropdown({mode: 'fixed', val: time()}),
+	date_dropdown({field: {type: 'date'}, mode: 'fixed', val: time()}),
 	H.div(),
-	list_dropdown({mode: 'fixed', items: items(), val: 'Something Else Entirely'})
+	list_dropdown({id: 'xx', field: {}, mode: 'fixed', items: items(), val: 'Something Else Entirely'})
 )
 
 </script>
@@ -1224,7 +1224,7 @@ demo_list = listbox({
 	item_typename: 'richtext',
 	field: {},
 	val_col: 0,
-	val: demos[18],
+	val: demos[21],
 })
 
 demo_list.create_item = function() {

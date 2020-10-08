@@ -731,7 +731,7 @@ component('x-widget-tree', function(e) {
 		let rows = []
 		function add_widget(e, pe) {
 			if (!e) return
-			rows.push([e, pe, e.type, e.gid, e.id])
+			rows.push([e, pe, e.type, e.gid])
 			if (e.child_widgets)
 				for (let ce of e.child_widgets())
 					add_widget(ce, e)
@@ -757,7 +757,6 @@ component('x-widget-tree', function(e) {
 			{name: 'parent_widget', visible: false},
 			{name: 'type' , w: 30, format: type_icon},
 			{name: 'gid'  , },
-			{name: 'id'   , },
 		],
 		rows: widget_tree_rows(),
 		pk: 'widget',

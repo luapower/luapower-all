@@ -20,8 +20,6 @@ component('x-grid', function(e) {
 	editable_widget(e)
 	focusable_widget(e)
 
-	e.classes = 'x-widget x-focusable x-grid'
-
 	// geometry
 	e.cell_h = 26
 	e.auto_w = false
@@ -72,6 +70,12 @@ component('x-grid', function(e) {
 	e.on('bind', function(on) {
 		document.on('layout_changed', layout_changed, on)
 	})
+
+	let init = e.init
+	e.init = function() {
+		init()
+		init_as_picker()
+	}
 
 	// geometry ---------------------------------------------------------------
 
@@ -180,6 +184,8 @@ component('x-grid', function(e) {
 
 			if (e.auto_h)
 				e.h = cells_h + header_h + border_h
+
+			//print(e.gid, cells_h)
 
 			cells_view_h = floor(e.cells_view.rect().h)
 			e.cells_ct.h = max(1, cells_h) // need at least 1px to show scrollbar.
@@ -744,19 +750,27 @@ component('x-grid', function(e) {
 
 	// responding to rowset changes -------------------------------------------
 
-	let val_widget_do_update = e.do_update
+	let update_val = e.do_update
 	e.do_update = function(opt) {
 
-		if (!opt) {
-			val_widget_do_update()
-			return
-		}
+		//print(e.gid, e.type, e.rowset.fields, e.attached, opt)
+		//trace()
 
-		if (!e.attached)
-			return
+		opt = opt || {val: true}
 
 		if (opt.reload) {
 			e.reload()
+			create_fields()
+			update_sort_icons()
+			update_sizes()
+			create_cells()
+			update_cell_sizes()
+			update_cells()
+			update_quicksearch_cell()
+			if (opt.enter_edit)
+				e.enter_edit(...opt.enter_edit)
+			if (opt.scroll_to_cell)
+					e.scroll_to_cell(...opt.scroll_to_cell)
 			return
 		}
 
@@ -779,6 +793,8 @@ component('x-grid', function(e) {
 			update_cells()
 		if (opt_rows || opt.state)
 			update_quicksearch_cell()
+		if (opt.val)
+			update_val()
 		if (opt.enter_edit)
 			e.enter_edit(...opt.enter_edit)
 		if (opt.scroll_to_cell)
@@ -822,11 +838,17 @@ component('x-grid', function(e) {
 		e.fire('val_picked', {input: e})
 	}
 
-	e.init_as_picker = function() {
-		e.begin_update()
-		update(e, grid_picker_options(e.dropdown))
-		e.update({sizes: true})
-		e.end_update()
+	function init_as_picker() {
+		if (!e.dropdown)
+			return
+		e.xmodule_noupdate = true
+		e.can_edit = false
+		e.can_focus_cells = false
+		e.auto_focus_first_cell = false
+		e.enable_context_menu = false
+		e.auto_w = true
+		e.auto_h = true
+		e.xmodule_noupdate = false
 	}
 
 	// vgrid header resizing --------------------------------------------------
@@ -2060,39 +2082,20 @@ component('x-grid', function(e) {
 // grid dropdown
 // ---------------------------------------------------------------------------
 
-function grid_picker_options(e) {
-	return {
-		type: 'grid',
-		gid: e.gid && e.gid + '.dropdown',
-		rowset: e.rowset,
-		rowset_name: e.rowset_name,
-		nav: e.nav,
-		col: e.col,
-		val_col: e.val_col,
-		display_col: e.display_col,
-		can_edit: false,
-		can_focus_cells: false,
-		auto_focus_first_cell: false,
-		enable_context_menu: false,
-		auto_w: true,
-		auto_h: true,
-	}
-}
-
 component('x-grid-dropdown', function(e) {
 
 	nav_dropdown_widget(e)
-	e.classes = 'x-grid-dropdown'
 
-	init = e.init
-	e.init = function() {
-		e.picker = e.picker || component.create(update(grid_picker_options(e), e.grid))
-		init()
+	e.create_picker = function(opt) {
+		return component.create(update(opt, {
+			type: 'grid',
+			gid: e.gid && e.gid + '.dropdown',
+			val_col: e.val_col,
+			display_col: e.display_col,
+			rowset: e.rowset,
+			rowset_name: e.rowset_name,
+		}, e.grid))
 	}
-
-	e.on('opened', function() {
-		e.picker.scroll_to_focused_cell()
-	})
 
 })
 

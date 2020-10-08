@@ -13,22 +13,21 @@ component('x-listbox', function(e) {
 
 	e.can_focus_cells = false
 
-	e.classes = 'x-widget x-focusable x-listbox'
-
 	e.prop('orientation'   , {store: 'attr', type: 'enum', enum_values: ['vertical', 'horizontal'], default: 'vertical'})
 	e.prop('can_move_items', {store: 'var', type: 'bool', default: true})
 	e.prop('item_type'     , {store: 'var', default: 'richtext'})
 
 	e.display_col = 0
 
-	e.on('bind', function(on) {
-		if (on) {
-			if (e.items) {
-				create_rows_items()
-				e.items = null
-			}
+	let init = e.init
+	e.init = function() {
+		init()
+		init_as_picker()
+		if (e.items) {
+			create_rows_items()
+			e.items = null
 		}
-	})
+	}
 
 	// item-based rowset ------------------------------------------------------
 
@@ -61,7 +60,6 @@ component('x-listbox', function(e) {
 			fields: [{format: e.format_item}],
 			rows: rows,
 		}
-		e.reset()
 	}
 
 	e.create_item = function() {
@@ -102,16 +100,10 @@ component('x-listbox', function(e) {
 		item.set(e.row_display_val(row))
 	}
 
-	let val_widget_do_update = e.do_update
+	let update_val = e.do_update
 	e.do_update = function(opt) {
 
-		if (!opt) {
-			val_widget_do_update()
-			return
-		}
-
-		if (!e.attached)
-			return
+		opt = opt || {val: true}
 
 		if (opt.reload) {
 			e.reload()
@@ -135,6 +127,9 @@ component('x-listbox', function(e) {
 		if (opt.rows || opt.vals || opt.fields)
 			for (let i = 0; i < e.rows.length; i++)
 				e.do_update_item(e.at[i], e.rows[i])
+
+		if (!opt || opt.val)
+			update_val()
 
 		if (opt.rows || opt.state)
 			if (e.at.length)
@@ -335,11 +330,14 @@ component('x-listbox', function(e) {
 
 	// picker protocol --------------------------------------------------------
 
-	e.init_as_picker = function() {
-		e.begin_update()
-		update(e, listbox_picker_options(e.dropdown))
-		e.update()
-		e.end_update()
+	function init_as_picker() {
+		if (!e.dropdown)
+			return
+		e.xmodule_noupdate = true
+		e.auto_focus_first_cell = false
+		e.can_select_multiple = false
+		e.can_move_items = false
+		e.xmodule_noupdate = false
 	}
 
 })
@@ -352,36 +350,20 @@ hlistbox = function(...options) {
 // list dropdown
 // ---------------------------------------------------------------------------
 
-function listbox_picker_options(e) {
-	return {
-		type: 'listbox',
-		gid: e.gid && e.gid + '.picker',
-		items: e.items,
-		rowset: e.rowset,
-		rowset_name: e.rowset_name,
-		nav: e.nav,
-		col: e.col,
-		val_col: e.val_col,
-		display_col: e.display_col,
-		auto_focus_first_cell: false,
-		can_select_multiple: false,
-		can_move_items: false,
-	}
-}
-
-
 component('x-list-dropdown', function(e) {
 
 	nav_dropdown_widget(e)
-	e.classes = 'x-list-dropdown'
 
-	init = e.init
-	e.init = function() {
-		e.picker = e.picker || component.create(update(listbox_picker_options(e), e.listbox))
-		e.on('opened', function() {
-			e.picker.scroll_to_focused_cell()
-		})
-		init()
+	e.create_picker = function(opt) {
+		return component.create(update(opt, {
+			type: 'listbox',
+			gid: e.gid && e.gid + '.picker',
+			val_col: e.val_col,
+			display_col: e.display_col,
+			items: e.items,
+			rowset: e.rowset,
+			rowset_name: e.rowset_name,
+		}, e.listbox))
 	}
 
 })
@@ -393,8 +375,6 @@ component('x-list-dropdown', function(e) {
 component('x-select-button', function(e) {
 
 	listbox.construct(e)
-
-	e.classes = 'x-select-button'
 
 	e.orientation = 'horizontal'
 	e.can_move_items = false

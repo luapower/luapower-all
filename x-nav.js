@@ -336,19 +336,19 @@ function nav_widget(e) {
 
 	e.set_static_rowset = function(rs) {
 		e.rowset = rs
-		e.reset()
+		e.reload()
 	}
 	e.prop('static_rowset', {store: 'var'})
 
 	e.set_row_vals = function() {
 		if (save_barrier) return
-		e.reset()
+		e.reload()
 	}
 	e.prop('row_vals', {store: 'var', slot: 'app'})
 
 	e.set_row_states = function() {
 		if (save_barrier) return
-		e.reset()
+		e.reload()
 	}
 	e.prop('row_states', {store: 'var', slot: 'app'})
 
@@ -387,10 +387,10 @@ function nav_widget(e) {
 		return v
 	}
 
-	function init_field_attrs(field, f) {
+	function init_field_attrs(field, f, name) {
 
-		let pt = e.prop_col_attrs && e.prop_col_attrs[field.name]
-		let ct = e.col_attrs && e.col_attrs[field.name]
+		let pt = e.prop_col_attrs && e.prop_col_attrs[name]
+		let ct = e.col_attrs && e.col_attrs[name]
 		let type = f.type || (ct && ct.type)
 		let tt = field_types[type]
 		let att = all_field_types
@@ -399,6 +399,7 @@ function nav_widget(e) {
 
 		for (let k in convert_field_attr)
 			field[k] = convert_field_attr[k](field, field[k], f)
+
 	}
 
 	function set_field_attr(field, k, v) {
@@ -431,7 +432,7 @@ function nav_widget(e) {
 	function init_field(f, fi) {
 
 		// disambiguate field name.
-		let name = (f.name || 'f'+fi).replace(/ /g, '_')
+		let name = (f.name || 'f'+fi).replaceAll(' ', '_')
 		if (name in e.all_fields) {
 			let suffix = 2
 			while (name+suffix in e.all_fields)
@@ -441,11 +442,11 @@ function nav_widget(e) {
 
 		let field = {}
 
+		init_field_attrs(field, f, name)
+
 		field.name = name
 		field.val_index = fi
 		field.nav = e
-
-		init_field_attrs(field, f)
 
 		e.all_fields[fi] = field
 		e.all_fields[name] = field
@@ -856,9 +857,8 @@ function nav_widget(e) {
 		e.rows = []
 		if (e.attached) {
 			let i = 0
-			let passes = all_rows_filter()
 			for (let row of e.all_rows)
-				if (!row.parent_collapsed && passes(row))
+				if (!row.parent_collapsed && e.row_is_visible(row))
 					e.rows.push(row)
 		}
 	}
@@ -869,6 +869,7 @@ function nav_widget(e) {
 		e.selected_rows = new Map()
 		reset_quicksearch()
 
+		init_filters()
 		create_rows()
 		sort_rows()
 	}
@@ -1729,10 +1730,12 @@ function nav_widget(e) {
 		return eval(s)
 	}
 
-	function all_rows_filter() {
+	function init_filters() {
 		e.is_filtered = false
-		if (e.param_vals === false)
-			return return_false
+		if (e.param_vals === false) {
+			e.row_is_visible = return_false
+			return
+		}
 		let expr = ['&&']
 		if (e.param_vals && !e.rowset_url) {
 			if (e.param_vals.length == 1) {
@@ -1755,7 +1758,7 @@ function nav_widget(e) {
 					expr.push(['!==', field.name, v])
 					e.is_filtered = true
 				}
-		return expr.length > 1 ? expr_filter(expr) : return_true
+		e.row_is_visible = expr.length > 1 ? expr_filter(expr) : return_true
 	}
 
 	e.and_filter = function(cols, vals) {
@@ -1835,6 +1838,10 @@ function nav_widget(e) {
 		return v !== undefined ? v : default_val
 	}
 
+	e.cell_states = function(row, cols, key, default_val) {
+		return flds(cols).map(f => e.cell_state(row, f, key, default_val))
+	}
+
 	e.set_cell_state = function(row, field, key, val, default_val, fire_change_event, ev) {
 		let vi = cell_state_val_index(key, field)
 		let old_val = row[vi]
@@ -1898,7 +1905,9 @@ function nav_widget(e) {
 	e.cell_error        = (row, col) => e.cell_state(row, fld(col), 'error')
 	e.cell_modified     = (row, col) => e.cell_state(row, fld(col), 'modified', false)
 
-	e.pk_vals = (row) => e.pk_fields.map((field) => row[field.val_index])
+	e.cell_vals = (row, cols) => flds(cols).map(f => row[f.val_index])
+
+	e.pk_vals = row => e.pk_fields.map((field) => row[field.val_index])
 
 	e.convert_val = function(field, val, row, ev) {
 		return field.convert ? field.convert.call(e, val, field, row) : val
@@ -1921,7 +1930,7 @@ function nav_widget(e) {
 		let ln = field.lookup_nav
 		if (ln) {
 			field.display_field = field.display_field || ln.all_fields[field.display_col || ln.name_col]
-			if (!ln.lookup(field.lookup_cols, [val]).length)
+			if (!ln.lookup(field.lookup_col, [val]).length)
 				return S('error_lookup', 'Value not found in lookup nav')
 		}
 
@@ -2252,10 +2261,10 @@ function nav_widget(e) {
 		let s = field.null_text
 		if (!field.null_lookup_col)
 			return s
-		let lf = e.all_fields[field.null_lookup_col]      ; if (!lf) return s
-		let ln = lf.lookup_nav                            ; if (!ln) return s; if (!lf.lookup_cols) return s
+		let lf = e.all_fields[field.null_lookup_col]      ; if (!lf || !lf.lookup_col) return s
+		let ln = lf.lookup_nav                            ; if (!ln) return s
 		let nfv = e.cell_val(row, lf)
-		let ln_row = ln.lookup(lf.lookup_cols, [nfv])[0]  ; if (!ln_row) return s
+		let ln_row = ln.lookup(lf.lookup_col, [nfv])[0]   ; if (!ln_row) return s
 		let dcol = or(field.null_display_col, field.name)
 		let df = ln.all_fields[dcol]                      ; if (!df) return s
 		return ln.cell_display_val(ln_row, df)
@@ -2268,8 +2277,8 @@ function nav_widget(e) {
 			return field.empty_text
 		let ln = field.lookup_nav
 		if (ln) {
-			if (field.lookup_cols) {
-				let row = ln.lookup(field.lookup_cols, [v])[0]
+			if (field.lookup_col) {
+				let row = ln.lookup(field.lookup_col, [v])[0]
 				if (row)
 					return ln.cell_display_val(row, field.display_field)
 			}
@@ -2346,12 +2355,13 @@ function nav_widget(e) {
 				assert(init_parent_rows_for_row(row))
 			}
 
-			//update_indices('row_added', row)
+			update_indices('row_added', row)
 
-			// TODO: conditionnaly insert based on current filter!
-			e.rows.insert(ri, row)
-			if (e.focused_row_index >= ri)
-				e.focused_row = e.rows[e.focused_row_index + 1]
+			if (e.row_is_visible(row)) {
+				e.rows.insert(ri, row)
+				if (e.focused_row_index >= ri)
+					e.focused_row = e.rows[e.focused_row_index + 1]
+			}
 
 			// set default client values as if they were typed in by the user.
 			let set_val_ev = update({row_not_modified: true}, ev)
@@ -2605,9 +2615,8 @@ function nav_widget(e) {
 					let r2 = []
 					let a1 = []
 					let a2 = []
-					let passes = all_rows_filter()
 					for (let ri = 0; ri < e.all_rows.length; ri++) {
-						let visible = passes(e.all_rows[ri])
+						let visible = e.row_is_visible(e.all_rows[ri])
 						;(visible ? a1 : a2).push(row_arr[ri])
 						;(visible ? r1 : r2).push(e.all_rows[ri])
 					}
@@ -2768,7 +2777,7 @@ function nav_widget(e) {
 	// saving changes ---------------------------------------------------------
 
 	function row_changed(row) {
-		if (!(row.is_new && (!row.modified || row.removed))) {
+		if (!(row.nosave || (row.is_new && (!row.modified || row.removed)))) {
 			e.changed_rows = e.changed_rows || new Set()
 			e.changed_rows.add(row)
 		}
@@ -2888,6 +2897,8 @@ function nav_widget(e) {
 	e.save = function(row) {
 		if (!e.changed_rows)
 			return
+		if (row && row.nosave)
+			return
 		if (e.rowset_url)
 			save_to_server(row)
 		else if (e.static_rowset)
@@ -2972,7 +2983,7 @@ function nav_widget(e) {
 		let vals = {}
 		for (let field of e.all_fields) {
 			let v = e.cell_val(row, field)
-			if (v !== field.default && field.nosave !== false)
+			if (v !== field.default && !field.nosave)
 				vals[field.name] = v
 		}
 		return vals
@@ -2990,7 +3001,7 @@ function nav_widget(e) {
 	e.serialize_all_row_vals = function() {
 		let rows = []
 		for (let row of e.all_rows)
-			if (!row.removed && row.nosave !== false)
+			if (!row.removed && !row.nosave)
 				rows.push(e.serialize_row_vals(row))
 		return rows
 	}
@@ -3009,7 +3020,7 @@ function nav_widget(e) {
 	e.serialize_all_row_states = function() {
 		let rows = []
 		for (let row of e.all_rows) {
-			if (row.nosave !== false) {
+			if (!row.nosave) {
 				let state = {}
 				if (row.is_new)
 					state.is_new = true
@@ -3017,7 +3028,7 @@ function nav_widget(e) {
 					state.removed = true
 				state.vals = e.serialize_row_vals(row)
 				for (let field of e.all_fields) {
-					if (field.nosave !== false) {
+					if (!field.nosave) {
 						let modified = e.cell_state(row, field, 'modified')
 						if (modified) {
 							let t = attr(state, 'cell')
@@ -3271,18 +3282,18 @@ function nav_widget(e) {
 
 	e.set_sql_select = e.reload
 
-	e.prop('sql_select_all'        , {store: 'var', slot: 'base_server'})
-	e.prop('sql_select'            , {store: 'var', slot: 'base_server'})
-	e.prop('sql_select_one'        , {store: 'var', slot: 'base_server'})
-	e.prop('sql_select_one_update' , {store: 'var', slot: 'base_server'})
-	e.prop('sql_pk'                , {store: 'var', slot: 'base_server'})
-	e.prop('sql_insert_fields'     , {store: 'var', slot: 'base_server'})
-	e.prop('sql_update_fields'     , {store: 'var', slot: 'base_server'})
-	e.prop('sql_where'             , {store: 'var', slot: 'base_server'})
-	e.prop('sql_where_row'         , {store: 'var', slot: 'base_server'})
-	e.prop('sql_where_row_update'  , {store: 'var', slot: 'base_server'})
-	e.prop('sql_schema'            , {store: 'var', slot: 'base_server'})
-	e.prop('sql_db'                , {store: 'var', slot: 'base_server'})
+	e.prop('sql_select_all'        , {store: 'var', slot: 'server'})
+	e.prop('sql_select'            , {store: 'var', slot: 'server'})
+	e.prop('sql_select_one'        , {store: 'var', slot: 'server'})
+	e.prop('sql_select_one_update' , {store: 'var', slot: 'server'})
+	e.prop('sql_pk'                , {store: 'var', slot: 'server'})
+	e.prop('sql_insert_fields'     , {store: 'var', slot: 'server'})
+	e.prop('sql_update_fields'     , {store: 'var', slot: 'server'})
+	e.prop('sql_where'             , {store: 'var', slot: 'server'})
+	e.prop('sql_where_row'         , {store: 'var', slot: 'server'})
+	e.prop('sql_where_row_update'  , {store: 'var', slot: 'server'})
+	e.prop('sql_schema'            , {store: 'var', slot: 'server'})
+	e.prop('sql_db'                , {store: 'var', slot: 'server'})
 
 }
 
@@ -3310,14 +3321,14 @@ component('x-bare-nav', function(e) {
 
 	let val_widget_do_update = e.do_update
 	e.do_update = function(opt) {
-		if (!opt) {
-			val_widget_do_update()
-			return
-		}
 		if (!e.attached)
 			return
 		if (opt.reload) {
 			e.reload()
+			return
+		}
+		if (!opt || opt.val) {
+			val_widget_do_update()
 			return
 		}
 	}
@@ -3339,6 +3350,67 @@ global_val_nav = function() {
 	nav.focus_cell(true, false)
 	return nav
 }
+
+// ---------------------------------------------------------------------------
+// nav dropdown mixin
+// ---------------------------------------------------------------------------
+
+function nav_dropdown_widget(e) {
+
+	dropdown.construct(e)
+
+	e.set_val_col = function(v) {
+		if (!e.picker) return
+		e.picker.val_col = v
+	}
+	e.prop('val_col', {store: 'var'})
+
+	e.set_display_col = function(v) {
+		if (!e.picker) return
+		e.picker.display_col = v
+	}
+	e.prop('display_col', {store: 'var'})
+
+	e.set_rowset_name = function(v) {
+		if (!e.picker) return
+		e.picker.rowset_name = v
+	}
+	e.prop('rowset_name', {store: 'var', type: 'rowset'})
+
+	e.on('opened', function() {
+		if (!e.picker) return
+		e.picker.scroll_to_focused_cell()
+	})
+
+}
+
+// ---------------------------------------------------------------------------
+// lookup dropdown (for binding to fields with `lookup_nav_gid`)
+// ---------------------------------------------------------------------------
+
+component('x-lookup-dropdown', function(e) {
+
+	dropdown.construct(e)
+
+	e.create_picker = function(opt) {
+		let ln_gid = e.field.lookup_nav_gid
+		if (!ln_gid)
+			return
+		opt.gid         = ln_gid
+		opt.val_col     = e.field.lookup_col
+		opt.display_col = e.field.display_col
+
+		let picker = component.create(opt)
+		picker.gid = null // not saving into the original.
+		return picker
+	}
+
+	e.on('opened', function() {
+		if (!e.picker) return
+		e.picker.scroll_to_focused_cell()
+	})
+
+})
 
 // ---------------------------------------------------------------------------
 // field types and prop attrs
@@ -3372,16 +3444,8 @@ global_val_nav = function() {
 	}
 
 	all_field_types.editor = function(...opt) {
-		if (this.lookup_nav) {
-			this.lookup_nav.xmodule_noupdate = true
-			this.lookup_nav.val_col     = this.lookup_cols.split(/\s+/)[0]
-			this.lookup_nav.display_col = this.display_col
-			let editor = lookup_dropdown(update({
-					picker: this.lookup_nav,
-				}, ...opt))
-			this.lookup_nav.xmodule_noupdate = false
-			return editor
-		}
+		if (this.lookup_nav_gid)
+			return lookup_dropdown(...opt)
 		return input(...opt)
 	}
 
@@ -3441,14 +3505,13 @@ global_val_nav = function() {
 	let suffix = [' B', ' KB', ' MB', ' GB', ' TB']
 	let magnitudes = {KB: 1, MB: 2, GB: 3}
 	filesize.format = function(x) {
-		if (x == 0) return ''
 		let mag = this.filesize_magnitude
 		let dec = this.filesize_decimals || 0
 		let min = this.filesize_min || 1/10**dec
 		let i = mag ? magnitudes[mag] : parseInt(floor(log(x) / log(1024)))
 		let z = x / 1024**i
-		if (z < min) return ''
-		return z.toFixed(dec) + suffix[i]
+		let s = z.toFixed(dec) + suffix[i]
+		return z < min ? () => div({class: 'x-dba-insignificant-size'}, s) : s
 	}
 
 	// dates
