@@ -2066,6 +2066,28 @@
 	display: grid;
 }
 
+/* pie chart -------------------------------------------------------------- */
+
+.x-pie-chart {
+	height: 100%;
+	position: relative;
+	display: grid;
+}
+
+.x-pie-chart-pie {
+	position: absolute;
+	border-radius: 50%;
+	box-shadow: 2px 2px 6px #000000cc;
+}
+
+.x-pie-chart-label {
+	position: absolute;
+	font-family: x-widget-condensed, sans-serif;
+	font-weight: bold;
+	color: #666;
+	line-height: 1;
+}
+
 /* countries listbox ------------------------------------------------------ */
 
 .x-countries-listbox-row {

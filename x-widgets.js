@@ -3704,7 +3704,7 @@ component('x-action-band', function(e) {
 			s = s.split(':')
 			let name = s.shift()
 			let spec = new Set(s)
-			let btn = e.buttons && e.buttons[name.replace('-', '_').replace(/[^\w]/g, '')]
+			let btn = e.buttons && e.buttons[name.replaceAll('-', '_').replace(/[^\w]/g, '')]
 			let btn_sets_text
 			if (!(btn instanceof Node)) {
 				if (typeof btn == 'function')
@@ -3719,7 +3719,7 @@ component('x-action-band', function(e) {
 			btn.class('x-dialog-button-'+name)
 			btn.dialog = e
 			if (!btn_sets_text) {
-				btn.text = S(name.replace('-', '_'), name.replace(/[_\-]/g, ' '))
+				btn.text = S(name.replaceAll('-', '_'), name.replace(/[_\-]/g, ' '))
 				btn.style['text-transform'] = 'capitalize'
 			}
 			if (name == 'ok' || spec.has('ok')) {
@@ -4206,6 +4206,8 @@ component('x-widget-switcher', function(e) {
 	function bind_nav(nav, on) {
 		if (!nav)
 			return
+		if (!e.attached)
+			return
 		nav.on('focused_row_changed'     , refresh, on)
 		nav.on('focused_row_val_changed' , refresh, on)
 		nav.on('reset'                   , refresh, on)
@@ -4217,10 +4219,8 @@ component('x-widget-switcher', function(e) {
 
 	e.set_nav = function(nav1, nav0) {
 		assert(nav1 != e)
-		if (e.attached) {
-			bind_nav(nav0, false)
-			bind_nav(nav1, true)
-		}
+		bind_nav(nav0, false)
+		bind_nav(nav1, true)
 		e.update()
 	}
 	e.prop('nav', {store: 'var', private: true})
@@ -4249,4 +4249,173 @@ component('x-widget-switcher', function(e) {
 	}
 
 })
+
+// ---------------------------------------------------------------------------
+// pie chart
+// ---------------------------------------------------------------------------
+
+component('x-pie-chart', function(e) {
+
+	e.props.align_x = {default: 'stretch'}
+	e.props.align_y = {default: 'stretch'}
+
+	contained_widget(e)
+	serializable_widget(e)
+	selectable_widget(e)
+
+	e.pie = div({class: 'x-pie-chart-pie'})
+	e.labels = div()
+	e.add(e.pie, e.labels)
+
+	function refresh() {
+		e.update()
+	}
+
+	function render_pie(slices) {
+
+		e.labels.clear()
+		e.pie.style['background-image'] = null
+
+		if (!slices)
+			return
+
+		let w = e.clientWidth
+		let h = e.clientHeight
+		let pw = (w / h < 1 ? w : h) * .5
+
+		e.pie.w = pw
+		e.pie.h = pw
+		e.pie.x = (w - pw) / 2
+		e.pie.y = (h - pw) / 2
+
+		let s = []
+		let angle = 0
+		let i = 0
+		for (let slice of slices) {
+			let arclen = slice.size * 360
+
+			// generate a gradient step for this slice.
+			let color = hsl_to_rgb(((i / (slices.length-1)) * 360 - 120) % 180, .8, .7)
+			s.push(color + ' ' + angle.toFixed(0)+'deg '+(angle + arclen).toFixed(0)+'deg')
+
+			// add the label and position it around the pie.
+			e.labels.add(slice.label)
+			let pad = 5
+			let center_angle = angle + arclen / 2
+			let [x, y] = point_around(w / 2, h / 2, pw / 2, center_angle - 90)
+			slice.label.x = x + pad
+			slice.label.y = y + pad
+			let left = center_angle > 180
+			let top  = center_angle < 90 || center_angle > 3 * 90
+			if (left)
+				slice.label.x = x - slice.label.clientWidth - pad
+			if (top)
+				slice.label.y = y - slice.label.clientHeight - pad
+
+			angle += arclen
+			i++
+		}
+
+		e.pie.style['background-image'] = 'conic-gradient(' + s.join(',') + ')'
+	}
+
+	function slice_label(key_vals, row, sum) {
+		let label = div({class: 'x-pie-chart-label'})
+		let i = 0
+		for (let field of e.nav.flds(e.cat_cols)) {
+			let v = key_vals[i]
+			let text = e.nav.cell_display_val_for(row, field, v)
+			if (i == 1)
+				label.add('/')
+			label.add(text)
+			i++
+		}
+		label.add(tag('br'))
+		label.add(e.nav.cell_display_val_for(row, e.nav.fld(e.sum_col), sum))
+		return label
+	}
+
+	e.do_update = function() {
+
+		let cat_groups = e.nav
+			&& e.cat_cols != null
+			&& e.sum_col != null
+			&& e.nav.row_group(e.cat_cols)
+
+		let slices
+		if (cat_groups) {
+
+			slices = []
+			slices.total = 0
+			for (let group of cat_groups) {
+				let slice = {}
+				let sum = 0
+				for (let row of group)
+					sum += e.nav.cell_val(row, e.sum_col)
+				slice.sum = sum
+				slice.label = slice_label(group.key_vals, group[0], sum)
+				slices.push(slice)
+				slices.total += sum
+			}
+
+			// sum small slices into a single "other" slice.
+			let big_slices = []
+			let other_slice
+			for (let slice of slices) {
+				slice.size = slice.sum / slices.total
+				if (slice.size < e.other_threshold) {
+					other_slice = other_slice || {sum: 0}
+					other_slice.sum += slice.sum
+				} else
+					big_slices.push(slice)
+			}
+			if (other_slice) {
+				other_slice.size = other_slice.sum / slices.total
+				other_slice.label = div({class: 'x-pie-chart-label'}, e.other_text, '\n', other_slice.sum)
+				big_slices.push(other_slice)
+			}
+			slices = big_slices
+
+		}
+
+		render_pie(slices)
+	}
+
+	function bind_nav(nav, on) {
+		if (!e.attached)
+			return
+		if (!nav)
+			return
+		nav.on('reset'               , refresh, on)
+		nav.on('rows_changed'        , refresh, on)
+		nav.on('cell_val_changed'    , refresh, on)
+		nav.on('display_vals_changed', refresh, on)
+	}
+
+	e.on('bind', function(on) {
+		bind_nav(e.nav, on)
+	})
+
+	e.set_nav = function(nav1, nav0) {
+		assert(nav1 != e)
+		bind_nav(nav0, false)
+		bind_nav(nav1, true)
+		refresh()
+	}
+
+	e.prop('nav', {store: 'var', private: true})
+	e.prop('nav_gid' , {store: 'var', bind_gid: 'nav', type: 'nav'})
+
+	e.set_sum_col = refresh
+	e.set_cat_cols = refresh
+	e.set_other_threshold = refresh
+	e.set_other_text = refresh
+
+	e.prop('sum_col' , {store: 'var', type: 'col', col_nav: () => e.nav})
+	e.prop('cat_cols', {store: 'var', type: 'col', col_nav: () => e.nav})
+	e.prop('other_threshold', {store: 'var', type: 'number', default: .05})
+	e.prop('other_text', {store: 'var', default: 'Other'})
+
+})
+
 

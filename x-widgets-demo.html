@@ -1077,6 +1077,48 @@ main.add(grid({w: 200, h: 200, rowset: r}))
 
 <!--------------------------------------------------------------------------->
 
+<template id=pie_charts_demo>
+<script>
+
+g = grid({
+	rowset: {
+		fields: [
+			{name: 'country'},
+			{name: 'sector'},
+			{name: 'output', type: 'number'},
+		],
+		rows: [
+			['Algeria', 'Energy'        , 20],
+			['Algeria', 'Pink Flamingos', 100],
+			['Canada' , 'Chickens'      , 20],
+			['Canada' , 'Geese'         , 100],
+			['Canada' , 'Log Cabins'    , 100],
+			['Croatia', 'Science'       , 100],
+			['Croatia', 'Art'           , 100],
+			['Croatia', 'Culture'       , 100],
+			['Croatia', 'Cocktails'     , 100],
+		],
+	},
+	h: 200,
+})
+
+main.add(g)
+
+ct = div({style: 'border: 1px solid #ccc; width: 400px; height: 300px;'})
+main.add(ct)
+
+ct.add(pie_chart({
+	nav: g,
+	sum_col: 'output',
+	cat_cols: 'country sector',
+}))
+
+
+</script>
+</template>
+
+<!--------------------------------------------------------------------------->
+
 <template id=ajax_demo>
 <script>
 
@@ -1224,7 +1266,7 @@ demo_list = listbox({
 	item_typename: 'richtext',
 	field: {},
 	val_col: 0,
-	val: demos[21],
+	val: demos[29],
 })
 
 demo_list.create_item = function() {

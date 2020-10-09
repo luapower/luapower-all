@@ -15,7 +15,7 @@
 		min(x, y) max(x, y)
 		sqrt(x)
 		random()
-		PI sin(x) cos(x) tan(x)
+		PI sin(x) cos(x) tan(x) rad(x) deg(x)
 		clamp(x, x0, x1)
 		strict_sign(x)
 		lerp(x, x0, x1, y0, y1)
@@ -86,7 +86,7 @@
 		json(t) -> s
 	url decoding, encoding and updating:
 		url(path) -> t
-		url(path|path_comp, [path_comp], params) -> s
+		url(path|path_comp, [path_comp], [params]) -> s
 	ajax requests:
 		ajax({
 			url: s,
@@ -158,6 +158,8 @@ PI = Math.PI
 sin = Math.sin
 cos = Math.cos
 tan = Math.tan
+rad = deg => deg * (PI / 180)
+deg = rad => rad * (180 / PI)
 
 // callback stubs ------------------------------------------------------------
 
@@ -542,7 +544,7 @@ json = JSON.stringify
 /* URL encoding & decoding ---------------------------------------------------
 
 	url(path) -> t
-	url(path|path_comp, [path_comp], params) -> s
+	url(path|path_comp, [path_comp], [params]) -> s
 
 	examples:
 		decode: url('a/b?k=v') -> {path: ['a','b'], params: {k:'v'}}
@@ -644,7 +646,7 @@ function url(path, params, update) {
 	^slow(show|hide)
 	^progress(p, loaded, [total])
 	^upload_progress(p, loaded, [total])
-	^success(response_object)
+	^success(res)
 	^fail('timeout'|'network'|'abort')
 	^fail('http', status, message, body_text)
 	^done('success' | 'fail', ...)
@@ -715,17 +717,20 @@ function ajax(req) {
 	}
 
 	xhr.ontimeout = function() {
+		req.fail = 'timeout'
 		req.fire('fail', 'timeout')
 		req.fire('done', 'fail', 'timeout')
 	}
 
 	// NOTE: only fired on network errors like connection refused!
 	xhr.onerror = function() {
+		req.fail = 'network'
 		req.fire('fail', 'network')
 		req.fire('done', 'fail', 'network')
 	}
 
 	xhr.onabort = function() {
+		req.fail = 'abort'
 		req.fire('fail', 'abort')
 		req.fire('done', 'fail', 'abort')
 	}
@@ -739,9 +744,11 @@ function ajax(req) {
 				if (!xhr.responseType || xhr.responseType == 'text')
 					if (xhr.getResponseHeader('content-type') == 'application/json' && res)
 						res = JSON.parse(res)
+				req.response = res
 				req.fire('success', res)
 				req.fire('done', 'success', res)
 			} else if (xhr.status) { // status is 0 for network errors, incl. timeout.
+				req.fail = 'http'
 				req.fire('fail', 'http', xhr.status, xhr.statusText, xhr.responseText)
 				req.fire('done', 'fail', 'http', xhr.status, xhr.statusText, xhr.responseText)
 			}
@@ -768,3 +775,44 @@ function ajax(req) {
 	return req
 }
 
+// colors --------------------------------------------------------------------
+
+{
+	// hsl is in (0..360, 0..1, 0..1); rgb is #rrggbb
+	let h2rgb = function(m1, m2, h) {
+		if (h < 0) h = h+1
+		if (h > 1) h = h-1
+		if (h*6 < 1)
+			return m1+(m2-m1)*h*6
+		else if (h*2 < 1)
+			return m2
+		else if (h*3 < 2)
+			return m1+(m2-m1)*(2/3-h)*6
+		else
+			return m1
+	}
+
+	let hex = x => round(255 * x).toString(16).padStart(2, '0')
+
+	function hsl_to_rgb(h, s, L) {
+		h = h / 360
+		let m2 = L <= .5 ? L*(s+1) : L+s-L*s
+		let m1 = L*2-m2
+		return '#' +
+			hex(h2rgb(m1, m2, h+1/3)) +
+			hex(h2rgb(m1, m2, h)) +
+			hex(h2rgb(m1, m2, h-1/3))
+	}
+
+}
+
+// arcs ----------------------------------------------------------------------
+
+// point at a specified angle on a circle.
+function point_around(cx, cy, r, angle) {
+	angle = rad(angle)
+	return [
+		cx + cos(angle) * r,
+		cy + sin(angle) * r
+	]
+}

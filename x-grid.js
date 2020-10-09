@@ -33,7 +33,7 @@ component('x-grid', function(e) {
 	e.tab_navigation = false    // disabled as it prevents jumping out of the grid.
 	e.advance_on_enter = 'next_row' // false|'next_row'|'next_cell'
 	e.prop('exit_edit_on_escape'           , {store: 'var', type: 'bool', default: true})
-	e.prop('exit_edit_on_enter'            , {store: 'var', type: 'bool', default: false})
+	e.prop('exit_edit_on_enter'            , {store: 'var', type: 'bool', default: true})
 	e.quick_edit = false        // quick edit (vs. quick-search) when pressing a key
 
 	// mouse behavior
@@ -1821,9 +1821,19 @@ component('x-grid', function(e) {
 				e.enter_edit('toggle')
 			} else if (!e.exit_edit_on_enter || e.exit_edit()) {
 				if (e.advance_on_enter == 'next_row')
-					e.focus_cell(true, true, 1, 0, {editor_state: 'select_all', input: e, enter_edit: e.stay_in_edit_mode})
+					e.focus_cell(true, true, 1, 0, {
+						input: e,
+						enter_edit: e.stay_in_edit_mode,
+						editor_state: 'select_all',
+						must_move: true,
+					})
 				else if (e.advance_on_enter == 'next_cell')
-					e.focus_next_cell(shift ? -1 : 1, {editor_state: 'select_all', input: e, enter_edit: e.stay_in_edit_mode})
+					e.focus_next_cell(shift ? -1 : 1, {
+						input: e,
+						enter_edit: e.stay_in_edit_mode,
+						editor_state: 'select_all',
+						must_move: true,
+					})
 			}
 			return false
 		}

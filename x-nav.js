@@ -204,6 +204,7 @@ updating row state:
 		e.set_row_state()
 		e.validate_row()
 		e.set_row_error()
+		e.set_row_is_new()
 	calls:
 		e.do_update_row_state(ri, prop, val, ev)
 
@@ -369,6 +370,9 @@ function nav_widget(e) {
 	let fld     = col => typeof col == 'string' ? e.all_fields[col] : col
 	let fldname = col => typeof col == 'string' ? col : col.name
 	let flds    = cols => (typeof cols == 'string' ? cols.split(/\s+/) : cols).map(fld)
+
+	e.fld = fld
+	e.flds = flds
 
 	// fields array matching 1:1 to row contents ------------------------------
 
@@ -1335,6 +1339,19 @@ function nav_widget(e) {
 			indices[cols][method](...args)
 	}
 
+	// groups -----------------------------------------------------------------
+
+	e.row_group = function(cols) {
+		let rows = new Set()
+		for (let row of e.all_rows) {
+			let group_vals = e.cell_vals(row, cols)
+			let group_rows = e.lookup(cols, group_vals)
+			rows.add(group_rows)
+			group_rows.key_vals = group_vals
+		}
+		return rows
+	}
+
 	// tree -------------------------------------------------------------------
 
 	e.each_child_row = function(row, f) {
@@ -1555,7 +1572,7 @@ function nav_widget(e) {
 
 		// the tree-building comparator requires a stable sort order
 		// for all parents so we must always compare rows by id after all.
-		if (e.parent_field && !order_by.has(e.id_field))
+		if (e.parent_field && !(e.row_vals || e.row_states) && !order_by.has(e.id_field))
 			order_by.set(e.id_field, 'asc')
 
 		let s = []
@@ -1941,6 +1958,13 @@ function nav_widget(e) {
 		e.set_row_state(row, 'error', err, undefined, true, ev)
 	}
 
+	e.set_row_is_new = function(row, is_new, ev) {
+		e.set_row_state(row, 'is_new', is_new, false, ev)
+		e.set_row_state(row, 'modified', is_new, false, ev)
+		if (is_new)
+			row_changed(row)
+	}
+
 	e.row_has_errors = function(row) {
 		if (row.error != null)
 			return true
@@ -1967,7 +1991,12 @@ function nav_widget(e) {
 		return false
 	}
 
-	e.set_cell_val = function(row, field, val, ev) {
+	e.set_cell_val = function(row, col, val, ev) {
+		let field = fld(col)
+		if (field.nosave) {
+			e.reset_cell_val(row, field, val, ev)
+			return
+		}
 		if (val === undefined)
 			val = null
 		val = e.convert_val(field, val, row, ev)
@@ -2018,14 +2047,12 @@ function nav_widget(e) {
 	e.reset_cell_val = function(row, field, val, ev) {
 		if (val === undefined)
 			val = null
-
 		let err
 		if (ev && ev.validate) {
 			err = e.validate_val(field, val, row, ev)
 			err = typeof err == 'string' ? err : undefined
 		}
 		let invalid = err != null
-
 		let cur_val = row[field.val_index]
 		let old_val = e.cell_old_val(row, field)
 		let input_val_changed = e.set_cell_state(row, field, 'input_val', val, cur_val, false)
@@ -2309,7 +2336,7 @@ function nav_widget(e) {
 
 		let has_rows = e.all_rows.length > 0
 
-		for (let i = 0, ri = ri1; i < row_num; i++, ri++) {
+		for (let i = 0, ri = ri1; i < row_num; i++) {
 
 			let vals = row_vals && row_vals[i]
 			let row = []
@@ -2374,6 +2401,7 @@ function nav_widget(e) {
 					e.rows.insert(ri, row)
 					if (e.focused_row_index >= ri)
 						e.focused_row = e.rows[e.focused_row_index + 1]
+					ri++
 				}
 
 				// set default client values as if they were typed in by the user.
@@ -2397,7 +2425,7 @@ function nav_widget(e) {
 
 		}
 
-		e.fire('rows_changed', changed_rows, ri1)
+		e.fire('rows_changed', changed_rows)
 
 		if (rows_added || rows_updated)
 			e.update({rows: rows_added, vals: rows_updated})
@@ -2628,44 +2656,35 @@ function nav_widget(e) {
 
 			e.focused_row_index = insert_ri + (move_ri1 == focused_ri ? 0 : move_n - 1)
 
-			let row_arr = e.row_states || e.row_vals
-			if (row_arr) {
-
-				if (e.param_vals && !e.rowset_url) {
-					// detail nav with client-side rowset: move visible rows to index 0
-					// in the unfiltered rows array so that move_ri1, move_ri2 and insert_ri
-					// point to the same rows in both unfiltered and filtered arrays.
-					let r1 = []
-					let r2 = []
-					let a1 = []
-					let a2 = []
-					for (let ri = 0; ri < e.all_rows.length; ri++) {
-						let visible = e.row_is_visible(e.all_rows[ri])
-						;(visible ? a1 : a2).push(row_arr[ri])
-						;(visible ? r1 : r2).push(e.all_rows[ri])
-					}
-					row_arr    = [].concat(a1, a2)
-					e.all_rows = [].concat(r1, r2)
-
-					e.all_rows.move(move_ri1, move_n, insert_ri)
-
-					update_row_index()
-
-				} else {
-					row_arr = row_arr.slice()
+			if (!e.rowset_url && (e.row_states || e.row_vals) && e.param_vals) {
+				// detail nav with client-side rowset: move visible rows to index 0
+				// in the unfiltered rows array so that move_ri1, move_ri2 and insert_ri
+				// point to the same rows in both unfiltered and filtered arrays.
+				let r1 = []
+				let r2 = []
+				for (let ri = 0; ri < e.all_rows.length; ri++) {
+					let visible = e.row_is_visible(e.all_rows[ri])
+					;(visible ? r1 : r2).push(e.all_rows[ri])
 				}
-
-				row_arr.move(move_ri1, move_n, insert_ri)
-
+				e.all_rows = [].concat(r1, r2)
 			}
+
+			if (e.parent_field)
+				e.all_rows = e.rows.slice()
+			else
+				e.all_rows.move(move_ri1, move_n, insert_ri)
+
+			update_row_index()
 
 			e.begin_update()
 
 			update_index_field()
 
-			e.moved_rows = true
+			e.rows_moved = true
 			if (e.save_row_move_on == 'input')
 				e.save()
+			else
+				e.show_action_band(true)
 
 			e.update({rows: true})
 
@@ -2705,7 +2724,7 @@ function nav_widget(e) {
 		force_unfocus_focused_cell()
 
 		e.changed_rows = null // Set(row)
-		e.moved_rows = null
+		e.rows_moved = false
 
 		e.can_edit        = strict_or(e.rowset.can_edit       , true) && e.can_edit
 		e.can_add_rows    = strict_or(e.rowset.can_add_rows   , true) && e.can_add_rows
@@ -2805,6 +2824,7 @@ function nav_widget(e) {
 			return
 		e.changed_rows = e.changed_rows || new Set()
 		e.changed_rows.add(row)
+		e.show_action_band(true)
 	}
 
 	function add_row_changes(row, rows) {
@@ -2905,6 +2925,8 @@ function nav_widget(e) {
 			slow_timeout: e.slow_timeout,
 		})
 		e.changed_rows = null
+		e.rows_moved = false
+		e.show_action_band(false)
 		add_request(req)
 		set_save_state(req.rows, req)
 		e.fire('saving', true)
@@ -2915,7 +2937,7 @@ function nav_widget(e) {
 	}
 
 	e.save = function() {
-		if (!e.changed_rows)
+		if (!e.changed_rows && !e.rows_moved)
 			return
 		if (e.static_rowset) {
 			if (e.save_row_states)
@@ -2967,6 +2989,7 @@ function nav_widget(e) {
 				//
 		*/
 		e.changed_rows = null
+		e.show_action_band(false)
 		e.end_update()
 	}
 
@@ -2992,10 +3015,14 @@ function nav_widget(e) {
 		}
 		e.remove_rows(rows_to_remove, {forever: true, refocus: true})
 		e.changed_rows = null
+		e.rows_moved = false
+		e.show_action_band(false)
 		e.end_update()
 	}
 
 	// row (de)serialization --------------------------------------------------
+
+	e.save_row = return_true // stub
 
 	e.serialize_row_vals = function(row) {
 		let vals = {}
@@ -3019,8 +3046,11 @@ function nav_widget(e) {
 	e.serialize_all_row_vals = function() {
 		let rows = []
 		for (let row of e.all_rows)
-			if (!row.removed && !row.nosave)
-				rows.push(e.serialize_row_vals(row))
+			if (!row.removed && !row.nosave) {
+				let vals = e.serialize_row_vals(row)
+				if (e.save_row(vals) !== 'skip')
+					rows.push(vals)
+			}
 		return rows
 	}
 
@@ -3205,6 +3235,25 @@ function nav_widget(e) {
 		if(focus_e && e.hasfocus)
 			focus_e.focus()
 	}
+	}
+
+	// action bar -------------------------------------------------------------
+
+	e.show_action_band = function(on) {
+		if (on) {
+			if (!e.action_band) {
+				e.action_band = action_band({
+					layout: 'save:ok',
+					buttons: {
+						'save': function() {
+							e.save()
+						},
+					}
+				})
+				e.add(e.action_band)
+			}
+		}
+		e.action_band.show(on)
 	}
 
 	// quick-search -----------------------------------------------------------
