@@ -4263,21 +4263,46 @@ component('x-pie-chart', function(e) {
 	serializable_widget(e)
 	selectable_widget(e)
 
-	e.pie = div({class: 'x-pie-chart-pie'})
-	e.labels = div()
+	e.pie = div()
+	e.labels = div({style: 'position: absolute;'})
 	e.add(e.pie, e.labels)
 
-	function refresh() {
+	function redraw() {
 		e.update()
 	}
 
-	function render_pie(slices) {
+	function render(slices) {
 
 		e.labels.clear()
+		e.pie.clear()
 		e.pie.style['background-image'] = null
 
-		if (!slices)
-			return
+		e.pie.class('x-pie-chart-pie', e.shape == 'pie')
+		e.pie.class('x-pie-chart-bar', e.shape == 'bar')
+
+		if (slices)
+			render[e.shape](slices)
+	}
+
+	function slice_color(i, n) {
+		return hsl_to_rgb(((i / (n-1)) * 360 - 120) % 180, .8, .7)
+	}
+
+	render.bar = function(slices) {
+
+		let i = 0
+		for (let slice of slices) {
+			let cdiv = div({class: 'x-pie-chart-bar-slice'})
+			let sdiv = div({class: 'x-pie-chart-bar-slice-ct'}, cdiv, slice.label)
+			sdiv.style.flex = slice.size
+			cdiv.style['background-color'] = slice_color(i, slices.length)
+			e.pie.add(sdiv)
+			i++
+		}
+
+	}
+
+	render.pie = function(slices) {
 
 		let w = e.clientWidth
 		let h = e.clientHeight
@@ -4295,7 +4320,7 @@ component('x-pie-chart', function(e) {
 			let arclen = slice.size * 360
 
 			// generate a gradient step for this slice.
-			let color = hsl_to_rgb(((i / (slices.length-1)) * 360 - 120) % 180, .8, .7)
+			let color = slice_color(i, slices.length)
 			s.push(color + ' ' + angle.toFixed(0)+'deg '+(angle + arclen).toFixed(0)+'deg')
 
 			// add the label and position it around the pie.
@@ -4378,7 +4403,7 @@ component('x-pie-chart', function(e) {
 
 		}
 
-		render_pie(slices)
+		render(slices)
 	}
 
 	function bind_nav(nav, on) {
@@ -4386,35 +4411,37 @@ component('x-pie-chart', function(e) {
 			return
 		if (!nav)
 			return
-		nav.on('reset'               , refresh, on)
-		nav.on('rows_changed'        , refresh, on)
-		nav.on('cell_val_changed'    , refresh, on)
-		nav.on('display_vals_changed', refresh, on)
+		nav.on('reset'               , redraw, on)
+		nav.on('rows_changed'        , redraw, on)
+		nav.on('cell_val_changed'    , redraw, on)
+		nav.on('display_vals_changed', redraw, on)
 	}
 
 	e.on('bind', function(on) {
 		bind_nav(e.nav, on)
+		document.on('layout_changed', redraw, on)
 	})
 
 	e.set_nav = function(nav1, nav0) {
 		assert(nav1 != e)
 		bind_nav(nav0, false)
 		bind_nav(nav1, true)
-		refresh()
+		redraw()
 	}
 
 	e.prop('nav', {store: 'var', private: true})
 	e.prop('nav_gid' , {store: 'var', bind_gid: 'nav', type: 'nav'})
 
-	e.set_sum_col = refresh
-	e.set_cat_cols = refresh
-	e.set_other_threshold = refresh
-	e.set_other_text = refresh
+	e.set_sum_col         = redraw
+	e.set_cat_cols        = redraw
+	e.set_other_threshold = redraw
+	e.set_other_text      = redraw
 
 	e.prop('sum_col' , {store: 'var', type: 'col', col_nav: () => e.nav})
 	e.prop('cat_cols', {store: 'var', type: 'col', col_nav: () => e.nav})
 	e.prop('other_threshold', {store: 'var', type: 'number', default: .05})
 	e.prop('other_text', {store: 'var', default: 'Other'})
+	e.prop('shape', {store: 'attr', type: 'enum', enum_values: ['pie', 'bar'], default: 'pie'})
 
 })
 

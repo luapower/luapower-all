@@ -1088,15 +1088,15 @@ g = grid({
 			{name: 'output', type: 'number'},
 		],
 		rows: [
-			['Algeria', 'Energy'        , 20],
-			['Algeria', 'Pink Flamingos', 100],
-			['Canada' , 'Chickens'      , 20],
+			['Algeria', 'Energy'        ,  20],
+			['Algeria', 'Chickens'      , 100],
+			['Canada' , 'Chickens'      ,  20],
 			['Canada' , 'Geese'         , 100],
-			['Canada' , 'Log Cabins'    , 100],
+			['Canada' , 'Geese'         , 100],
 			['Croatia', 'Science'       , 100],
-			['Croatia', 'Art'           , 100],
-			['Croatia', 'Culture'       , 100],
-			['Croatia', 'Cocktails'     , 100],
+			['Croatia', 'Chickens'      , 100],
+			['Croatia', 'Energy'        , 100],
+			['Croatia', 'Energy'        , 100],
 		],
 	},
 	h: 200,
@@ -1113,6 +1113,12 @@ ct.add(pie_chart({
 	cat_cols: 'country sector',
 }))
 
+ct.add(pie_chart({
+	nav: g,
+	sum_col: 'output',
+	cat_cols: 'sector',
+	shape: 'bar',
+}))
 
 </script>
 </template>
