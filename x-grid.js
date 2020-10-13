@@ -11,12 +11,14 @@ calls:
 	e.do_update_cell_error(cell, row, field, err)
 --------------------------------------------------------------------------- */
 
-component('x-grid', function(e) {
+component('x-grid', function(e, is_val_widget) {
 
 	e.props.align_x = {default: 'stretch'}
 	e.props.align_y = {default: 'stretch'}
 
-	nav_widget(e)
+	if (is_val_widget !== false)
+		val_widget(e, true)
+	nav_widget(e, is_val_widget)
 	editable_widget(e)
 	focusable_widget(e)
 
@@ -473,7 +475,7 @@ component('x-grid', function(e) {
 	}
 
 	e.do_update_cell_val = function(cell, row, field, input_val) {
-		let v = e.cell_display_val_for(row, field, input_val)
+		let v = e.cell_display_val_for(field, input_val, row)
 		cell.qs_val = v
 		let node = cell.childNodes[cell.indent ? 1 : 0]
 		if (cell.qs_div) { // value is wrapped
@@ -2092,6 +2094,88 @@ component('x-grid-dropdown', function(e) {
 	}
 
 })
+
+// ---------------------------------------------------------------------------
+// row form
+// ---------------------------------------------------------------------------
+
+component('x-row-form', function(e) {
+
+	grid.props.vertical = {default: true}
+
+	grid.construct(e, false)
+
+	function bind_nav(nav, on) {
+		if (!e.attached)
+			return
+		if (!nav)
+			return
+		nav.on('reset'                          , reset, on)
+		nav.on('focused_row_changed'            , row_changed, on)
+		nav.on('display_vals_changed'           , display_vals_changed, on)
+		nav.on('focused_row_cell_state_changed' , cell_state_changed, on)
+		nav.on('col_attr_changed'               , col_attr_changed, on)
+	}
+
+	e.on('bind', function(on) {
+		bind_nav(e.nav, on)
+		document.on('layout_changed', redraw, on)
+	})
+
+	e.set_nav = function(nav1, nav0) {
+		assert(nav1 != e)
+		bind_nav(nav0, false)
+		bind_nav(nav1, true)
+		reset()
+	}
+
+	e.prop('nav', {store: 'var', private: true})
+	e.prop('nav_gid' , {store: 'var', bind_gid: 'nav', type: 'nav'})
+
+	function reset() {
+		e.rowset.fields = e.nav.all_fields
+		e.rowset.rows = [e.nav.focused_row]
+		e.reset()
+		e.row = e.all_rows[0]
+	}
+
+	function row_changed(nav_row) {
+		e.all_rows = [nav_row]
+		e.row = e.all_rows[0]
+		//for (let i = 0; i < e.all_fields.length; i++)
+
+	}
+
+	function display_vals_changed() {
+		e.update({vals: true})
+	}
+
+	function cell_state_changed(nav_field, key, val) {
+		if (e.updating)
+			return
+		let field = e.all_fields[nav_field.val_index]
+		if (key == 'input_val')
+			e.set_cell_val(e.row, field, val)
+		else if (key == 'val')
+			e.reset_cell_val(e.row, field, val)
+		else if (key == 'error')
+			e.set_cell_error(e.row, field, val)
+	}
+
+	function col_attr_changed(col, attr, val) {
+		if (attr == 'text')
+			e.set_prop('col.'+col+'.'+attr, val)
+	}
+
+	e.on('cell_input_val_changed', function(row, field, v) {
+		let nav_row = e.nav.all_rows[e.row_index(row)]
+		let nav_field = e.nav.all_fields[e.field_index(field)]
+		e.nav.set_cell_val(nav_row, nav_field, v)
+	})
+
+
+})
+
 
 // ---------------------------------------------------------------------------
 // grid profile

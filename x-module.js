@@ -565,6 +565,7 @@ component('x-prop-inspector', function(e) {
 
 	e.can_add_rows = false
 	e.can_remove_rows = false
+	e.action_band_visible = 'no'
 
 	e.can_select_widget = false
 

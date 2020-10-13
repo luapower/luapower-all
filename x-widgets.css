@@ -2105,6 +2105,8 @@
 	font-weight: bold;
 	color: #666;
 	line-height: 1;
+	width: max-content;
+	max-width: 7em;
 }
 
 /* countries listbox ------------------------------------------------------ */

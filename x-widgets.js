@@ -118,9 +118,9 @@ function component(tag, cons) {
 
 	// override cons() so that calling `parent_widget.construct()` always
 	// sets the css class for parent_widget.
-	function construct(e) {
+	function construct(e, ...args) {
 		e.class(tag)
-		cons(e)
+		cons(e, ...args)
 	}
 
 	function init(e, opt) {
@@ -269,6 +269,7 @@ method(HTMLElement, 'override', function(method, func) {
 */
 
 let fire_prop_changed = function(e, prop, v1, v0, slot) {
+	// TODO: add this to simplify some things? e.fire('prop_changed', e, prop, v1, v0, slot)
 	document.fire('prop_changed', e, prop, v1, v0, slot)
 }
 
@@ -1169,18 +1170,18 @@ function val_widget(e, enabled_without_nav) {
 		e.update()
 	}
 
-	function cell_state_changed(field, prop, val, ev) {
+	function cell_state_changed(field, key, val, ev) {
 		if (e.updating)
 			return
-		if (prop == 'input_val')
+		if (key == 'input_val')
 			e.do_update_val(val, ev)
-		else if (prop == 'val')
+		else if (key == 'val')
 			e.fire('val_changed', val, ev)
-		else if (prop == 'error') {
+		else if (key == 'error') {
 			e.invalid = val != null
 			e.class('invalid', e.invalid)
 			e.do_update_error(val, ev)
-		} else if (prop == 'modified')
+		} else if (key == 'modified')
 			e.class('modified', val)
 	}
 
@@ -2906,6 +2907,7 @@ component('x-widget-placeholder', function(e) {
 		['DD', 'date_dropdown', true],
 		['CD', 'color_dropdown', true],
 		['ID', 'icon_dropdown', true],
+		['PC', 'pie_chart', true],
 		['B', 'button'],
 	]
 
@@ -4349,15 +4351,26 @@ component('x-pie-chart', function(e) {
 		let i = 0
 		for (let field of e.nav.flds(e.cat_cols)) {
 			let v = key_vals[i]
-			let text = e.nav.cell_display_val_for(row, field, v)
+			let text = e.nav.cell_display_val_for(field, v, row)
 			if (i == 1)
 				label.add('/')
 			label.add(text)
 			i++
 		}
 		label.add(tag('br'))
-		label.add(e.nav.cell_display_val_for(row, e.nav.fld(e.sum_col), sum))
+		label.add(e.nav.cell_display_val_for(e.nav.fld(e.sum_col), sum, row))
 		return label
+	}
+
+	function range_defs() {
+		let defs = {}
+		for (let col of e.cat_cols.split(/\s+/))
+			defs[col] = {
+				freq  : e['cat_col.'+col+'.range_freq' ],
+				start : e['cat_col.'+col+'.range_start'],
+				unit  : e['cat_col.'+col+'.range_unit' ],
+			}
+		return defs
 	}
 
 	e.do_update = function() {
@@ -4365,7 +4378,7 @@ component('x-pie-chart', function(e) {
 		let cat_groups = e.nav
 			&& e.cat_cols != null
 			&& e.sum_col != null
-			&& e.nav.row_group(e.cat_cols)
+			&& e.nav.row_group(e.cat_cols, range_defs())
 
 		let slices
 		if (cat_groups) {
@@ -4396,7 +4409,11 @@ component('x-pie-chart', function(e) {
 			}
 			if (other_slice) {
 				other_slice.size = other_slice.sum / slices.total
-				other_slice.label = div({class: 'x-pie-chart-label'}, e.other_text, '\n', other_slice.sum)
+				other_slice.label = div({class: 'x-pie-chart-label'},
+					e.other_text,
+					tag('br'),
+					e.nav.cell_display_val_for(e.nav.fld(e.sum_col), other_slice.sum)
+				)
 				big_slices.push(other_slice)
 			}
 			slices = big_slices
@@ -4433,13 +4450,38 @@ component('x-pie-chart', function(e) {
 	e.prop('nav_gid' , {store: 'var', bind_gid: 'nav', type: 'nav'})
 
 	e.set_sum_col         = redraw
-	e.set_cat_cols        = redraw
 	e.set_other_threshold = redraw
 	e.set_other_text      = redraw
 
+	e.set_cat_cols = function(cat_cols, cat_cols0) {
+		if (cat_cols0)
+			for (let col of cat_cols0.split(/\s+/)) {
+				delete e.props['cat_col.'+col+'.range_freq' ]
+				delete e.props['cat_col.'+col+'.range_start']
+				delete e.props['cat_col.'+col+'.range_unit' ]
+			}
+		if (cat_cols)
+			for (let col of cat_cols.split(/\s+/)) {
+				e.props['cat_col.'+col+'.range_freq' ] = {name: 'cat_col.'+col+'.range_freq' , type: 'number'}
+				e.props['cat_col.'+col+'.range_start'] = {name: 'cat_col.'+col+'.range_start', type: 'number'}
+				e.props['cat_col.'+col+'.range_unit' ] = {name: 'cat_col.'+col+'.range_unit' , type: 'enum', enum_values: ['auto', 'month', 'year'], default: 'auto'}
+				let k = 'cat_col.'+col+'.range_unit'; if (!e[k]) e[k] = 'auto'
+			}
+		redraw()
+	}
+
+	e.set_prop = function(k, v) {
+		let v0 = e[k]
+		e[k] = v
+		if (v !== v0 && k.starts('cat_col.')) {
+			redraw()
+			document.fire('prop_changed', e, k, v, v0, null)
+		}
+	}
+
 	e.prop('sum_col' , {store: 'var', type: 'col', col_nav: () => e.nav})
 	e.prop('cat_cols', {store: 'var', type: 'col', col_nav: () => e.nav})
-	e.prop('other_threshold', {store: 'var', type: 'number', default: .05})
+	e.prop('other_threshold', {store: 'var', type: 'number', default: .05, multiple_of: null})
 	e.prop('other_text', {store: 'var', default: 'Other'})
 	e.prop('shape', {store: 'attr', type: 'enum', enum_values: ['pie', 'bar'], default: 'pie'})
 

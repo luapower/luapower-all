@@ -8,6 +8,7 @@ component('x-listbox', function(e) {
 	e.props.align_x = {default: 'stretch'}
 	e.props.align_y = {default: 'stretch'}
 
+	val_widget(e, true)
 	nav_widget(e)
 	focusable_widget(e)
 

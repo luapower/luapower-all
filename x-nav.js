@@ -109,6 +109,9 @@ rows:
 vlookup:
 	e.lookup()
 
+grouping:
+	e.row_group()
+
 master-detail:
 	needs:
 		e.params <- 'param1[=master_col1] ...'
@@ -288,8 +291,6 @@ field_types : {type -> {attr->val}}
 
 function nav_widget(e) {
 
-	val_widget(e, true)
-
 	e.isnav = true // for resolver
 
 	e.prop('can_edit'                , {store: 'var', type: 'bool', default: true, hint: 'can change anything at all'})
@@ -313,6 +314,7 @@ function nav_widget(e) {
 	e.prop('can_exit_row_on_errors'  , {store: 'var', type: 'bool', default: false, hint: 'allow changing row on validation errors'})
 	e.prop('exit_edit_on_lost_focus' , {store: 'var', type: 'bool', default: false, hint: 'exit edit mode when losing focus'})
 	e.prop('save_row_states'         , {store: 'var', type: 'bool', default: false})
+	e.prop('action_band_visible'     , {store: 'var', type: 'enum', enum_values: ['auto', 'always', 'no'], default: 'auto'})
 
 	// init -------------------------------------------------------------------
 
@@ -583,7 +585,8 @@ function nav_widget(e) {
 			e.update({fields: true})
 		}
 
-		e.fire('col_'+k+'_changed_for_'+col, col, k)
+		e.fire('col_attr_changed', col, k, v)
+		e.fire('col_'+k+'_changed_for_'+col, col, k, v)
 
 		let attrs = field_prop_attrs[k]
 		let slot = attrs && attrs.slot
@@ -1251,31 +1254,65 @@ function nav_widget(e) {
 
 	// vlookup ----------------------------------------------------------------
 
-	function create_index(cols) {
+	function create_index(cols, range_defs) {
+
+		let range_val = return_arg
+		if (range_defs) {
+			let range_funcs = {}
+			for (let col in range_defs) {
+				let range = range_defs[col]
+				let freq = range.freq
+				let range_func
+				if (freq) {
+					let start = range.start || 0
+					if (!range.unit || range.unit == 'auto')
+						range_func = v => floor((v - start) / freq) + start
+					else if (range.unit == 'month')
+						range_func = v => month(v, start)
+					else if (range.unit == 'year')
+						range_func = v => year(v, start)
+				}
+				range_funcs[col] = range_func
+			}
+
+			range_val = function(v, i) {
+				if (v != null) {
+					let range = range_funcs[cols_arr[i]]
+					v = range ? range(v) : v
+				}
+				return v
+			}
+
+		}
 
 		let idx = {}
 
 		let index // Map(f1_val->Map(f2_val->[row1,...]))
-		let fis   // [val_index1, ...]
+		let cols_arr // [col1,...]
+		let fis // [val_index1, ...]
+
+		function add_row(row) {
+			let last_fi = fis.last
+			let index0 = index
+			let i = 0
+			for (let fi of fis) {
+				let v = range_val(row[fi], i); i++
+				let index1 = index0.get(v)
+				if (!index1) {
+					index1 = fi < last_fi ? new Map() : []
+					index0.set(v, index1)
+				}
+				index0 = index1
+			}
+			index0.push(row)
+		}
 
 		idx.rebuild = function() {
-			index = new Map()
-			let cols_arr = cols.split(/\s+/)
+			cols_arr = cols.split(/\s+/)
 			fis = cols_arr.map(fld).map(f => f.val_index)
-			let last_fi = fis.last
-			for (let row of e.all_rows) {
-				let index0 = index
-				for (let fi of fis) {
-					let v = row[fi]
-					let index1 = index0.get(v)
-					if (!index1) {
-						index1 = fi < last_fi ? new Map() : []
-						index0.set(v, index1)
-					}
-					index0 = index1
-				}
-				index0.push(row)
-			}
+			index = new Map()
+			for (let row of e.all_rows)
+				add_row(row)
 		}
 
 		idx.invalidate = function() {
@@ -1284,8 +1321,7 @@ function nav_widget(e) {
 		}
 
 		idx.row_added = function(row) {
-			// TODO:
-			idx.invalidate()
+			add_row(row)
 		}
 
 		idx.row_removed = function(row) {
@@ -1304,7 +1340,8 @@ function nav_widget(e) {
 			let t = index
 			let i = 0
 			for (let fi of fis) {
-				t = t.get(vals[i++])
+				let v = range_val(vals[i], i); i++
+				t = t.get(v)
 				if (!t)
 					return empty_array
 			}
@@ -1341,11 +1378,16 @@ function nav_widget(e) {
 
 	// groups -----------------------------------------------------------------
 
-	e.row_group = function(cols) {
+	e.row_group = function(cols, range_defs) {
+		let lookup = e.lookup
+		if (range_defs) {
+			let index = create_index(cols, range_defs)
+			lookup = (cols, v) => index.lookup(v)
+		}
 		let rows = new Set()
 		for (let row of e.all_rows) {
 			let group_vals = e.cell_vals(row, cols)
-			let group_rows = e.lookup(cols, group_vals)
+			let group_rows = lookup(cols, group_vals)
 			rows.add(group_rows)
 			group_rows.key_vals = group_vals
 		}
@@ -1788,7 +1830,7 @@ function nav_widget(e) {
 		}
 		if (!nav) {
 			function format_row(row) {
-				return e.cell_display_val_for(row, field)
+				return e.cell_display_val_for(field, null, row)
 			}
 			nav = e.create_exclude_vals_nav({
 					rowset: {
@@ -1877,6 +1919,7 @@ function nav_widget(e) {
 		let fi = e.field_index(field)
 		e.do_update_cell_state(ri, fi, key, val, ev)
 		if (row == e.focused_row) {
+			e.fire('focused_row_cell_state_changed', field, key, val, ev)
 			e.fire('focused_row_cell_state_changed_for_'+field.name, field, key, val, ev)
 			e.fire('focused_row_cell_'+key+'_changed_for_'+field.name, field, val, ev)
 		}
@@ -2275,7 +2318,7 @@ function nav_widget(e) {
 		return ln.cell_display_val(ln_row, df)
 	}
 
-	e.cell_display_val_for = function(row, field, v) {
+	e.cell_display_val_for = function(field, v, row) {
 		if (v == null)
 			return null_display_val_for(row, field)
 		if (v === '')
@@ -2293,7 +2336,7 @@ function nav_widget(e) {
 	}
 
 	e.cell_display_val = function(row, field) {
-		return e.cell_display_val_for(row, field, e.cell_input_val(row, field))
+		return e.cell_display_val_for(field, e.cell_input_val(row, field), row)
 	}
 
 	e.on('display_vals_changed', function(field) {
@@ -2312,7 +2355,7 @@ function nav_widget(e) {
 		return v
 	}
 
-	// row adding -------------------------------------------------------------
+	// row adding & removing --------------------------------------------------
 
 	e.insert_rows = function(row_vals, ev) {
 		if (!e.can_edit || !e.can_add_rows)
@@ -2440,8 +2483,6 @@ function nav_widget(e) {
 
 		return true
 	}
-
-	// row removing -----------------------------------------------------------
 
 	e.can_remove_row = function(row) {
 		if (!(e.can_edit && e.can_remove_rows))
@@ -3239,19 +3280,23 @@ function nav_widget(e) {
 
 	// action bar -------------------------------------------------------------
 
+	e.set_action_band_visible = function(v) {
+		e.show_action_band(v == 'always' || (v == 'auto' && e.changed_rows))
+	}
+
 	e.show_action_band = function(on) {
-		if (on) {
-			if (!e.action_band) {
-				e.action_band = action_band({
-					layout: 'save:ok',
-					buttons: {
-						'save': function() {
-							e.save()
-						},
-					}
-				})
-				e.add(e.action_band)
-			}
+		if (e.action_band_visible == 'no')
+			return
+		if (on && !e.action_band) {
+			e.action_band = action_band({
+				layout: 'save:ok',
+				buttons: {
+					'save': function() {
+						e.save()
+					},
+				}
+			})
+			e.add(e.action_band)
 		}
 		e.action_band.show(on)
 	}
@@ -3576,7 +3621,7 @@ component('x-lookup-dropdown', function(e) {
 		let i = mag ? magnitudes[mag] : parseInt(floor(log(x) / log(1024)))
 		let z = x / 1024**i
 		let s = z.toFixed(dec) + suffix[i]
-		return z < min ? () => div({class: 'x-dba-insignificant-size'}, s) : s
+		return z < min ? () => span({class: 'x-dba-insignificant-size'}, s) : s
 	}
 
 	// dates
