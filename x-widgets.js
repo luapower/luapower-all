@@ -4376,8 +4376,8 @@ component('x-pie-chart', function(e) {
 	e.do_update = function() {
 
 		let cat_groups = e.nav
-			&& e.cat_cols != null
-			&& e.sum_col != null
+			&& e.nav.flds(e.cat_cols) != null
+			&& e.nav.fld(e.sum_col) != null
 			&& e.nav.row_group(e.cat_cols, range_defs())
 
 		let slices

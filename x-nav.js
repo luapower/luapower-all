@@ -371,7 +371,23 @@ function nav_widget(e) {
 
 	let fld     = col => typeof col == 'string' ? e.all_fields[col] : col
 	let fldname = col => typeof col == 'string' ? col : col.name
-	let flds    = cols => (typeof cols == 'string' ? cols.split(/\s+/) : cols).map(fld)
+
+	let is_not_null = v => v != null
+	function flds(cols) {
+		let fields = typeof cols == 'string' ? cols.split(/\s+/).map(fld).filter(is_not_null) : cols
+		return fields.length ? fields : null
+	}
+
+	e.fldnames = function(cols) {
+		if (typeof cols == 'string') // 'col1 ...' (preferred)
+			return cols
+		if (typeof cols == 'number') // fi
+			return e.all_fields[cols].name
+		else if (isobject(cols)) // field
+			return cols.name
+		else if (isarray(cols)) // [col1|field1,...]
+			return cols.map(fldname).join(' ')
+	}
 
 	e.fld = fld
 	e.flds = flds
@@ -1256,6 +1272,12 @@ function nav_widget(e) {
 
 	function create_index(cols, range_defs) {
 
+		let idx = {}
+
+		let index // Map(f1_val->Map(f2_val->[row1,...]))
+		let cols_arr // [col1,...]
+		let fis // [val_index1, ...]
+
 		let range_val = return_arg
 		if (range_defs) {
 			let range_funcs = {}
@@ -1284,12 +1306,6 @@ function nav_widget(e) {
 			}
 
 		}
-
-		let idx = {}
-
-		let index // Map(f1_val->Map(f2_val->[row1,...]))
-		let cols_arr // [col1,...]
-		let fis // [val_index1, ...]
 
 		function add_row(row) {
 			let last_fi = fis.last
@@ -1355,14 +1371,7 @@ function nav_widget(e) {
 
 	// e.lookup('col1 ...' | fi | field | [col1|field1,...], [v1, ...])
 	e.lookup = function(cols, v) {
-		if (typeof cols != 'string') { // 'col1 ...' (preferred)
-			if (typeof cols == 'number') // fi
-				cols = e.all_fields[cols].name
-			else if (isobject(cols)) // field
-				cols = cols.name
-			else if (isarray(cols)) // [col1|field1,...]
-				cols = cols.map(fldname)
-		}
+		cols = e.fldnames(cols)
 		let index = indices[cols]
 		if (!index) {
 			index = create_index(cols)
@@ -1385,8 +1394,11 @@ function nav_widget(e) {
 			lookup = (cols, v) => index.lookup(v)
 		}
 		let rows = new Set()
+		let fields = flds(cols)
+		if (!fields)
+			return
 		for (let row of e.all_rows) {
-			let group_vals = e.cell_vals(row, cols)
+			let group_vals = e.cell_vals(row, fields)
 			let group_rows = lookup(cols, group_vals)
 			rows.add(group_rows)
 			group_rows.key_vals = group_vals
@@ -1946,7 +1958,10 @@ function nav_widget(e) {
 	e.cell_error        = (row, col) => e.cell_state(row, fld(col), 'error')
 	e.cell_modified     = (row, col) => e.cell_state(row, fld(col), 'modified', false)
 
-	e.cell_vals = (row, cols) => flds(cols).map(f => row[f.val_index])
+	e.cell_vals = function(row, cols) {
+		let fields = flds(cols)
+		return fields ? fields.map(f => row[f.val_index]) : null
+	}
 
 	e.convert_val = function(field, val, row, ev) {
 		return field.convert ? field.convert.call(e, val, field, row) : val
