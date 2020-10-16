@@ -1,8 +1,7 @@
 
 component('x-cssgrid', function(e) {
 
-	e.props.align_x = {default: 'stretch'}
-	e.props.align_y = {default: 'stretch'}
+	e.class('x-stretched')
 
 	serializable_widget(e)
 	selectable_widget(e)

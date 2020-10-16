@@ -6,7 +6,7 @@
 ACTION ALIASES
 
 	lang([s]) -> s                        get/set current language
-	alias(name_en, lang, name)            set an action alias for a language
+	alias(name_en, name, lang)            set an action alias for a language
 	find_action(name, ...) -> name, ...   find action and set language
 	setlinks(s) -> s                      translate URLs based on aliases
 

@@ -76,7 +76,12 @@
 		locale
 		weekday_name(ts, ['long'])
 		month_name(ts, ['long'])
+		month_year(ts, ['long'])
 		week_start_offset()
+	colors:
+		hsl_to_rgb(h, s, L)
+	geometry:
+		point_around(cx, cy, r, angle)
 	timers:
 		after(s, f)
 		every(s, f)
@@ -501,17 +506,62 @@ locale = navigator.language
 		return wd[how || 'short'][_d.getDay()]
 	}
 
-	let month_names = {}
-
 	function month_name(t, how) {
 		_d.setTime(t * 1000)
 		return _d.toLocaleDateString(locale, {month: how || 'short'})
+	}
+
+	function month_year(t, how) {
+		_d.setTime(t * 1000)
+		return _d.toLocaleDateString(locale, {month: how || 'short', year: 'long'})
 	}
 }
 
 // no way to get OS locale in JS in 2020. I hate the web.
 function week_start_offset() {
 	return locale.starts('en') ? 0 : 1
+}
+
+// colors --------------------------------------------------------------------
+
+{
+	// hsl is in (0..360, 0..1, 0..1); rgb is #rrggbb
+	let h2rgb = function(m1, m2, h) {
+		if (h < 0) h = h+1
+		if (h > 1) h = h-1
+		if (h*6 < 1)
+			return m1+(m2-m1)*h*6
+		else if (h*2 < 1)
+			return m2
+		else if (h*3 < 2)
+			return m1+(m2-m1)*(2/3-h)*6
+		else
+			return m1
+	}
+
+	let hex = x => round(255 * x).toString(16).padStart(2, '0')
+
+	function hsl_to_rgb(h, s, L) {
+		h = h / 360
+		let m2 = L <= .5 ? L*(s+1) : L+s-L*s
+		let m1 = L*2-m2
+		return '#' +
+			hex(h2rgb(m1, m2, h+1/3)) +
+			hex(h2rgb(m1, m2, h)) +
+			hex(h2rgb(m1, m2, h-1/3))
+	}
+
+}
+
+// arcs ----------------------------------------------------------------------
+
+// point at a specified angle on a circle.
+function point_around(cx, cy, r, angle) {
+	angle = rad(angle)
+	return [
+		cx + cos(angle) * r,
+		cy + sin(angle) * r
+	]
 }
 
 // timers --------------------------------------------------------------------
@@ -775,44 +825,3 @@ function ajax(req) {
 	return req
 }
 
-// colors --------------------------------------------------------------------
-
-{
-	// hsl is in (0..360, 0..1, 0..1); rgb is #rrggbb
-	let h2rgb = function(m1, m2, h) {
-		if (h < 0) h = h+1
-		if (h > 1) h = h-1
-		if (h*6 < 1)
-			return m1+(m2-m1)*h*6
-		else if (h*2 < 1)
-			return m2
-		else if (h*3 < 2)
-			return m1+(m2-m1)*(2/3-h)*6
-		else
-			return m1
-	}
-
-	let hex = x => round(255 * x).toString(16).padStart(2, '0')
-
-	function hsl_to_rgb(h, s, L) {
-		h = h / 360
-		let m2 = L <= .5 ? L*(s+1) : L+s-L*s
-		let m1 = L*2-m2
-		return '#' +
-			hex(h2rgb(m1, m2, h+1/3)) +
-			hex(h2rgb(m1, m2, h)) +
-			hex(h2rgb(m1, m2, h-1/3))
-	}
-
-}
-
-// arcs ----------------------------------------------------------------------
-
-// point at a specified angle on a circle.
-function point_around(cx, cy, r, angle) {
-	angle = rad(angle)
-	return [
-		cx + cos(angle) * r,
-		cy + sin(angle) * r
-	]
-}

@@ -5,8 +5,7 @@
 
 component('x-listbox', function(e) {
 
-	e.props.align_x = {default: 'stretch'}
-	e.props.align_y = {default: 'stretch'}
+	e.class('x-stretched')
 
 	val_widget(e, true)
 	nav_widget(e)

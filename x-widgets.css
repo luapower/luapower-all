@@ -168,6 +168,10 @@
 	background-color: var(--x-item-focused-invalid-bg-color);
 }
 
+.x-stretched {
+	place-self: stretch;
+}
+
 /* scrollbars ------------------------------------------------------------- */
 
 .x-widget::-webkit-scrollbar-track,
@@ -1218,7 +1222,6 @@
 
 .x-pagelist-title {
 	padding: .5em 1em;
-	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	max-width: 10em;
@@ -2068,39 +2071,39 @@
 
 /* pie chart -------------------------------------------------------------- */
 
-.x-pie-chart {
+.x-chart {
 	padding: 1em;
 	height: 100%;
 	position: relative;
 	display: grid;
 }
 
-.x-pie-chart-pie {
+.x-chart-pie {
 	position: absolute;
 	border-radius: 50%;
 	box-shadow: 2px 2px 6px #000000cc;
 }
 
-.x-pie-chart-bar {
+.x-chart-stack {
 	display: flex;
 	flex-flow: column;
 }
 
-.x-pie-chart-bar-slice-ct {
+.x-chart-stack-slice-ct {
 	position: relative;
 	display: flex;
 }
 
-.x-pie-chart-bar-slice {
+.x-chart-stack-slice {
 	width: 50px;
 	margin-right: .5em;
 }
 
-.x-pie-chart[shape=pie] .x-pie-chart-label {
+.x-chart[shape=pie] .x-chart-label {
 	position: absolute;
 }
 
-.x-pie-chart-label {
+.x-chart-label {
 	font-family: x-widget-condensed, sans-serif;
 	font-weight: bold;
 	color: #666;

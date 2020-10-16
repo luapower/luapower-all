@@ -52,7 +52,7 @@ body, .x-widget {
 }
 
 body {
-	padding: 2em 2em;
+	padding: 2em 2em .5em 2em;
 	overflow-y: scroll;
 	display: flex;
 	flex-flow: column;
@@ -61,7 +61,6 @@ body {
 }
 
 .big-logo {
-	padding-top: 1em;
 	max-width: 100%;
 	height: auto;
 }
@@ -170,7 +169,7 @@ window.on('load', function() {
 		<div class=person-box>
 			<img src=denisa.jpg>
 			<h2>Denisa Zetu</h2>
-			<div>The Woman Behind</div>
+			<div>Business Analyst</div>
 			<p>
 				Denisa, say a few words about yourself dear, please.
 			</p>
@@ -190,7 +189,7 @@ window.on('load', function() {
 <template id=pagetpl_contact>
 	<div title="Contact" style="display: grid; grid-template-columns: auto auto; grid-column-gap: 1em">
 		<div class=title>Phone:</div><div class=title>+40 754 958 185</div>
-		<div>Email:</div><a href="mailto:cosmin@allegory.ro">cosmin@allegory.ro</a>
+		<div>Email:</div><a href="mailto:office@allegory.ro">office@allegory.ro</a>
 	</div>
 </template>
 

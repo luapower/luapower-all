@@ -13,8 +13,7 @@ calls:
 
 component('x-grid', function(e, is_val_widget) {
 
-	e.props.align_x = {default: 'stretch'}
-	e.props.align_y = {default: 'stretch'}
+	e.class('x-stretched')
 
 	if (is_val_widget !== false)
 		val_widget(e, true)

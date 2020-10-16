@@ -101,6 +101,7 @@ h2 {
 <script src="divs.js"></script>
 <script src="x-widgets.js"></script>
 <script src="x-nav.js"></script>
+<script src="x-input.js"></script>
 <script src="x-listbox.js"></script>
 <script src="x-grid.js"></script>
 <script src="x-cssgrid.js"></script>
@@ -558,17 +559,17 @@ main.add(lb, hlb, div({}, H('<h3>select_button</h3>'), sb))
 <template id=pagelist_demo>
 <script>
 
-console_page = H.div({}, 'Console page. Contains focusble element. ', input())
-source_page = H.div({}, 'Source page contents.')
+console_page = H.div({title: 'Console'}, 'Console page. Contains focusble element. ', input())
+source_page = H.div({title: 'Source'}, 'Source page contents.')
 
 main.add(
 	pagelist({
 		items: [
-			'Elements',
-			{text: 'Console', page: console_page},
-			{text: 'Sources', page: source_page},
-			'Network',
-			'Performance',
+			div({title: 'Elements'}),
+			console_page,
+			source_page,
+			div({title: 'Network'}),
+			div({title: 'Performance'}),
 		],
 		selected_index: 3,
 		can_add_items: true,
@@ -1077,26 +1078,27 @@ main.add(grid({w: 200, h: 200, rowset: r}))
 
 <!--------------------------------------------------------------------------->
 
-<template id=pie_charts_demo>
+<template id=charts_demo>
 <script>
 
 g = grid({
 	rowset: {
 		fields: [
+			{name: 'date', type: 'date'},
 			{name: 'country'},
 			{name: 'sector'},
 			{name: 'output', type: 'number'},
 		],
 		rows: [
-			['Algeria', 'Energy'        ,  20],
-			['Algeria', 'Chickens'      , 100],
-			['Canada' , 'Chickens'      ,  20],
-			['Canada' , 'Geese'         , 100],
-			['Canada' , 'Geese'         , 100],
-			['Croatia', 'Science'       , 100],
-			['Croatia', 'Chickens'      , 100],
-			['Croatia', 'Energy'        , 100],
-			['Croatia', 'Energy'        , 100],
+			[year(time(), 0), 'Algeria', 'Energy'        ,  20],
+			[year(time(), 1), 'Algeria', 'Chickens'      , 100],
+			[year(time(), 0), 'Canada' , 'Chickens'      ,  20],
+			[year(time(), 1), 'Canada' , 'Geese'         , 100],
+			[year(time(), 1), 'Canada' , 'Geese'         , 100],
+			[year(time(), 0), 'Croatia', 'Science'       , 100],
+			[year(time(), 0), 'Croatia', 'Chickens'      , 100],
+			[year(time(), 1), 'Croatia', 'Energy'        , 100],
+			[year(time(), 1), 'Croatia', 'Energy'        , 100],
 		],
 	},
 	h: 200,
@@ -1107,17 +1109,26 @@ main.add(g)
 ct = div({style: 'border: 1px solid #ccc; width: 400px; height: 300px;'})
 main.add(ct)
 
-ct.add(pie_chart({
+ct.add(chart({
 	nav: g,
 	sum_col: 'output',
 	cat_cols: 'country sector',
 }))
 
-ct.add(pie_chart({
+ct.add(chart({
 	nav: g,
 	sum_col: 'output',
 	cat_cols: 'sector',
-	shape: 'bar',
+	shape: 'stack',
+}))
+
+ct.add(chart({
+	nav: g,
+	sum_col: 'output',
+	cat_cols: 'country,date',
+	['cat_cols.date.range_freq']: 1,
+	['cat_cols.date.range_unit']: 'year',
+	shape: 'line',
 }))
 
 </script>

@@ -106,10 +106,9 @@ rows:
 		e.rows[ri] -> row
 		e.row_index(row) -> ri
 
-vlookup:
+indexing:
+	e.index_tree()
 	e.lookup()
-
-grouping:
 	e.row_group()
 
 master-detail:
@@ -1270,37 +1269,66 @@ function nav_widget(e) {
 
 	// vlookup ----------------------------------------------------------------
 
+	// cols: 'col1 ...' | fi | field | [col1|field1,...], [v1, ...]
 	function create_index(cols, range_defs) {
 
 		let idx = {}
 
-		let index // Map(f1_val->Map(f2_val->[row1,...]))
+		let tree // Map(f1_val->Map(f2_val->[row1,...]))
 		let cols_arr // [col1,...]
 		let fis // [val_index1, ...]
 
 		let range_val = return_arg
+		let range_text = return_arg
 		if (range_defs) {
-			let range_funcs = {}
+			let range_val_funcs = {}
+			let range_text_funcs = {}
 			for (let col in range_defs) {
 				let range = range_defs[col]
 				let freq = range.freq
-				let range_func
+				let range_val
+				let range_text
 				if (freq) {
-					let start = range.start || 0
-					if (!range.unit || range.unit == 'auto')
-						range_func = v => floor((v - start) / freq) + start
-					else if (range.unit == 'month')
-						range_func = v => month(v, start)
-					else if (range.unit == 'year')
-						range_func = v => year(v, start)
+					let offset = range.offset || 0
+					if (!range.unit) {
+						range_val  = v => floor((v - offset) / freq) + offset
+						range_text = v => v + ' .. ' + (v + freq - 1)
+					} else if (range.unit == 'month') {
+						freq = floor(freq)
+						if (freq > 1) {
+							range_val  = v => month(v, offset) // TODO
+							range_text = v => month_year(v) + ' .. ' + (month_year(month(v, freq - 1)))
+						} else {
+							range_val  = v => month(v, offset)
+							range_text = v => month_year(v)
+						}
+					} else if (range.unit == 'year') {
+						freq = floor(freq)
+						if (freq > 1) {
+							range_val  = v => year(v, offset) // TODO
+							range_text = v => v + ' .. ' + year(v, freq - 1)
+						} else {
+							range_val  = v => year(v, offset)
+							range_text = v => year_of(v)
+						}
+					}
 				}
-				range_funcs[col] = range_func
+				range_val_funcs[col] = range_val
+				range_text_funcs[col] = range_text
 			}
 
 			range_val = function(v, i) {
 				if (v != null) {
-					let range = range_funcs[cols_arr[i]]
-					v = range ? range(v) : v
+					let f = range_val_funcs[cols_arr[i]]
+					v = f ? f(v) : v
+				}
+				return v
+			}
+
+			range_text = function(v, i) {
+				if (v != null) {
+					let f = range_text_funcs[cols_arr[i]]
+					v = f ? f(v) : v
 				}
 				return v
 			}
@@ -1309,30 +1337,32 @@ function nav_widget(e) {
 
 		function add_row(row) {
 			let last_fi = fis.last
-			let index0 = index
+			let t0 = tree
 			let i = 0
 			for (let fi of fis) {
-				let v = range_val(row[fi], i); i++
-				let index1 = index0.get(v)
-				if (!index1) {
-					index1 = fi < last_fi ? new Map() : []
-					index0.set(v, index1)
+				let v = range_val(row[fi], i)
+				let t1 = t0.get(v)
+				if (!t1) {
+					t1 = fi == last_fi ? [] : new Map()
+					t0.set(v, t1)
+					t1.text = range_text(v, i)
 				}
-				index0 = index1
+				t0 = t1
+				i++
 			}
-			index0.push(row)
+			t0.push(row)
 		}
 
 		idx.rebuild = function() {
 			cols_arr = cols.split(/\s+/)
 			fis = cols_arr.map(fld).map(f => f.val_index)
-			index = new Map()
+			tree = new Map()
 			for (let row of e.all_rows)
 				add_row(row)
 		}
 
 		idx.invalidate = function() {
-			index = null
+			tree = null
 			fis = null
 		}
 
@@ -1351,9 +1381,9 @@ function nav_widget(e) {
 		}
 
 		idx.lookup = function(vals) {
-			if (!index)
+			if (!tree)
 				idx.rebuild()
-			let t = index
+			let t = tree
 			let i = 0
 			for (let fi of fis) {
 				let v = range_val(vals[i], i); i++
@@ -1364,20 +1394,34 @@ function nav_widget(e) {
 			return t
 		}
 
+		idx.tree = function() {
+			if (!tree)
+				idx.rebuild()
+			return tree
+		}
+
 		return idx
 	}
 
-	let indices = {} // {cols->index}
+	let indices = {} // {cache_key->index}
 
-	// e.lookup('col1 ...' | fi | field | [col1|field1,...], [v1, ...])
-	e.lookup = function(cols, v) {
+	function index(cols, range_defs) {
 		cols = e.fldnames(cols)
-		let index = indices[cols]
+		let cache_key = range_defs ? cols+' '+json(range_defs) : cols
+		let index = indices[cache_key]
 		if (!index) {
-			index = create_index(cols)
-			indices[cols] = index
+			index = create_index(cols, range_defs)
+			indices[cache_key] = index
 		}
-		return index.lookup(v)
+		return index
+	}
+
+	e.index_tree = function(cols, range_defs) {
+		return index(cols, range_defs).tree()
+	}
+
+	e.lookup = function(cols, v, range_defs) {
+		return index(cols, range_defs).lookup(v)
 	}
 
 	function update_indices(method, ...args) {
@@ -1388,22 +1432,57 @@ function nav_widget(e) {
 	// groups -----------------------------------------------------------------
 
 	e.row_group = function(cols, range_defs) {
-		let lookup = e.lookup
-		if (range_defs) {
-			let index = create_index(cols, range_defs)
-			lookup = (cols, v) => index.lookup(v)
-		}
-		let rows = new Set()
 		let fields = flds(cols)
 		if (!fields)
 			return
+		let rows = new Set()
 		for (let row of e.all_rows) {
 			let group_vals = e.cell_vals(row, fields)
-			let group_rows = lookup(cols, group_vals)
+			let group_rows = e.lookup(cols, group_vals, range_defs)
 			rows.add(group_rows)
 			group_rows.key_vals = group_vals
 		}
 		return rows
+	}
+
+	function flatten(t, path, depth, f, arg1, arg2) {
+		let path_pos = path.length
+		for (let [k, t1] of t) {
+			path[path_pos] = k
+			if (depth)
+				flatten(t1, path, depth-1, f, arg1, arg2)
+			else
+				f(t1, path, arg1, arg2)
+		}
+		path.remove(path_pos)
+	}
+
+	e.row_groups = function(group_cols, range_defs) {
+		let all_cols = group_cols.replaceAll(',', ' ')
+		let fields = flds(all_cols)
+		if (!fields)
+			return
+		let tree = e.index_tree(all_cols, range_defs)
+
+		let col_groups = group_cols.split(/\s*,\s*/)
+		let root_group = []
+		let depth = col_groups[0].split(/\s+/).length-1
+		function add_group(t, path, parent_group, parent_group_level) {
+			let group = []
+			group.key_vals = path.slice()
+			group.text = t.text
+			parent_group.push(group)
+			let level = parent_group_level + 1
+			let col_group = col_groups[level]
+			if (col_group) { // more group levels down...
+				let depth = col_group.split(/\s+/).length-1
+				flatten(t, [], depth, add_group, group, level)
+			} else { // last group level, t is the array of rows.
+				group.push(...t)
+			}
+		}
+		flatten(tree, [], depth, add_group, root_group, 0)
+		return root_group
 	}
 
 	// tree -------------------------------------------------------------------
