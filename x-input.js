@@ -28,6 +28,8 @@ function val_widget(e, enabled_without_nav) {
 	contained_widget(e)
 	serializable_widget(e)
 
+	e.isinput = true // auto-focused when pagelist items are changed.
+
 	// nav dynamic binding ----------------------------------------------------
 
 	function bind_field(on) {

@@ -13,6 +13,8 @@
 
 * { box-sizing: border-box; }
 
+* { overflow-anchor: none; }
+
 @font-face {
 	font-family: "opensans-light";
 	src: url("OpenSans-Light.ttf");
@@ -56,7 +58,7 @@ body {
 	overflow-y: scroll;
 	display: flex;
 	flex-flow: column;
-	justify-content: top;
+	justify-content: start;
 	align-items: center;
 }
 
@@ -66,14 +68,13 @@ body {
 }
 
 #topmenu {
-	width: 600px;
-	align-self: center;
+	place-self: center;
 }
 
 #topmenu > .x-pagelist-header {
 	font-family: opensans-light, arial, sans-serif;
 	margin-top: 1em;
-	justify-content: space-between;
+	justify-content: center;
 	background: none;
 	border: none;
 }
@@ -91,6 +92,7 @@ body {
 
 #topmenu > .x-pagelist-header > .x-pagelist-tab > .x-pagelist-title {
 	padding: 0;
+	white-space: nowrap !important;
 }
 
 #topmenu > .x-pagelist-header > .x-pagelist-tab.selected {
@@ -113,12 +115,13 @@ body {
 }
 
 #about_us {
-	display: grid;
-	grid-template-columns: 50% 50%;
+	display: flex;
+	flex-flow: wrap;
 	gap: 0 4em;
 }
 
 .person-box {
+	max-width: 300px;
 	display: flex;
 	flex-flow: column;
 	align-items: center;

@@ -1187,6 +1187,7 @@
 
 	/* layouting */
 	display: flex;
+	flex-flow: wrap;
 	position: relative;
 
 	/* styling */
@@ -1204,6 +1205,7 @@
 	flex: 1;
 	display: grid;
 	min-height: 0;  /* don't let the content make the pagelist itself overflow */
+	overflow: auto;
 }
 
 .x-pagelist[tabs-side=top   ],

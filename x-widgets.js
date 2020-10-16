@@ -1849,25 +1849,19 @@ component('x-pagelist', function(e) {
 	function update_selection_bar() {
 		let tab = e.selected_tab
 		let horiz = e.tabs_side == 'top' || e.tabs_side == 'bottom'
-		if (horiz) {
-			e.selection_bar.x = tab ? tab.ox + tab.at[0].ox : 0
-			e.selection_bar.w = tab ? tab.at[0].rect().w : 0
-			e.selection_bar.y = null
-			e.selection_bar.h = null
-		} else {
-			e.selection_bar.y = tab ? tab.oy + tab.at[0].oy : 0
-			e.selection_bar.h = tab ? tab.at[0].rect().h : 0
-			e.selection_bar.x = null
-			e.selection_bar.w = null
-		}
+		let r = tab && tab.at[0].rect()
+		e.selection_bar.x = tab ? tab.ox + tab.at[0].ox + (horiz  ? 0 : r.w) : 0
+		e.selection_bar.y = tab ? tab.oy + tab.at[0].oy + (!horiz ? 0 : r.h) : 0
+		e.selection_bar.w = horiz  ? (r ? r.w : 0) : null
+		e.selection_bar.h = !horiz ? (r ? r.h : 0) : null
 		e.selection_bar.show(!!tab)
 	}
 
 	e.do_update = function() {
-		update_selection_bar()
 		if (e.selected_tab)
 			update_tab_state(e.selected_tab, true)
 		e.add_button.show(e.can_add_items || e.widget_editing)
+		update_selection_bar()
 	}
 
 	e.set_can_add_items    = e.update
@@ -1888,6 +1882,7 @@ component('x-pagelist', function(e) {
 		if (on)
 			select_default_tab()
 		document.on('prop_changed', prop_changed, on)
+		document.on('layout_changed', update_selection_bar, on)
 	})
 
 	function select_tab(tab, focus_tab, enter_editing) {
@@ -1899,21 +1894,21 @@ component('x-pagelist', function(e) {
 				update_tab_state(e.selected_tab, false)
 			}
 			e.selected_tab = tab
-			e.update()
 			if (tab) {
 				tab.class('selected', true)
 				e.fire('open', tab.index)
 				e.content.set(tab.item)
 			}
+			e.update()
 		}
 		if (enter_editing) {
 			e.widget_editing = true
 			return
 		}
 		if (!e.widget_editing && focus_tab != false) {
-			let first_focusable = e.content.focusables()[0]
-			if (first_focusable)
-				first_focusable.focus()
+			let ff = [...e.content.focusables()].filter(e => e.isinput)[0]
+			if (ff)
+				ff.focus()
 		}
 	}
 
