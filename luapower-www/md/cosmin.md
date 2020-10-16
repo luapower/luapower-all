@@ -16,19 +16,14 @@ Bucharest, RO
 I learned to program in 5^th^ grade on a Z80, and later on on a 486.
 I got my first paying job when I was 17 when I wrote an online shop in php.
 
-I code mostly in Lua, Python, C, Javascript and Terra.
+In the past I did a lot of Delphi, C++, Python, php and JavaScript but over
+the years I settled on Lua, C, JavaScript and an obscure language called Terra.
 
-In the past I did a lot of Delphi in smokey apartment-sized companies
-and then more Delphi in mall-sized corporations with a one-hour commute
-(I also worked in a php farm for one month).
+I currently live in Bucharest and work as a developer and consultant
+at [my own company](https://allegory.ro/) with a focus on business software.
 
-My last punching-card job was at [SellerEngine](http://sellerengine.com/)
-where I developed products for large Amazon sellers.
-
-I currently live in Bucharest, and work as a freelancer.
-
-My most significant project to date is luapower, the place which gets most of
-the output of my current research interests, which include vector graphics,
-GUIs, and p2p networks (I secretly dream of [putting them
+My most significant open source project to date is luapower, the place which
+gets most of the output of my current research interests, which include
+vector graphics, GUIs, and p2p networks (I secretly dream of [putting them
 all together](https://www.youtube.com/watch?v=yJDv-zdhzMY) one day).
 </div>
