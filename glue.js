@@ -591,6 +591,12 @@ function timer(f) {
 
 json = JSON.stringify
 
+// clipboard -----------------------------------------------------------------
+
+function copy_text(text) {
+	navigator.clipboard.writeText(text)
+}
+
 /* URL encoding & decoding ---------------------------------------------------
 
 	url(path) -> t

@@ -37,6 +37,30 @@
 	--x-spin-input-width            : 12em;
 }
 
+/* default fonts ---------------------------------------------------------- */
+
+@font-face {
+	font-family: "x-widget";
+	src: url("/OpenSans-Regular.ttf");
+}
+
+@font-face {
+	font-family: "x-widget";
+	src: url("/OpenSans-SemiBold.ttf");
+	font-weight: bold;
+}
+
+@font-face {
+	font-family: "x-widget-condensed";
+	src: url("/OpenSansCondensed-Light.ttf");
+}
+
+@font-face {
+	font-family: "x-widget-condensed";
+	src: url("/OpenSansCondensed-Bold.ttf");
+	font-weight: bold;
+}
+
 /* defaults --------------------------------------------------------------- */
 
 .x-widget, .x-widget * {
@@ -1169,6 +1193,7 @@
 .x-pagelist {
 	display: flex;
 	flex-flow: column;
+	flex: 1;                   /* required: grow to fit container */
 	position: relative;
 	min-height: 0;  /* don't let the content make the pagelist itself overflow */
 }
@@ -1202,8 +1227,8 @@
 .x-pagelist[tabs-side=right ] > .x-pagelist-header { border-left-width   : 1px; }
 
 .x-pagelist-content {
-	flex: 1;
 	display: grid;
+	flex: 1;
 	min-height: 0;  /* don't let the content make the pagelist itself overflow */
 	overflow: auto;
 }
@@ -1273,7 +1298,7 @@
 }
 
 .x-pagelist.moving > .x-pagelist-header > .x-pagelist-tab:not(.moving) {
-	transition: left .1s, top: .1s;
+	transition: left .1s, top .1s;
 }
 
 .x-pagelist-tab.selected {
@@ -1687,6 +1712,7 @@
 .x-grid {
 	display: flex;             /* required */
 	flex-flow: column;
+	flex: 1;                   /* required: grow to fit container */
 	position: relative;        /* required for `position: absolute` elements */
 	margin: .25em;
 	overflow: hidden;          /* required: hide header overflow */
@@ -1731,6 +1757,10 @@
 
 .x-grid-cell {
 	//border-right-color: transparent;
+}
+
+.x-grid-cell:hover {
+	outline: 1px dotted #ccc;
 }
 
 /* tree node indent */
@@ -1896,7 +1926,7 @@
 .x-grid.col-moving .x-grid-header-cell:not(.col-moving),
 .x-grid.col-moving .x-grid-cell:not(.col-moving),
 .x-grid.col-moving .grid-editor:not(.col-moving) {
-	transition: top  .1s, left .1s, right .1s;
+	transition: top .1s, left .1s, right .1s;
 }
 
 /* grid row moving */

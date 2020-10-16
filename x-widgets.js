@@ -7,6 +7,8 @@
 
 DEBUG_ATTACH_TIME = false
 
+xmodule = {resolve: noop}
+
 /* ---------------------------------------------------------------------------
 // creating & setting up web components
 // ---------------------------------------------------------------------------
@@ -1660,7 +1662,7 @@ widget_items_widget = function(e) {
 		for (let i = 0; i < t.length; i++) {
 			let gid0 = items[i].gid
 			let gid1 = typeof t[i] == 'string' ? t[i] : t[i].gid
-			if (gid1 != gid0)
+			if (!gid1 || !gid0 || gid1 != gid0)
 				return false
 		}
 		return true
@@ -1996,8 +1998,7 @@ component('x-pagelist', function(e) {
 
 	function tab_pointermove(ev, mx, my, down_mx, down_my) {
 		if (!dragging) {
-			dragging = e.can_move_items
-				&& abs(down_mx - mx) > 4 || abs(down_my - my) > 4
+			dragging = e.can_move_items && (abs(down_mx - mx) > 4 || abs(down_my - my) > 4)
 			if (dragging) {
 				for (let item of e.items)
 					item._tab._offset_x = item._tab.ox
@@ -2029,6 +2030,7 @@ component('x-pagelist', function(e) {
 			dragging = false
 		}
 		select_tab(this, true)
+		update_selection_bar()
 	}
 
 	// key bindings -----------------------------------------------------------

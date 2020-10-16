@@ -186,8 +186,6 @@ component('x-grid', function(e, is_val_widget) {
 			if (e.auto_h)
 				e.h = cells_h + header_h + border_h
 
-			//print(e.gid, cells_h)
-
 			cells_view_h = floor(e.cells_view.rect().h)
 			e.cells_ct.h = max(1, cells_h) // need at least 1px to show scrollbar.
 			vrn = floor(cells_view_h / e.cell_h) + 2
