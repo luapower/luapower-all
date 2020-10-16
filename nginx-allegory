@@ -1,0 +1,2 @@
+#!/bin/bash
+cd "${0%nginx-allegory}" && ./nginx -c nginx-allegory.conf "$@"
