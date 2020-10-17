@@ -1615,15 +1615,14 @@ end
 
 --update via github ----------------------------------------------------------
 
-function action.github(...)
-	if not method'post' then return end
-	local repo = post'repository' and post'repository'.name
-	if not repo then return end
-	if lp.installed_packages()[repo] then
-		lp.git(repo, 'pull') --TODO: this is blocking the server!!!
-		lp.git(repo, 'pull --tags') --TODO: this is blocking the server!!!
-		lp.clear_cache(repo)
-	end
+function action.github(repo)
+	--if not method'post' then return end
+	repo = check(post'repository' and post'repository'.name or repo)
+	check(lp.installed_packages()[repo])
+	lp.git(repo, 'pull') --TODO: this is blocking the server!!!
+	lp.git(repo, 'pull --tags') --TODO: this is blocking the server!!!
+	lp.clear_cache(repo)
+	print'ok'
 end
 
 --clearing the cache and updating the deps db --------------------------------

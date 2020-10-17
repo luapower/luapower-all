@@ -37,6 +37,7 @@ h1, h2, h3 {
 }
 
 h2 { font-size: 22px; }
+h3 { font-size: 18px; }
 
 :focus {
 	outline: none;
@@ -154,7 +155,7 @@ body {
 
 /* what-we-do page -------------------------------------------------------- */
 
-#demo_page {
+.demo-page {
 	max-width: 480px;
 	overflow: visible;
 	display: flex;
@@ -172,7 +173,12 @@ body {
 
 /* about us --------------------------------------------------------------- */
 
-#about_page {
+.about-page {
+	display: flex;
+	flex-flow: column;
+}
+
+.person-boxes {
 	display: flex;
 	flex-flow: wrap;
 	gap: 0 4em;
@@ -206,6 +212,13 @@ window.on('load', function() {
 	topmenu.can_move_items = false
 	topmenu.items = [...$('template[id^=pagetpl_]')].map(e => H(e.html))
 
+	let icons = {male: 'mars', female: 'venus'}
+	demo_grid.col_attrs = {
+		gender: {
+			format: v => icons[v] ? div({class: 'fa fa-'+icons[v], title: v}) : v,
+			w: 22,
+		},
+	}
 	demo_grid.rowset_url = 'demo_rowset.json'
 	demo_grid.reload()
 
@@ -214,13 +227,14 @@ window.on('load', function() {
 </script>
 
 <template id=pagetpl_what>
-	<div title="What we do" id=demo_page>
+	<div title="What we do" class=demo-page>
 
 <div>
-Simply put, we make the <b>fastest</b> and the most <b>flexible</b>
-<b>business applications</b> in the world right now.
+Simply put, we make the <b>fastest</b>, <b>slickest</b>, most <b>kick-ass</b>
+<b>custom business applications</b> in the world today.
 <br>
 <br>
+
 </div>
 
 		<x-grid id=demo_grid></x-grid>
@@ -229,37 +243,45 @@ Simply put, we make the <b>fastest</b> and the most <b>flexible</b>
 </template>
 
 <template id=pagetpl_about>
-	<div title="Who we are" id=about_page>
+	<div title="Who we are" class=about-page>
 
-		<div class=person-box>
-			<img src=cosmin.jpg>
-			<h2>Cosmin Apreutesei</h2>
-			<div>Founder & CEO</div>
-			<p>
-				Cosmin learned to program in 5th grade on a Z80,
-				He got his first paying job at 17 when he wrote
-				an online shop in php back in 1999.
-			</p>
-			<p>
-				In the past he worked on everything from device drivers
-				to compilers to automatic pricing software
-				for large Amazon sellers.
-			</p>
-			<p>
-				Cosmin is also known in the Open Source world for
-				<a href="https://luapower.com/" target="_blank">luapower.com</a>,
-				an extensive collection of cross-platform libraries for the Lua
-				programming language.
-			</p>
-		</div>
+		<h3>
+		We are a fast-growing company based in Bucharest.
+		</h3>
 
-		<div class=person-box>
-			<img src=denisa.jpg>
-			<h2>Denisa Zetu</h2>
-			<div>Business Analyst</div>
-			<p>
-				Denisa, say a few words about yourself dear, please.
-			</p>
+		<div class=person-boxes>
+
+			<div class=person-box>
+				<img src=cosmin.jpg>
+				<h2>Cosmin Apreutesei</h2>
+				<div>Founder & CEO</div>
+				<p>
+					Cosmin learned to program in 5th grade on a Z80,
+					He got his first paying job at 17 when he wrote
+					an online shop in php back in 1999.
+				</p>
+				<p>
+					In the past he worked on everything from device drivers
+					to compilers to automatic pricing software
+					for large Amazon sellers.
+				</p>
+				<p>
+					Cosmin is also known in the Open Source world for
+					<a href="https://luapower.com/" target="_blank">luapower.com</a>,
+					an extensive collection of cross-platform libraries for the Lua
+					programming language.
+				</p>
+			</div>
+
+			<div class=person-box>
+				<img src=denisa.jpg>
+				<h2>Denisa Zetu</h2>
+				<div>Business Analyst</div>
+				<p>
+					Denisa, say a few words about yourself dear, please.
+				</p>
+			</div>
+
 		</div>
 
 	</div>
@@ -276,8 +298,8 @@ Simply put, we make the <b>fastest</b> and the most <b>flexible</b>
 
 <template id=pagetpl_contact>
 	<div title="Contact" id=contact_page>
-		<div class=title>Phone:</div><div class=title>+40 754 958 185</div>
-		<div>Email:</div><a href="mailto:office@allegory.ro">office@allegory.ro</a>
+		<h3>Phone:</h3><h3>+40 754 958 185</h3>
+		<h3>Email:</h3><h3><a href="mailto:office@allegory.ro">office@allegory.ro</a></h3>
 	</div>
 </template>
 
