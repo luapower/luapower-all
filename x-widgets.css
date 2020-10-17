@@ -117,11 +117,11 @@
 	outline: 0px solid transparent;
 }
 
-.x-widget.disabled {
+.x-widget[disabled] {
 	opacity: .5;
 }
 
-.x-widget.disabled * {
+.x-widget[disabled] * {
 	cursor: default;
 }
 
@@ -129,11 +129,11 @@
 
 [hidden] { display: none !important; }
 
-.x-item.disabled { color: #999; }
-.x-item.disabled.focused { color: #ccc; }
-.x-item.null     { color: #999; }
-.x-item.empty    { color: #999; }
-.x-item.removed  { text-decoration: line-through; }
+.x-item[disabled] { color: #999; }
+.x-item[disabled].focused { color: #ccc; }
+.x-item.null      { color: #999; }
+.x-item.empty     { color: #999; }
+.x-item.removed   { text-decoration: line-through; }
 
 .x-item.invalid {
 	background-color: var(--x-error-bg-color);
@@ -170,7 +170,7 @@
 	background-color: var(--x-item-unfocused-bg-color);
 }
 
-.x-focusable:focus-within .x-item.focused:not(.invalid):not(.disabled):active {
+.x-focusable:focus-within .x-item.focused:not(.invalid):not([disabled]):active {
 	background-color: var(--x-item-focused-selected-bg-color);
 	color: var(--x-inverted-fg-color);
 }
@@ -264,6 +264,7 @@
 	border-radius: .25em;
 	font-weight: bold;
 	line-height: normal;
+	box-shadow: 1px 1px 3px #00000022;
 
 	/* behavior */
 	cursor: pointer;

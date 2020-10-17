@@ -101,6 +101,7 @@
 
 alias(Element, 'hasattr', 'hasAttribute')
 
+// NOTE: `true` is converted to `''`, and `false`, `undefined` and `null` removes the attribute.
 method(Element, 'attr', function(k, v) {
 	if (v == null || v === false)
 		this.removeAttribute(k)

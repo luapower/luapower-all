@@ -329,10 +329,10 @@ function props_mixin(e, iprops) {
 					prop_changed(e, prop, v1, v0, slot)
 			}
 		} else if (opt.store == 'attr') {  // for attr-based styling
-			let attr = prop.replace(/_/g, '-')
+			let attr = prop.replaceAll('_', '-')
 			if (type == 'bool') {
 				dv = dv || false
-				if (dv)
+				if (dv && !e.hasattr(attr))
 					e.attr(attr, true)
 				function get() {
 					return e.attrval(attr) || false
@@ -348,7 +348,7 @@ function props_mixin(e, iprops) {
 						prop_changed(e, prop, v1, v0, slot)
 				}
 			} else {
-				if (dv != null)
+				if (dv != null && !e.hasattr(attr))
 					e.attr(attr, dv)
 				function get() {
 					return e.attrval(attr)
@@ -819,10 +819,10 @@ function pagelist_item_widget(e) {
 
 function cssgrid_item_widget(e) {
 
-	e.prop('pos_x'  , {style: 'grid-column-start' , type: 'number', default: 1})
-	e.prop('pos_y'  , {style: 'grid-row-start'    , type: 'number', default: 1})
-	e.prop('span_x' , {style: 'grid-column-end'   , type: 'number', default: 1, style_format: v => 'span '+v, style_parse: v => num((v || 'span 1').replace('span ', '')) })
-	e.prop('span_y' , {style: 'grid-row-end'      , type: 'number', default: 1, style_format: v => 'span '+v, style_parse: v => num((v || 'span 1').replace('span ', '')) })
+	e.prop('pos_x'  , {style: 'grid-column-start' , type: 'number'})
+	e.prop('pos_y'  , {style: 'grid-row-start'    , type: 'number'})
+	e.prop('span_x' , {style: 'grid-column-end'   , type: 'number', style_format: v => 'span '+v, style_parse: v => num((v || 'span 1').replace('span ', '')) })
+	e.prop('span_y' , {style: 'grid-row-end'      , type: 'number', style_format: v => 'span '+v, style_parse: v => num((v || 'span 1').replace('span ', '')) })
 	e.prop('align_x', {style: 'justify-self'      , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch']})
 	e.prop('align_y', {style: 'align-self'        , type: 'enum', enum_values: ['start', 'end', 'center', 'stretch']})
 
@@ -1220,7 +1220,9 @@ component('x-button', function(e) {
 	e.add(e.icon_div, e.text_div)
 
 	e.set_text = function(s) { e.text_div.set(s, 'pre-wrap') }
-	e.prop('text', {store: 'var', default: 'OK', slot: 'lang'})
+	e.prop('text', {store: 'attr', default: 'OK', slot: 'lang'})
+
+	e.set_text(e.text)
 
 	e.set_icon = function(v) {
 		if (typeof v == 'string')
@@ -1329,7 +1331,7 @@ component('x-menu', function(e) {
 		let sub_td    = H.td ({class: 'x-menu-sub-td'}, sub_div)
 		sub_div.style.visibility = item.items ? null : 'hidden'
 		let tr = H.tr({class: 'x-item x-menu-tr'}, check_td, title_td, key_td, sub_td)
-		tr.class('disabled', item.enabled == false)
+		tr.attr('disabled', item.enabled == false)
 		tr.item = item
 		tr.check_div = check_div
 		update_check(tr)
@@ -1874,6 +1876,7 @@ component('x-pagelist', function(e) {
 	e.prop('can_add_items'   , {store: 'var', type: 'bool', default: false})
 	e.prop('can_remove_items', {store: 'var', type: 'bool', default: false})
 	e.prop('can_move_items'  , {store: 'var', type: 'bool', default: true})
+	e.prop('auto_focus_first_item', {store: 'var', type: 'bool', default: true})
 
 	function prop_changed(te, k, v) {
 		if (k == 'title' && te._tab && te._tab.parent == e.header)
@@ -1907,7 +1910,7 @@ component('x-pagelist', function(e) {
 			e.widget_editing = true
 			return
 		}
-		if (!e.widget_editing && focus_tab != false) {
+		if (!e.widget_editing && focus_tab != false && e.auto_focus_first_item) {
 			let ff = [...e.content.focusables()].filter(e => e.isinput)[0]
 			if (ff)
 				ff.focus()
