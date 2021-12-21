@@ -1,0 +1,4 @@
+openssl 1.1.1d from https://openssl.org/source (Apache License)
+
+
+Patched for compatibility with OpenResty.

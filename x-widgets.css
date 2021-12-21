@@ -1,0 +1,3270 @@
+
+/* variables -------------------------------------------------------------- */
+
+:root {
+
+	--x-border-focused                :  #99d;
+	--x-border-focused-button         :  #aab;
+	--x-border-focused-button-primary :  #363;
+
+	--x-shadow-focused                :  0px  0px  0px  1px var(--x-border-focused);
+	--x-shadow-focused-button         :  0px  0px  0px  1px var(--x-border-focused-button);
+	--x-shadow-focused-button-primary :  0px  0px  0px  1px var(--x-border-focused-button-primary);
+	--x-shadow-popup                  :  2px  2px  2px      #000000aa; /* sharply angled shadow */
+	--x-shadow-popup2                 :  0px  5px 10px  1px #00000044; /* large fuzzy shadow */
+	--x-shadow-button                 :  0px  0px  8px  0px #00000011;
+	--x-shadow-tooltip                :  2px  2px  9px      #00000044;
+	--x-shadow-dialog                 :  2px  2px 10px      #00000088;
+	--x-shadow-toolbox                :  1px  1px  4px      #000000aa;
+	--x-shadow-slider-thumb           :  1px  1px  2px      #000000aa;
+	--x-shadow-button-pressed         : inset 0 0.15em 0.3em #1b1f2333;
+
+	--x-margin                      : .25em;
+	--x-border-radius               : .25em;
+
+	--x-padding-y-button            : .4em;
+	--x-padding-x-button            : 1.2em;
+	--x-padding-x-button-icon       : .4em;
+	--x-padding-x-input             : .5em;  /* x-padding for inputs and grid cells */
+	--x-padding-y-input             : .25em; /* y-padding for inputs and grid cells */
+	--x-padding-y1-input-il-label-empty : .35em;  /* shift label to focus-box middle */
+	--x-padding-y1-input-il-label       : .35em;  /* shift label up away from the input */
+	--x-padding-y2-input-il-dropdown-button : .5em;
+
+	--x-min-height-input            : 3.6em;
+	--x-width-input                 : 12em;
+
+	--x-font-size-input-label        : 85%;
+	--x-font-size-input-label-empty  : 85%;
+
+	--x-fg              : #000;  /* text on normal backgrounds */
+	--x-p               : #444;  /* multiline text on normal backgrounds */
+	--x-fg-inverted     : #fff;  /* text on inverted backgrounds */
+	--x-bg              : #fff;  /* bg for regions that need to be opaque */
+	--x-bg-popup        : #fff;  /* bg for popups and inline grid editors */
+	--x-fg-disabled     : #00000066;  /* faded text on light bg */
+	--x-fg-disabled-inverted : #ffffff66;  /* faded text on dark colored bg with the same color as bg */
+	--x-border-light    : #00000033;  /* normal borders */
+	--x-smoke           : #00000022;  /* light overlays */
+	--x-faint           : #00000011;  /* faint overlays and faint borders */
+	--x-fg-label        : #666;  /* text of input & chart labels */
+	--x-bg-new          : #eeeeff;
+	--x-bg-modified     : #ddffdd;
+	--x-bg-new-modified : #ccf0f0;
+	--x-fg-search       : #000;  /* fg for quicksearch text */
+	--x-bg-search       : #ff9;  /* bg for quicksearch text */
+	--x-bg-info         : #069;  /* bg & fg for info bubbles */
+	--x-fg-info         : var(--x-fg-inverted);
+	--x-bg-error        : #a33; /* bg & fg for invalid inputs and error bubbles */
+	--x-fg-error        : var(--x-fg-inverted);
+	--x-bg-warn         : #ffa500;
+	--x-fg-warn         : var(--x-fg);
+	--x-bg-tooltip      : #ffffcc; /* bg for cursor-kind tooltips */
+	--x-bg-today        : #f33;
+	--x-fg-today        : var(--x-fg-inverted);
+	--x-fg-link         : var(--x-fg);
+	--x-fg-link-visited : var(--x-fg);
+
+	--x-bg-button                 : #eff3f6;
+	--x-fg-button                 : var(--x-fg-inverted);
+	--x-bg-button-primary         : #28a745;
+	--x-fg-button-primary         : var(--x-fg-inverted);
+	--x-bg-button-primary-hover   : #199134;
+	--x-bg-button-primary-pressed : #147a2b;
+	--x-bg-button-danger          : var(--x-bg-button);
+	--x-fg-button-danger          : #a33;
+
+	--x-bg-select-button: var(--x-bg-button);
+
+	--x-markbox-border-color-focus : #aaf;
+	--x-markbox-icon-color: var(--x-fg);
+
+	--x-toolbox-titlebar-bg         : var(--x-faint);
+	--x-toolbox-titlebar-bg-focused : #00003333;
+
+	--x-stroke-dialog-xbutton       : #00000066;
+
+	--x-bg-pagelist-bar: #66f;
+
+	--x-selected-widget-outline-color         : #666;
+	--x-selected-widget-outline-color-focused : blue;
+
+	--x-outline-focused            : #000;
+
+	/* these need to be opaque! */
+	--x-item-bg-unfocused          : #999;
+	--x-item-bg-focused            : #ddd;
+	--x-item-bg-unfocused-selected : #333;
+	--x-item-fg-unfocused-selected : var(--x-fg-inverted);
+	--x-item-bg-focused-selected   : #258;
+	--x-item-bg-focused-invalid    : #f33;
+	--x-item-bg-unselected         : #888;
+	--x-item-fg-unselected         : var(--x-fg-inverted);
+	--x-item-bg-selected           : #69c;
+	--x-item-fg-selected           : var(--x-fg-inverted);
+	--x-row-bg-focused             : #eee;
+
+	--x-bg-grid-editor             : var(--x-bg-popup);
+
+	--x-item-border-width          : 1px; /* needed to show rows with errors */
+
+}
+
+a {
+	color: var(--x-fg-link);
+}
+
+a:visited {
+	color: var(--x-fg-link-visited);
+}
+
+hr {
+	color: var(--x-border-light);
+}
+
+/* default fonts ---------------------------------------------------------- */
+
+@font-face {
+	font-family: "x-widget";
+	src: url("/OpenSans-Regular.ttf");
+}
+
+@font-face {
+	font-family: "x-widget";
+	font-weight: bold;
+	src: url("/OpenSans-SemiBold.ttf");
+}
+
+@font-face {
+	font-family: "x-widget-condensed";
+	src: url("/OpenSansCondensed-Light.ttf");
+}
+
+@font-face {
+	font-family: "x-widget-condensed";
+	font-weight: bold;
+	src: url("/OpenSansCondensed-Bold.ttf");
+}
+
+/* body option: opensans */
+body[opensans] {
+	font-family: x-widget, Arial, sans-serif;
+	font-size: 13px;
+}
+
+/* widget defaults -------------------------------------------------------- */
+
+.x-widget, .x-widget * {
+	box-sizing: border-box;
+}
+
+.x-widget {
+	display: inline-block;
+	z-index: 0; /* make `z-index` of children context-free */
+	position: relative; /* make `position: absolute` of children context-free */
+	margin-top    : var(--x-margin);
+	margin-bottom : var(--x-margin);
+}
+
+.x-widget:focus {
+	outline: none;
+}
+
+.x-widget.popup {
+	margin: 0;
+}
+
+.x-container {
+	display: flex;
+}
+
+.x-stretched {
+	place-self: stretch;
+	flex: 1;
+}
+
+/* seamless fitting of stretched widgets inside containers */
+.x-container > .x-stretched,
+body > .x-stretched:not(.popup)
+{
+	margin: 0;
+	border-width: 0;
+	border-radius: 0;
+}
+
+/* widget editing --------------------------------------------------------- */
+
+.x-widget.x-widget.widget-editing {
+	outline: 2px dotted red;
+	outline-offset: -2px;
+}
+
+.x-widget [contenteditable] {
+	outline: 0px solid transparent;
+}
+
+/* widget selecting ------------------------------------------------------- */
+
+.x-widget.widget-selected {
+	pointer-events: none;
+}
+
+.x-widget-selected-overlay {
+	display: block;
+	position: absolute;
+	top: 0; left: 0; right: 0; bottom: 0;
+	background-color: var(--x-smoke);
+	outline: 2px dotted var(--x-selected-widget-outline-color);
+	outline-offset: -2px;
+	pointer-events: all;
+	z-index: 10; /* arbitrary */
+}
+
+.x-widget-selected-overlay:focus {
+	outline-color: var(--x-selected-widget-outline-color-focused);
+}
+
+/* item states ------------------------------------------------------------ */
+
+.x-item a, .x-item a:visited { color: inherit; }
+/* ^^ unless you want to set specific colors for dark backgrounds too. */
+
+.x-item.disabled { color: var(--x-fg-disabled); }
+.x-item.disabled.focused { color: var(--x-fg-disabled-focused); }
+.x-item.null      { color: var(--x-fg-disabled); }
+.x-item.empty     { color: var(--x-fg-disabled); }
+.x-item.removed   { text-decoration: line-through; }
+
+.x-item.invalid {
+	background-color: var(--x-bg-error);
+	color: var(--x-fg-error);
+}
+
+.x-item:not(.focused):not(.selected):not(.invalid).new {
+	background-color: var(--x-bg-new);
+}
+
+.x-item:not(.focused):not(.selected):not(.invalid):not(.new).modified {
+	background-color: var(--x-bg-modified);
+}
+
+.x-item:not(.focused):not(.selected):not(.invalid).new.modified {
+	background-color: var(--x-bg-new-modified);
+}
+
+.x-item.row-has-errors {
+	border-top-color: var(--x-bg-error);
+	border-bottom-color: var(--x-bg-error);
+}
+.x-item.row-has-errors.x-grid-cell-first {
+	border-left-color: var(--x-bg-error);
+}
+.x-item.row-has-errors.x-grid-cell-last {
+	border-right-color: var(--x-bg-error);
+}
+
+.x-focusable-items:focus {
+	outline: none;
+}
+
+.x-focusable-items .x-item:not(.focused).selected:not(.invalid) {
+	background-color: var(--x-item-bg-unselected);
+	color: var(--x-fg-unselected);
+}
+
+.x-focusable-items:focus-within .x-item.selected:not(.invalid) {
+	background-color: var(--x-item-bg-selected);
+	color: var(--x-item-fg-selected);
+}
+
+.x-item.row-focused:not(.selected):not(.invalid) {
+	background-color: var(--x-row-bg-focused);
+}
+
+.x-focusable-items .x-item.focused:not(.invalid) {
+	background-color: var(--x-item-bg-unfocused);
+}
+
+.x-focusable-items:focus-within .x-item.focused:not(.invalid) {
+	background-color: var(--x-item-bg-focused);
+}
+
+.x-focusable-items .x-item.focused.selected:not(.invalid) {
+	background-color: var(--x-item-bg-unfocused-selected);
+	color: var(--x-item-fg-unfocused-selected);
+}
+
+.x-focusable-items:focus-within .x-item.focused.selected:not(.invalid) {
+	background-color: var(--x-item-bg-focused-selected);
+}
+
+.x-focusable-items:focus-within .x-item.focused.invalid {
+	background-color: var(--x-item-bg-focused-invalid);
+}
+
+/* scrollbars ------------------------------------------------------------- */
+
+/*
+NOTE: scrollbar width and/or height must be set in order to enable custom scrollbars.
+Only setting custom scrollbars for the dark theme as it's the only way to darken them.
+*/
+.x-widget::-webkit-scrollbar-track,
+.x-widget ::-webkit-scrollbar-track
+{
+	background-color: var(--x-faint);
+}
+
+.x-widget::-webkit-scrollbar-thumb,
+.x-widget ::-webkit-scrollbar-thumb
+{
+	background-color: var(--x-smoke);
+	border-color: var(--x-smoke);
+}
+
+/* border-based triangle shapes ------------------------------------------- */
+
+.x-arrow {
+	border-width: .5em;
+	border-style: solid;
+}
+
+.x-arrow[side=top],
+.x-arrow[side=top]:hover {
+	border-right-color : transparent;
+	border-left-color  : transparent;
+	border-bottom-color: transparent;
+	margin-left: -.5em;
+}
+
+.x-arrow[side=bottom],
+.x-arrow[side=bottom]:hover {
+	border-right-color : transparent;
+	border-left-color  : transparent;
+	border-top-color   : transparent;
+	margin-left: -.5em;
+}
+
+.x-arrow[side=left],
+.x-arrow[side=left]:hover {
+	border-right-color : transparent;
+	border-top-color   : transparent;
+	border-bottom-color: transparent;
+	margin-top: -.5em;
+}
+
+.x-arrow[side=right],
+.x-arrow[side=right]:hover {
+	border-left-color  : transparent;
+	border-top-color   : transparent;
+	border-bottom-color: transparent;
+	margin-top: -.5em;
+}
+
+/* button ----------------------------------------------------------------- */
+
+.x-button {
+
+	/* positioning for inline use */
+	display: inline-flex;    /* more options than inline, but no collapsible margins! */
+
+	/* layout content */
+	align-items: baseline;   /* required */
+	justify-content: center;
+
+	/* sizing for inline use */
+	padding-left   : var(--x-padding-x-button);
+	padding-right  : var(--x-padding-x-button);
+	padding-top    : var(--x-padding-y-button);
+	padding-bottom : var(--x-padding-y-button);
+	font-weight: bold;
+	line-height: normal;
+
+	/* behavior */
+	user-select: none;
+	cursor: pointer;
+}
+
+.x-button.widget-editing {
+	cursor: initial;
+}
+
+.x-widget.widget-editing.x-button {
+	outline-offset: -2px;
+}
+
+.x-button.text-empty { /* icon-only */
+	padding-left  : var(--x-padding-x-button-icon);
+	padding-right : var(--x-padding-x-button-icon);
+}
+
+.x-button:not(.text-empty) > .x-button-icon {
+	margin-right: .5em;
+}
+
+/* styling (from github) */
+
+.x-button {
+	border-width: 1px;
+	border-style: solid;
+	border-color: var(--x-faint);
+	background-color: var(--x-bg-button);
+	border-radius: var(--x-border-radius);
+}
+
+.x-button {
+	box-shadow: var(--x-shadow-button);
+}
+
+.x-button[primary] {
+	background-color: var(--x-bg-button-primary);
+	color: var(--x-fg-button-primary);
+}
+
+.x-button[primary] {
+	background-color: var(--x-bg-button-primary);
+	color: var(--x-fg-button-primary);
+}
+
+.x-button[danger] {
+	background-color: var(--x-bg-button-danger);
+	color: var(--x-fg-button-danger);
+}
+
+.x-button:focus {
+	border-color: var(--x-border-focused-button);
+	box-shadow  : var(--x-shadow-focused-button), var(--x-shadow-button);
+}
+
+.x-button[primary]:focus {
+	border-color: var(--x-border-focused-button-primary);
+	box-shadow  : var(--x-shadow-focused-button-primary), var(--x-shadow-button);
+}
+
+.x-button:not([disabled]):not(.widget-editing):not(.widget-selected):hover {
+	filter: brightness(95%);
+}
+
+.x-button:not([disabled]):not(.widget-editing):not(.widget-selected):active,
+.x-button:not([disabled]):not(.widget-editing):not(.widget-selected).active {
+	filter: brightness(90%);
+	box-shadow: var(--x-shadow-button-pressed);
+}
+
+/* bare buttons (no borders) */
+
+.x-button[bare] {
+	border-width: 0;
+	background: none;
+	box-shadow: none;
+	border-radius: 0;
+}
+
+.x-button[bare]:not([disabled]):not(.widget-editing):not(.widget-selected):hover {
+	filter: contrast(.7);
+}
+
+.x-button[bare]:not([disabled]):not(.widget-editing):not(.widget-selected):active,
+.x-button[bare]:not([disabled]):not(.widget-editing):not(.widget-selected).active
+{
+	box-shadow: none;
+	filter: contrast(.4);
+}
+
+/* action band ------------------------------------------------------------ */
+
+.x-action-band {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	display: flex;
+	justify-content: flex-end;
+	padding: var(--x-margin);
+}
+
+.x-action-band > .x-button {
+	margin: var(--x-margin);
+}
+
+/* tooltip ---------------------------------------------------------------- */
+
+.x-tooltip {
+
+	/* positioning */
+	z-index: 2; /* menu = 4, picker = 3, tooltip = 2, toolbox = 1 */
+
+	/* sizing */
+	max-width: 400px;  /* max. width of the message bubble before wrapping */
+
+	/* layout content */
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-start;
+	overflow: visible; /* for the tip */
+
+	/* styling */
+	border: 0; /* container */
+	border-radius: 0;
+
+	/* animation */
+	opacity: 0;
+	pointer-events: none;
+	animation-duration: .2s;
+	animation-timing-function: ease-out;
+	animation-fill-mode: forwards;
+
+	/* behavior */
+	user-select: none;
+}
+
+.x-tooltip-body {
+	display: inline-flex;
+	padding: .5em 0;
+
+	/* styling */
+	border-radius: var(--x-border-radius);
+	background-color: var(--x-bg-popup);
+	box-shadow: var(--x-shadow-tooltip);
+	line-height: 1.5em;
+}
+
+/* visibility animation */
+
+.x-tooltip.visible {
+	opacity: 1;
+	pointer-events: all;
+}
+
+@keyframes x-tooltip-left   { from { opacity: 0; transform: translate(-1em, 0); } }
+@keyframes x-tooltip-right  { from { opacity: 0; transform: translate( 1em, 0); } }
+@keyframes x-tooltip-top    { from { opacity: 0; transform: translate(0, -.5em); } }
+@keyframes x-tooltip-bottom { from { opacity: 0; transform: translate(0,  .5em); } }
+
+.x-tooltip.visible[side=left]   { animation-name: x-tooltip-left; }
+.x-tooltip.visible[side=right]  { animation-name: x-tooltip-right; }
+.x-tooltip.visible[side=top]    { animation-name: x-tooltip-top; }
+.x-tooltip.visible[side=bottom] { animation-name: x-tooltip-bottom; }
+
+.x-tooltip-content {
+	/* layouting */
+	display: inline-block; /* shrink-wrap and also word-wrap when reaching container width */
+	padding: 0 1em;
+}
+
+.x-tooltip-xbutton {
+	vertical-align: top;
+	align-self: stretch;
+	font-size: 80%;
+	color: var(--x-fg-disabled);
+	padding: .25em 1em;
+	border: 0 solid transparent;
+	border-left-width: 1px;
+	border-color: var(--x-faint);
+	pointer-events: all;
+	cursor: pointer;
+}
+
+.x-tooltip-xbutton:hover {
+	color: inherit;
+}
+
+.x-tooltip-tip {
+
+	/* border-based triangle shape */
+	display: block;
+	box-sizing: content-box;
+	border: .5em solid transparent;
+	z-index: 1; /* draw over the parent's box shadow */
+
+	/* styling */
+	color: var(--x-bg-popup);
+}
+
+.x-tooltip-icon {
+	vertical-align: top;
+	margin: .2em 0 0 1em;
+	font-size: 1em;
+	line-height: inherit !important; /* override fontawesome's !important */
+}
+
+.x-tooltip[side=left]   > .x-tooltip-tip { border-left-color   : inherit; }
+.x-tooltip[side=right]  > .x-tooltip-tip { border-right-color  : inherit; }
+.x-tooltip[side=top]    > .x-tooltip-tip { border-top-color    : inherit; }
+.x-tooltip[side=bottom] > .x-tooltip-tip { border-bottom-color : inherit; }
+
+/* side & align combinations */
+
+.x-tooltip[side=top],
+.x-tooltip[side=bottom]  { flex-flow: column; }
+
+.x-tooltip[side=left]    { justify-content: flex-end; }
+
+.x-tooltip[align=end]    { align-items: flex-end; }
+.x-tooltip[align=center] { align-items: center; }
+
+.x-tooltip[side=right]  > .x-tooltip-body,
+.x-tooltip[side=bottom] > .x-tooltip-body { order: 2; }
+
+.x-tooltip[side=top][align=center] > .x-tooltip-body > .x-tooltip-content,
+.x-tooltip[side=bottom][align=center] > .x-tooltip-body > .x-tooltip-content { text-align: center; }
+
+.x-tooltip[side=top][align=end] > .x-tooltip-body > .x-tooltip-content,
+.x-tooltip[side=bottom][align=end] > .x-tooltip-body > .x-tooltip-content { text-align: right; }
+
+.x-tooltip[side=top] > .x-tooltip-tip,
+.x-tooltip[side=bottom] > .x-tooltip-tip { margin: 0 .5em; }
+
+.x-tooltip[side=left] > .x-tooltip-tip,
+.x-tooltip[side=right] > .x-tooltip-tip { margin: .5em 0; }
+
+.x-tooltip[side=right]  { margin-left   : -.25em; }
+.x-tooltip[side=left]   { margin-left   :  .25em; }
+.x-tooltip[side=top]    { margin-top    :  .25em; }
+.x-tooltip[side=bottom] { margin-top    : -.25em; }
+
+/* styling based on kind attr */
+
+.x-tooltip[kind=search] > .x-tooltip-body { background-color: var(--x-bg-search); color: #000; }
+.x-tooltip[kind=search] > .x-tooltip-tip { color: var(--x-bg-search); }
+
+.x-tooltip[kind=info] > .x-tooltip-body { background-color: var(--x-bg-info); color: var(--x-fg-info); }
+.x-tooltip[kind=info] > .x-tooltip-tip { color: var(--x-bg-info); }
+.x-tooltip[kind=info] > .x-tooltip-body > .x-tooltip-xbutton { color: var(--x-fg-disabled-inverted); border-color: var(--x-fg-disabled-inverted); }
+.x-tooltip[kind=info] > .x-tooltip-body > .x-tooltip-xbutton:hover { color: var(--x-fg-info); }
+
+.x-tooltip[kind=error] > .x-tooltip-body { background-color: var(--x-bg-error); color: var(--x-fg-error); }
+.x-tooltip[kind=error] > .x-tooltip-tip { color: var(--x-bg-error); }
+.x-tooltip[kind=error] > .x-tooltip-body > .x-tooltip-xbutton { color: var(--x-fg-disabled-inverted); border-color: var(--x-fg-disabled-inverted); }
+.x-tooltip[kind=error] > .x-tooltip-body > .x-tooltip-xbutton:hover { color: var(--x-fg-error); }
+
+.x-tooltip[kind=warn] > .x-tooltip-body { background-color: var(--x-bg-warn); color: var(--x-fg-warn); }
+.x-tooltip[kind=warn] > .x-tooltip-tip { color: var(--x-bg-warn); }
+.x-tooltip[kind=warn] > .x-tooltip-body > .x-tooltip-xbutton { color: var(--x-fg-disabled-inverted); border-color: var(--x-fg-disabled-inverted); }
+.x-tooltip[kind=warn] > .x-tooltip-body > .x-tooltip-xbutton:hover { color: var(--x-fg-warn); }
+
+.x-tooltip[kind=cursor] {
+	margin-left: .75em;
+	margin-top : .75em;
+}
+
+.x-tooltip[kind=cursor] > .x-tooltip-body {
+	padding: .15em 0;
+	border: 1px solid #aaaa99;
+	color: #333;
+	background-color: var(--x-bg-tooltip);
+	font-family: sans-serif;
+	font-size: 12px;
+	border-radius: 0;
+}
+
+.x-tooltip[kind=cursor] > .x-tooltip-body > .x-tooltip-content {
+	padding: 0 .5em;
+	white-space: pre !important;
+}
+
+.x-tooltip[kind=cursor] > .x-tooltip-tip { display: none; }
+
+.x-error-list {
+	padding-inline-start: 1em;
+	text-align: start;
+}
+
+/* all inputs ------------------------------------------------------------- */
+
+.x-input-widget {
+	/* layout self & content */
+	display: inline-flex; /* baseline-align in an inline context */
+	flex-flow: column;
+}
+
+.x-input-widget[readonly] {
+	opacity: .8;
+}
+
+.x-focus-box {
+	flex: 1; /* stretch vertically */
+	border-width: 1px;
+	border-style: dotted;
+	border-color: var(--x-border-light);
+	border-radius: var(--x-border-radius);
+}
+
+.x-widget:focus-within > .x-focus-box {
+	border-color: var(--x-border-focused);
+	box-shadow  : var(--x-shadow-focused);
+	outline: 2px solid var(--x-outline-focused);
+	outline-offset: -1px;
+}
+
+.x-widget.with-label > .x-focus-box {
+	min-height: var(--x-min-height-input);  /* because line-height doesn't work on <input> */
+}
+
+.x-editbox.with-label > .x-focus-box {
+	line-height: initial;    /* prevent inheriting it */
+	padding-top: calc(var(--x-min-height-input) - 2em);
+}
+
+/* input info button */
+
+.x-input-info-button {
+	align-self: stretch; /* stretch vertically */
+	margin: 0;
+	/* make it seem integrated into the parent */
+	border-right-color  : rgb(0,0,0,0);
+	border-top-color    : rgb(0,0,0,0);
+	border-bottom-color : rgb(0,0,0,0);
+
+	/* icon style */
+	align-items: flex-end;
+	color: var(--x-bg-info);
+}
+
+.x-input-info-button > .x-button-icon {
+	font-size: 110%;
+	opacity: .9;
+}
+
+/* input info under text */
+
+.x-input-info {
+	font-size: 90%;
+	color: var(--x-fg-label);
+	margin: .5em 0;
+	padding-left  : var(--x-padding-x-input);
+	padding-right : var(--x-padding-x-input);
+	cursor: default;
+}
+
+.x-widget:focus-within > .x-input-info {
+	opacity: initial;
+}
+
+/* checkbox --------------------------------------------------------------- */
+
+.x-markbox {
+	/* styling */
+	border-width: 1px;
+	border-style: dashed;
+	border-color: transparent;
+	border-radius: 0;
+}
+
+.x-markbox > .x-focus-box {
+	display: inline-flex;
+	align-items: center;
+	flex-flow: row nowrap;
+	overflow: hidden;
+}
+
+.x-markbox.with-label > .x-focus-box {
+	padding-left  : var(--x-padding-x-input);
+	padding-right : var(--x-padding-x-input);
+	line-height: initial;
+	align-items: center;
+}
+
+.x-markbox.with-label > .x-focus-box > .x-markbox-label {
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.x-markbox.no-field > .x-focus-box > .x-markbox-label {
+	flex: 1;
+}
+
+.x-markbox:focus-within > .x-focus-box {
+	border-color: var(--x-markbox-border-color-focus);
+}
+
+.x-markbox:focus.invalid > .x-focus-box {
+	border-color: var(--x-fg-error);
+}
+
+.x-markbox-icon {
+	color: var(--x-markbox-icon-color);
+	font-size: 110%;
+}
+
+.x-markbox-label,
+.x-markbox-icon
+{
+	cursor: pointer;
+}
+
+.x-markbox-label:hover,
+.x-markbox-icon:hover
+{
+	filter: contrast(60%);
+}
+
+.x-markbox.invalid > .x-focus-box > .x-markbox-label,
+.x-markbox.invalid > .x-focus-box > .x-markbox-icon {
+	color: var(--x-fg-error);
+}
+
+.x-markbox[align=right] > .x-focus-box > .x-markbox-icon {
+	order: 2;
+}
+.x-markbox[align=right] > .x-focus-box > .x-markbox-label {
+	text-align: right;
+}
+
+.x-markbox[align=left ] > .x-focus-box > .x-markbox-label { padding-left : .5em; }
+.x-markbox[align=right] > .x-focus-box > .x-markbox-label { padding-right: .5em; }
+
+.x-markbox[button_style=toggle] > .x-focus-box > .x-markbox-label { flex: 1; }
+.x-markbox[button_style=toggle] > .x-focus-box > .x-markbox-icon  { order: 2; }
+.x-markbox[button_style=toggle] > .x-focus-box > .x-markbox-label { padding-left: 0; padding-right: .5em; }
+
+.x-markbox.grid-editor > .x-focus-box {
+	justify-content: center;
+}
+
+.x-markbox > .x-focus-box > .x-input-info-button {
+	margin-left: auto;
+	padding-right: 0;
+}
+
+/* checkbox --------------------------------------------------------------- */
+
+.x-checkbox > .x-focus-box {
+	display: inline-flex;
+	align-items: center;
+	flex-flow: row nowrap;
+}
+
+.x-checkbox-label {
+	display: none;
+}
+
+/* radiogroup ------------------------------------------------------------- */
+
+.x-radiogroup {
+	flex-wrap: wrap;
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+}
+
+.x-radio-item {
+	align-items: baseline;
+	margin-left: 0;
+	margin-right: 0;
+	margin: 0;
+	padding-left  : 0 var(--x-padding-x-input);
+	padding-right : 0 var(--x-padding-x-input);
+}
+
+.x-radiogroup.invalid > .x-markbox,
+.x-radiogroup.invalid > .x-markbox > .x-radio-icon
+{
+	color: var(--x-fg-error);
+}
+
+.x-radiogroup.invalid > .x-markbox:focus {
+	border-color: var(--x-fg-error);
+}
+
+.x-radiogroup[align=right] > .x-markbox {
+	justify-content: flex-end;
+}
+
+/* editbox ---------------------------------------------------------------- */
+
+.x-editbox {
+	/* self sizing */
+	width: var(--x-width-input);
+
+	/* sizing for inline use */
+	padding: 0; /* set from code */
+}
+
+.x-editbox > .x-focus-box {
+	flex: 1;
+
+	/* layout content */
+	display: inline-flex;    /* the only way to get variable-width inputs */
+	align-items: center;     /* ...that are baseline-aligned (see mode=inline) */
+	overflow: hidden;        /* label can overflow */
+}
+
+.x-input-placeholder {
+	width: 100%;
+	background-color: var(--x-smoke);
+}
+.x-input-placeholder::before {
+	content: '\200b'; /* zwsp */
+}
+
+.x-flex > .x-editbox,
+.x-flex > .x-input > .x-editbox
+{
+	width: auto;
+	min-width: 0;
+}
+
+.x-editbox-input { /* for editbox's input-box and value-box */
+	margin: 0;
+	border: 0;
+	padding-left    : var(--x-padding-x-input);
+	padding-right   : var(--x-padding-x-input);
+	padding-top     : var(--x-padding-y-input);
+	padding-bottom  : var(--x-padding-y-input);
+	font-size: inherit;
+	font-family: inherit;
+	width: 100%;             /* stretch horizontally */
+	min-width: 0;            /* Firefox fix */
+	color: inherit;
+	background: none;
+	text-align: left;
+}
+
+.x-editbox-input:focus {
+	outline: none;
+}
+
+.x-editbox[align=right] > .x-focus-box > .x-editbox-input {
+	text-align: right;
+}
+
+.x-editbox.modified.modified > .x-focus-box { /* specificity over .x-widget.grid-editor */
+	/* background-color: var(--x-bg-modified); */
+}
+
+.x-editbox.invalid.invalid > .x-focus-box { /* specificity over .x-widget.grid-editor */
+	background-color: var(--x-bg-error);
+	color: var(--x-fg-error);
+}
+
+/* editbox with animated inner label/placeholder -------------------------- */
+
+.x-editbox.with-label[mode=inline] > .x-focus-box {
+	border-radius: 0;
+	align-items: baseline;
+}
+
+.x-editbox-label {
+	vertical-align: top;
+	align-self: flex-start;
+	position: absolute;
+	top: 0; /* fixate to top so we only have to set the top padding */
+	font-size: var(--x-font-size-input-label-empty);
+	padding-left   : var(--x-padding-x-input);
+	padding-right  : var(--x-padding-x-input);
+	padding-top    : var(--x-padding-y1-input-il-label-empty);
+	opacity: 1;
+	animation: x-editbox-label-unfocused .1s;
+	color: var(--x-fg-label);
+	white-space: nowrap;
+	visibility: hidden;
+	cursor: default;
+}
+
+.x-editbox.invalid > .x-focus-box > .x-editbox-label {
+	color: var(--x-fg-error);
+}
+
+.x-editbox:not(.with-label) > .x-focus-box > .x-editbox-label {
+	display: none;
+}
+
+.x-editbox.with-label > .x-focus-box > .x-editbox-label {
+	visibility: visible;
+}
+
+.x-editbox[mode=inline] > .x-focus-box {
+	border: 0;
+	border-radius: 0;
+}
+
+.x-editbox[mode=inline] > .x-focus-box {
+	border-bottom-width: 1px;
+	border-bottom-style: dashed;
+	border-bottom-color: var(--x-fg);
+}
+
+.x-editbox[mode=inline] > .x-focus-box > .x-editbox-input {
+	padding-bottom: .1em;
+}
+
+.x-editbox[mode=inline]:focus-within > .x-focus-box {
+	box-shadow: none;
+}
+
+.x-editbox[mode=inline].with-label > .x-focus-box > .x-editbox-input:not(.empty),
+.x-editbox[mode=inline].with-label:focus-within > .x-focus-box > .x-editbox-input
+{
+	padding-bottom: .1em;
+}
+
+.x-editbox.with-label > .x-focus-box > .x-editbox-label:not(.empty),
+.x-editbox.with-label:focus-within > .x-focus-box > .x-editbox-label,
+.x-editbox.with-label.open > .x-focus-box > .x-editbox-label
+{
+	user-select: none;
+	font-size: var(--x-font-size-input-label);
+	padding-top: var(--x-padding-y1-input-il-label);
+	animation: x-editbox-label-focused .1s;
+}
+
+.x-editbox[mode=inline].with-label > .x-focus-box > .x-editbox-label:not(.empty),
+.x-editbox[mode=inline].with-label:focus-within > .x-focus-box > .x-editbox-label
+{
+	font-weight: bold;
+	opacity: .5;
+}
+
+@keyframes disabled-x-editbox-label-unfocused {
+	from {
+		opacity: .5;
+		padding-top: calc(var(--x-padding-y1-input-il-label-empty) * .7);
+	}
+}
+
+@keyframes disabled-x-editbox-label-focused {
+	from {
+		opacity: .5;
+		padding-top: calc(var(--x-padding-y1-input-il-label) * 2);
+	}
+}
+
+/* editbox copy-to-clipboard button --------------------------------------- */
+
+.x-button.x-editbox-copy-to-clipboard-button {
+	margin: 0;
+	padding: 0 .5em;
+	border-left: 1px solid var(--x-smoke);
+	border-radius: 0;
+}
+
+.x-editbox-copy-to-clipboard-button > .x-button-icon > img {
+	filter: contrast(.8);
+}
+
+/* textarea --------------------------------------------------------------- */
+
+.x-textarea > .x-focus-box > .x-editbox-input {
+	align-self: stretch;
+}
+
+.x-textarea[mono] > .x-focus-box > .x-editbox-input {
+	font-family: monospace;
+}
+
+/* dropdown --------------------------------------------------------------- */
+
+/* NOTE: .x-dropdown is applied along with .x-editbox ! */
+
+.x-dropdown {
+	/* styling */
+	cursor: default;
+
+	/* default mode: variable-width, no-wrap but with .x-editbox's min-width applied */
+	width: auto; /* shrink-wrap */
+	min-width: var(--x-width-input);
+	white-space: nowrap;
+}
+
+.x-dropdown > .x-focus-box {
+	line-height: initial; /* prevent y-stretching to surrounding text's line height */
+}
+
+/* look focused even though it's the picker that's focused. */
+.x-dropdown.open > .x-focus-box {
+	border-color : var(--x-border-focused);
+	box-shadow   : var(--x-shadow-popup2), var(--x-shadow-focused);
+}
+
+.x-editbox-value {
+
+	/* layout self */
+	flex: 1; /* stretch horizontally */
+	width: auto;
+	padding-left  : var(--x-padding-x-input);
+	padding-right : .25em;
+
+	/* layout content */
+	display: flex;
+	align-items: center;
+}
+
+.x-editbox-value:empty::before {
+	content: '\200b'; /* zwsp */
+}
+
+.x-editbox-value.null { color: var(--x-fg-disabled); }
+
+.x-dropdown-button {
+	padding-left : var(--x-padding-x-input);
+	padding-right: var(--x-padding-x-input);
+
+	border-left-style: inherit;
+	border-left-color: inherit;
+	border-left-width: 1px;
+
+}
+
+/* if you want that hipster animation, here it is...
+.x-dropdown-button.down {
+	transition: transform .2s ease;
+}
+
+.x-dropdown-button.up {
+	transition: transform .2s ease;
+	transform: rotate(180deg);
+}
+*/
+
+.x-dropdown-more-button {
+	margin-left         : calc(0px - var(--x-padding-x-input));
+	padding-left        : var(--x-padding-x-input);
+	padding-right       : var(--x-padding-x-input);
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	font-size: 90%;
+}
+
+.x-dropdown-more-button:active {
+	color: var(--x-fg-disabled);
+}
+
+.x-dropdown[align=right] > .x-focus-box > .x-editbox-value {
+	order: 2;
+	padding-left  : .25em;
+	padding-right : var(--x-padding-x-input);
+}
+
+/* inline mode: variable-width, no-wrap with no min-width */
+.x-dropdown[mode=inline] > .x-focus-box {
+	min-width: 0; /* reset from x-input's min-width */
+	align-items: baseline;
+}
+
+.x-dropdown[mode=inline]:focus-within > .x-focus-box,
+.x-dropdown[mode=inline].open > .x-focus-box {
+	box-shadow: none;
+}
+
+/* wrap mode: fixed-width, auto-wrap */
+.x-dropdown[mode=wrap] {
+	width: 0; /* fixed width, constrained by x-input's min-width */
+}
+.x-dropdown[mode=wrap] > .x-focus-box > .x-editbox-value {
+	white-space: normal;
+}
+
+/* fixed mode: fixed-width, no-wrap, hide-overflow */
+.x-dropdown[mode=fixed] {
+	width: 0; /* fixed width, constrained by x-input's min-width */
+}
+
+.x-dropdown[mode=fixed] > .x-focus-box > .x-editbox-value,
+.x-flex > .x-dropdown > .x-focus-box > .x-editbox-value,
+.x-flex > .x-input > .x-dropdown > .x-focus-box > .x-editbox-value
+{
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+/* override with more specificity: .x-widget.x-<foo>.picker */
+.x-widget.picker {
+	background-color: var(--x-bg-popup);
+	z-index: 3; /* menu = 4, picker = 3, tooltip = 2, toolbox = 1 */
+
+	border-color: var(--x-border-focused);
+	box-shadow  : var(--x-shadow-popup2), var(--x-shadow-focused);
+}
+
+/* passedit --------------------------------------------------------------- */
+
+.x-passedit-eye-icon {
+	margin: 0;
+}
+
+/* spinedit --------------------------------------------------------------- */
+
+.x-spinedit-button {
+	display: none;
+	border-style: solid;
+	border-color: var(--x-border-light);
+	border-width: 0;
+	padding-left : var(--x-padding-x-input);
+	padding-right: var(--x-padding-x-input);
+}
+
+.x-spinedit-button.left  { display: initial; border-right-width: 1px; }
+.x-spinedit-button.right { display: initial; border-left-width : 1px; }
+
+.x-spinedit-button.fa-plus,
+.x-spinedit-button.fa-minus {
+	font-size: 70%;
+	align-self: center;
+}
+.x-spinedit-button.fa-minus.leftmost { padding-left  : calc(1.428 * var(--x-padding-x-input)); }
+.x-spinedit-button.fa-plus.rightmost { padding-right : calc(1.428 * var(--x-padding-x-input)); }
+
+.x-spinedit-button.fa-caret-left  { padding-right : calc(.5 * var(--x-padding-x-input)); }
+.x-spinedit-button.fa-caret-right { padding-left  : calc(.5 * var(--x-padding-x-input)); }
+
+/* inner label adjustments */
+
+.x-spinedit[button_placement=left]      > .x-editbox-label.empty,
+.x-spinedit[button_placement=each-side] > .x-editbox-label.empty {
+	padding-left: 2em;
+}
+
+.x-spinedit[button_style=left-right][button_placement=left]      > .x-editbox-label.empty,
+.x-spinedit[button_style=left-right][button_placement=each-side] > .x-editbox-label.empty {
+	padding-left: 1.5em;
+}
+
+.x-spinedit.with-label > .x-spinedit-button.fa-plus,
+.x-spinedit.with-label > .x-spinedit-button.fa-minus
+{
+	align-self: baseline;
+}
+
+/* slider ----------------------------------------------------------------- */
+
+.x-slider {
+	/* inline layouting */
+	display: inline-block;
+	vertical-align: middle;
+	margin: .75em;
+
+	/* sizing */
+	width: var(--x-width-input);
+	height: 7px;
+
+	/* styling */
+	background-color: var(--x-smoke);
+	border: 0;
+	border-radius: 10em;
+
+	/* layouting content */
+	overflow: visible;
+}
+
+.x-flex > .x-slider,
+.x-flex > .x-input > .x-slider
+{
+	width: auto;
+	min-width: 1em;
+}
+
+.x-slider-fill {
+	position: absolute;
+	height: 100%;
+	background-color: var(--x-item-bg-unfocused);
+	border-radius: 10em;
+}
+
+.x-slider-range-fill {
+	background-color: var(--x-fg-disabled);
+}
+
+.x-slider-thumb {
+
+	/* center vertically to track */
+	position: absolute;
+	top: 50%;
+	transform: translateX(-50%) translateY(-55%);
+
+	/* sizing */
+	width: 1em;
+	height: 1em;
+
+	/* styling */
+	background-color: var(--x-smoke);
+	border: 1px solid var(--x-border-light);
+	box-shadow: var(--x-shadow-slider-thumb);
+	border-radius: 10em;
+
+}
+
+.x-slider-value-thumb.different {
+	opacity: .5;
+}
+
+.x-slider:focus > .x-slider-value-fill {
+	background-color: var(--x-item-bg-focused);
+}
+
+.x-slider:focus > .x-slider-thumb {
+	border: 1px solid var(--x-item-bg-focused);
+	background-color: var(--x-smoke);
+}
+
+.x-slider.invalid > .x-slider-input-thumb {
+	border: 1px solid var(--x-bg-error);
+	background-color: var(--x-bg-error);
+}
+
+.x-slider.invalid:focus > .x-slider-thumb {
+	border: 1px solid var(--x-disabled);
+}
+
+.x-slider.animated > .x-slider-thumb      { transition: left  .1s; }
+.x-slider.animated > .x-slider-value-fill { transition: width .1s; }
+
+/* tagsedit --------------------------------------------------------------- */
+
+.x-tagsedit {
+
+	/* layout content */
+	display: flex;
+	flex-flow: wrap;
+	align-items: baseline;
+	align-content: flex-start;
+	overflow: hidden;
+
+	padding-left : var(--x-padding-x-input);
+	padding-right: var(--x-padding-x-input);
+}
+
+/* avoiding !important because the web is a piece of shit. */
+.x-tagsedit-input.x-tagsedit-input.x-tagsedit-input.x-tagsedit-input {
+	min-width: 0;
+	width: 3em;
+	padding: 2px calc(.25em + 2px); /* reset */
+	height: auto;                   /* reset */
+	flex: 1 1 auto;
+	line-height: 1;
+}
+
+.x-tagsedit-label {
+	padding: 0;
+}
+
+.x-tagsedit-button-expand {
+	padding: 0 .25em;
+}
+
+.x-tagsedit-bubble {
+	pointer-events: all;
+}
+
+.x-tagsedit-tag {
+	display: inline;
+	border-width: 1px;
+	border-style: solid;
+	border-color: var(--x-border-light);
+	border-radius: .25em;
+	background-color: var(--x-faint);
+	padding: 2px .25em;
+	padding-top: 3px;
+	margin: 1px .1em;
+	line-height: 1;
+	cursor: default;
+	overflow: hidden;
+}
+
+.x-tagsedit-tag-xbutton {
+	padding-left: .4em;
+	padding-right: .2em;
+	font-size: 70%;
+	align-self: center;
+	color: var(--x-fg-disabled);
+}
+
+.x-tagsedit.invalid > .x-tagsedit-tag {
+	background-color: var(--x-item-bg-focused-invalid);
+}
+
+.x-tagsedit.invalid > .x-tagsedit-tag > .x-tagsedit-tag-xbutton {
+	color: var(--x-fg-disabled-inverted);
+}
+
+.x-tagsedit-tag:hover {
+	cursor: pointer;
+	background-color: var(--x-smoke);
+}
+
+.x-tagsedit-tag:hover > .x-tagsedit-tag-xbutton {
+	color: inherit;
+}
+
+.x-tagsedit.invalid > .x-tagsedit-tag:hover > .x-tagsedit-tag-xbutton {
+	color: var(--x-fg-error);
+}
+
+/* fixed height mode */
+
+.x-tagsedit.with-label[mode=fixed] {
+	min-height: var(--x-min-height-input);
+}
+
+.x-tagsedit[mode=fixed] {
+	flex-flow: nowrap;
+}
+
+.x-tagsedit[mode=fixed] > .x-tagsedit-tag,
+.x-tagsedit-bubble .x-tagsedit-tag
+{
+	flex-flow: nowrap;
+	white-space: nowrap;
+}
+
+/* `place` type formatting (also used in the address widget) -------------- */
+
+.x-place-pin {
+	margin-right: .5em;
+	cursor: pointer;
+}
+
+.x-place-pin.disabled {
+	opacity: .3;
+	cursor: default;
+}
+
+/* google maps ------------------------------------------------------------ */
+
+.x-googlemaps {
+
+	/* layout self */
+	min-height: calc(var(--x-min-height-input) * 2 + var(--x-margin));
+
+	/* layout map icon */
+	display: flex !important; /* override fontawesome !important */
+	justify-content: center;
+	align-items: center;
+	color: var(--x-smoke);
+
+	/* styling */
+	background-color: var(--x-faint);
+}
+
+.x-googlemaps::before {
+	font-size: 2em !important; /* override fontawesome !important */
+}
+
+.x-googlemaps-iframe {
+	position: absolute;
+	min-width: 0;
+	min-height: 0;
+	width: 100%;
+	height: 100%;
+}
+
+/* input ------------------------------------------------------------------ */
+
+.x-input {
+	display: flex;
+	align-self: stretch;
+}
+
+.x-input:not(:empty) {
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+}
+
+.x-flex > .x-input {
+	min-width: 0;
+	width: auto;
+}
+
+/* listbox ---------------------------------------------------------------- */
+
+.x-listbox {
+	/* layout content */
+	display: inline-flex;        /* the only way for it to shrink-wrap */
+	flex-wrap: nowrap;
+	line-height: initial;  /* prevent inheriting it */
+	border-radius: 0;
+}
+
+.x-listbox:not(.picker) {
+	border: 0;
+}
+
+.x-listbox[orientation=vertical]   { flex-direction: column; }
+.x-listbox[orientation=horizontal] { flex-direction: row; }
+
+.x-listbox-item {
+	/* layout */
+	display: block;
+	/* sizing */
+	padding-left   : var(--x-padding-x-input);
+	padding-right  : var(--x-padding-x-input);
+	padding-top    : var(--x-padding-y-input);
+	padding-bottom : var(--x-padding-y-input);
+	/* behavior */
+	cursor: default;
+	position: relative; /* for item moving */
+}
+
+.x-item.x-listbox-item { /* specificity over ?? */
+	overflow: visible;
+}
+
+.x-listbox-item.moving {
+	z-index: 1;
+	opacity: .7;
+}
+
+.x-listbox.moving > .x-listbox-item:not(.moving) {
+	transition: top .1s, left .1s, right .1s;
+}
+
+.x-widget.x-listbox.picker {
+	max-height: 300px;
+	overflow: auto;
+	resize: both;
+}
+
+/* select-button ---------------------------------------------------------- */
+
+.x-select-button {
+	border: 0;
+}
+
+.x-select-button > .x-item {
+
+	/* styling */
+	background-color: var(--x-bg-select-button);
+	border-width: 1px;
+	border-style: solid;
+	border-color: var(--x-border-light);
+
+	/* behavior */
+	user-select: none;
+}
+
+.x-select-button > .x-item:hover {
+	background-color: var(--x-smoke);
+}
+
+.x-select-button > .x-item.focused.selected {
+	box-shadow: var(--x-shadow-button-pressed);
+}
+
+.x-select-button > .x-item:first-child {
+	border-top-left-radius    : var(--x-border-radius);
+	border-bottom-left-radius : var(--x-border-radius);
+}
+
+.x-select-button > .x-item:last-child {
+	border-top-right-radius    : var(--x-border-radius);
+	border-bottom-right-radius : var(--x-border-radius);
+}
+
+.x-select-button > .x-item:not(:first-child) {
+	border-left: 0;
+}
+
+/* colors listbox --------------------------------------------------------- */
+
+.x-item-color {
+	width: 100%;
+}
+
+/* calendar --------------------------------------------------------------- */
+
+.x-calendar {
+	display: inline-flex;
+	padding: 1em;
+}
+
+.x-calendar-time-box {
+	margin-left: .5em;
+	padding-left: .5em;
+	border-left: 1px dotted var(--x-border-light);
+
+	/* layout content */
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: baseline;
+}
+
+.x-calendar-header {
+	display: flex;
+	align-items: center;     /* vertical align */
+}
+
+.x-calendar-weekday {
+	color: var(--x-fg-disabled);
+	font-weight: normal;
+}
+
+.x-calendar:focus .x-calendar-day.focused {
+	box-shadow: var(--x-shadow-focused);
+}
+
+.x-calendar-day,
+.x-calendar-weekday
+{
+	text-align: right;
+	padding-right: .4em;
+	min-width: 2.6em;
+	min-height: 1.5em;
+}
+
+.x-calendar-day                          { cursor: default; }
+.x-calendar-day:not(.current-month)      { color: var(--x-fg-disabled); }
+.x-calendar-day.today                    {
+	outline: 1px dashed var(--x-bg-today);
+}
+.x-calendar .x-calendar-day.today:hover  { background-color: var(--x-bg-today); }
+.x-calendar.invalid .x-calendar-day.focused {
+	background-color: var(--x-bg-error);
+}
+
+.x-calendar-sel-day {
+	font-size: 300%;
+}
+
+.x-calendar-sel-day-suffix {
+	flex: 1;                 /* stretch to fill width */
+	font-size: 150%;
+	padding-left: .1em;
+	padding-top: .25em;
+	align-self: flex-start;
+}
+
+.x-editbox.x-calendar-sel-month,
+.x-editbox.x-calendar-sel-year {
+	border: 0;
+}
+
+.x-editbox.x-calendar-sel-year {
+	--x-width-input: 6em;
+}
+
+.x-editbox.x-calendar-sel-month {
+	min-width: 5em;  /* limit shrinking */
+}
+
+.x-calendar-sel-day:empty::before,
+.x-calendar-sel-day-suffix:empty::before,
+.x-calendar-day:empty::before
+{
+	content: '\200b'; /* zwsp */
+}
+
+.x-calendar-sel-hms {
+	min-width: 0;
+	width: 2.5em;
+}
+
+/* calendar as picker ----------------------------------------------------- */
+
+.x-widget.x-calendar.picker {
+	padding: 1.5em;
+	min-width: auto !important; /* because it is set in code by the dropdown */
+}
+.x-widget.x-calendar.picker .x-calendar-sel-day {
+	font-size: 200%;
+}
+.x-widget.x-calendar.picker .x-calendar-sel-day-suffix {
+	padding-top: 0;
+}
+.x-widget.x-calendar.picker .x-calendar-day {
+	padding-top    : .25em;
+	padding-bottom : .25em;
+}
+
+/* menu ------------------------------------------------------------------- */
+
+.x-menu {
+
+	--font-family: arial, x-widget, sans-serif;
+	--font-size: 12px;
+	--line-height: 1.5;
+	font-family : var(--font-family );
+	font-size   : var(--font-size   );
+	line-height : var(--line-height );
+
+	/* layout self */
+	position: absolute; /* submenus are positioned in code */
+	top: 0;
+	left: 0;
+	margin: 0;
+	min-width: 200px;
+	width: min-content; /* why the fuck is `width: 0` not working here? */
+	z-index: 4; /* menu = 4, picker = 3, tooltip = 2, toolbox = 1 */
+
+	/* layout content */
+	display: table;
+	overflow: visible;  /* submenus are outside clipping area */
+	border-collapse: collapse; /* separators are done with borders */
+	background-color: var(--x-bg-popup);
+
+	/* styling */
+	border: 0;
+	border-radius: 0;
+	color: inherit;
+	color: var(--x-fg); /* prevent inheritance by the .focused rule below */
+
+}
+
+.x-menu.popup {
+	/* avoid using !important unless it's displayed as a popup */
+	font-family : var(--font-family ) !important;
+	font-size   : var(--font-size   ) !important;
+	line-height : var(--line-height ) !important;
+}
+
+.x-menu, .x-menu:focus-within {
+	outline: 1px solid var(--x-border-light);
+	outline-offset: -1px;
+	box-shadow: var(--x-shadow-popup);
+}
+
+.x-menu-sub-td {
+	position: relative; /* submenus are anchored to this td */
+}
+
+.x-menu-tr.focused > :not(.x-menu-table) {
+	// alternative (sleeker but less accessible): background-color: var(--x-faint);
+	background-color: var(--x-item-bg-unfocused-selected);
+	color: var(--x-item-fg-unfocused-selected);
+}
+
+.x-menu:focus-within .x-menu-tr.focused > :not(.x-menu-table) {
+	background-color: var(--x-item-bg-focused-selected);
+}
+
+.x-menu-tr > td {
+	padding: .4em;
+}
+
+.x-menu-tr > td:first-child {
+	padding-left: .9em;
+}
+
+.x-menu-separator {
+	height: 1em;
+}
+
+.x-menu-heading {
+	padding-left: 1em;
+	font-weight: bold;
+	color: var(--x-fg-disabled);
+	cursor: default;
+	padding-top   : .5em;
+	padding-bottom: .5em;
+}
+
+.x-menu-separator > hr {
+	border: 0;
+	border-top: 1px solid var(--x-border-light);
+	margin-top     : .5em;
+	margin-bottom  : .5em;
+}
+
+.x-menu-title-td {
+	padding: 0;
+	width: 100%;
+	padding-left: 0;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.x-menu-tr.focused > td {
+	cursor: default;
+}
+
+/* widget placeholder ----------------------------------------------------- */
+
+.x-widget-placeholder {
+	display: grid;
+	justify-content: safe center;
+	align-content: center;
+	outline: 1px dashed var(--x-smoke);
+	outline-offset: -1px;
+}
+
+.x-widget-placeholder-button {
+	margin: 1px;
+	padding: .1em;
+	min-width: 2em;
+	font-size: 80%;
+	border-radius: 0;
+}
+
+/* pagelist --------------------------------------------------------------- */
+
+.x-pagelist {
+	display: flex;
+	flex-flow: column;
+	min-height: 0;  /* don't let the content make the pagelist itself overflow */
+}
+
+.x-pagelist[tabs_side=left ],
+.x-pagelist[tabs_side=right] {
+	flex-flow: row;
+}
+
+.x-pagelist[tabs_side=left ] > .x-pagelist-header,
+.x-pagelist[tabs_side=right] > .x-pagelist-header {
+	flex-flow: column;
+}
+
+.x-pagelist-header {
+
+	/* layouting */
+	display: flex;
+	flex-flow: wrap;
+	position: relative;
+
+	/* styling */
+	border: 0px solid var(--x-border-light);
+	background-color: var(--x-faint);
+
+}
+
+.x-pagelist[tabs_side=top   ] > .x-pagelist-header { border-bottom-width : 1px; }
+.x-pagelist[tabs_side=bottom] > .x-pagelist-header { border-top-width    : 1px; }
+.x-pagelist[tabs_side=left  ] > .x-pagelist-header { border-right-width  : 1px; }
+.x-pagelist[tabs_side=right ] > .x-pagelist-header { border-left-width   : 1px; }
+
+.x-pagelist-content {
+	display: grid;
+	flex: 1;
+	min-height: 0;  /* don't let the content make the pagelist itself overflow */
+	overflow: auto;
+}
+
+.x-pagelist[tabs_side=top   ],
+.x-pagelist[tabs_side=left  ] > .x-pagelist-header { order: 0; }
+
+.x-pagelist[tabs_side=bottom],
+.x-pagelist[tabs_side=right ] > .x-pagelist-header { order: 1; }
+
+.x-pagelist-tab {
+	position: relative;
+	line-height: 1.25em;
+	color: var(--x-fg-label);
+	cursor: default;
+	display: flex;
+}
+
+.x-pagelist-title {
+	padding: .5em 1em;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	max-width: 10em;
+}
+
+.x-pagelist-add-button {
+	padding: .25em 1em;
+	display: flex;
+	align-items: center;
+}
+
+.x-pagelist-add-button::before {
+	font-size: 80%;
+}
+
+.x-pagelist-xbutton {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	font-size: 70%;
+	color: var(--x-fg-disabled);
+	cursor: default;
+}
+
+.x-pagelist-xbutton:hover {
+	color: inherit;
+}
+
+.x-pagelist-selection-bar {
+	position: absolute;
+	background-color: var(--x-bg-pagelist-bar);
+	z-index: 2;  /* selection-bar = 2, moving-tab = 1 */
+	width: 2px;
+	height: 2px;
+}
+
+.x-pagelist:not(.moving) > .x-pagelist-header > .x-pagelist-selection-bar {
+	transition: width .15s, height .15s, left .15s, top .15s;
+}
+
+.x-pagelist-tab.moving {
+	z-index: 1;  /* selection-bar = 2, moving-tab = 1 */
+	opacity: .7;
+}
+
+.x-pagelist.moving > .x-pagelist-header > .x-pagelist-tab:not(.moving) {
+	transition: left .1s, top .1s;
+}
+
+.x-pagelist-tab.selected {
+	color: inherit;
+}
+
+.x-pagelist-tab:focus {
+	outline: none;
+}
+
+.x-pagelist-tab:hover,
+.x-pagelist-tab:focus {
+	background-color: var(--x-faint);
+}
+
+/* split ------------------------------------------------------------------ */
+
+.x-split {
+	/* layouting */
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: stretch;
+	align-content: stretch;
+	justify-content: stretch;
+}
+.x-split[orientation=horizontal] { flex-direction: row; }
+.x-split[orientation=vertical] { flex-direction: column; }
+
+.x-split[orientation=horizontal].resize { flex-direction: row; cursor: ew-resize; }
+.x-split[orientation=vertical].resize { flex-direction: column; cursor: ns-resize; }
+
+.x-split-pane {
+	display: grid;
+	min-width : 0;    /* content can't overflow the split-view */
+	min-height: 0;    /* content can't overflow the split-view */
+	overflow: auto;
+}
+
+.x-split-pane-auto {
+	flex-grow: 1;  /* expand-to-fit container */
+	flex-basis: 0; /* completely obey fixed pane size */
+}
+
+.x-split[orientation=horizontal] > .x-split-pane.collapsed {
+	min-width: 0 !important;
+	width: 0 !important;
+}
+.x-split[orientation=vertical] > .x-split-pane.collapsed {
+	min-height: 0 !important;
+	height: 0 !important;
+}
+
+/* sizer */
+
+.x-split-sizer {
+
+	/* layouting */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	min-width : 6px;
+	min-height: 6px;
+
+	/* styling */
+	opacity: .8;
+	background-color: var(--x-smoke);
+
+}
+.x-split[orientation=vertical] > .x-split-sizer { flex-direction: row; }
+.x-split[orientation=horizontal] > .x-split-sizer { flex-direction: row; }
+
+.x-split.resize > .x-split-sizer {
+	opacity: 1;
+	transition: opacity .2s;
+}
+
+/* grip */
+
+.x-split-sizer::before {
+	content: '';
+	box-sizing: border-box;
+	border: 1.25px var(--x-fg-disabled);
+}
+
+.x-split[orientation=horizontal] > .x-split-sizer::before {
+	width: 4px;
+	height: 24px;
+	border-style: none solid;
+}
+.x-split[orientation=vertical] > .x-split-sizer::before {
+	width: 24px;
+	height: 4px;
+	border-style: solid none;
+}
+
+/* cssgrid ---------------------------------------------------------------- */
+
+.x-cssgrid {
+
+	/* layout self */
+	margin: 0;
+	border: 0;
+
+	/* layout items */
+	display: grid;
+	align-content: start;
+	align-items: start;
+	overflow: hidden;
+}
+
+/* guides */
+
+.x-cssgrid-guide {
+	position: absolute;
+	align-self: stretch;
+	justify-self: stretch;
+	display: grid;
+	overflow: visible;
+	z-index: 1; /* span = 3, overlay = 2, guide = 1 */
+}
+
+.x-cssgrid-guide[axis=x] { left: 0; width : 0; height: 100%; justify-self: end; border-right-width : 1px; }
+.x-cssgrid-guide[axis=y] { top : 0; height: 0; width : 100%; align-self  : end; border-bottom-width: 1px; }
+
+/* guide tips */
+
+.x-cssgrid-tip {
+	grid-area: 1 / 1;
+	width: 0;
+	border-color: #04a;
+}
+
+.x-cssgrid-tip:hover {
+	border-color: #28f;
+}
+
+.x-cssgrid-tip[axis=x] {
+	align-self: start;
+	cursor: ew-resize;
+	transform: scale(1, 2);
+}
+
+.x-cssgrid-tip[axis=y] {
+	cursor: ns-resize;
+	transform: scale(2, 1);
+}
+
+/* guide labels */
+
+.x-cssgrid-label {
+	grid-area: 1 / 1;
+	justify-self: start;
+	align-self: start;
+	font-size: 75%;
+	color: #333;
+	cursor: pointer;
+}
+
+.x-cssgrid-label[axis=x] { margin: 3px -6px; transform: translate(-100%, 0); }
+.x-cssgrid-label[axis=y] { margin: -3px 5px; transform: translate(0, -100%); }
+
+/* span outlines */
+
+.x-cssgrid-span {
+	justify-self: stretch;
+	align-self: stretch;
+	border: 1px dotted var(--x-fg-disabled);
+	pointer-events: none;
+	position: relative;
+	z-index: 3; /* span = 3, overlay = 2, guide = 1 */
+}
+
+.x-cssgrid-span-handle {
+	pointer-events: all;
+	position: absolute;
+	width : 14px;
+	height: 14px;
+	padding: 5px;
+	background-color: #888;
+	background-clip: content-box;
+}
+
+.x-cssgrid-span-handle[side=top   ] { cursor: ns-resize; margin-top   : -5px; margin-left  : -7px; left: 50%; }
+.x-cssgrid-span-handle[side=bottom] { cursor: ns-resize; margin-bottom: -7px; margin-left  : -7px; left: 50%; bottom: 0; }
+.x-cssgrid-span-handle[side=left  ] { cursor: ew-resize; margin-left  : -6px; margin-top   : -7px; top : 50%; }
+.x-cssgrid-span-handle[side=right ] { cursor: ew-resize; margin-right : -6px; margin-top   : -7px; top : 50%; right: 0; }
+
+/* item overlays */
+
+.x-cssgrid-item-overlay {
+	background-color: #00000011;
+	z-index: 2; /* span = 3, overlay = 2, guide = 1 */
+}
+
+.x-cssgrid-item-overlay.focused {
+	background-color: #0000ff11;
+}
+
+.x-cssgrid-item-ph {
+	/* enable this for debugging: */
+	border: 1px dashed #aaa;
+}
+
+.x-cssgrid-moving { cursor: move; }
+
+.x-cssgrid-span-move { border-color: #2a4; }
+.x-cssgrid-span-move > .x-cssgrid-span-handle { background-color: #2a4; }
+
+/* add button */
+
+.x-cssgrid-add-button {
+	position: absolute;
+	color: var(--x-fg-disabled);
+}
+
+/* form ------------------------------------------------------------------- */
+
+.x-form {
+
+	--x-form-margin: calc(2 * var(--x-margin));
+
+	/* layout self */
+	margin: var(--x-form-margin);
+	border: 0;
+
+	/* layout items */
+	display: grid;
+	align-content: start;
+	align-items: start;
+
+	grid-template-columns : repeat(auto-fit, minmax(0, 1fr));
+	grid-gap: var(--x-form-margin);
+
+	/* this enables scrolling within children (it's like Harry Potter in here) */
+	overflow: auto;
+}
+
+.x-form h1,
+.x-form h2,
+.x-form h3
+{
+	font-weight: normal;
+	margin-left: .2em;
+	margin-top: 1.2em;
+	margin-bottom: .2em;
+}
+
+.x-form > .x-widget,
+.x-form > .x-input > .x-widget
+{
+	margin: 0; /* let form's grid-gap along with its margin take care of it */
+}
+
+.x-form.compact {
+	margin: 0;
+	padding: 0;
+	grid-gap: 0;
+	font-size: 90%;
+}
+
+.x-form.compact > h1,
+.x-form.compact > h2,
+.x-form.compact > h3
+{
+	display: none;
+}
+
+.x-form.compact > .x-widget:not(.x-input),
+.x-form.compact > .x-input > .x-widget
+{
+	margin: 0;
+	border-radius: 0;
+	border-top-color  : rgb(0,0,0,0);
+	border-left-color : rgb(0,0,0,0);
+	border-right-color: rgb(0,0,0,0);
+}
+
+.x-container > .x-form:not(.compact) {
+	/* turn the margin into padding because the scroll box doesn't include
+		the margins as they're not part of the content box */
+	margin: 0;
+	padding: var(--x-form-margin);
+}
+
+/* toaster ---------------------------------------------------------------- */
+
+.x-toaster {
+	display: none;  /* don't mess up the layout */
+}
+
+.x-notify-toaster {
+	position: fixed;
+	transition: top .2s;
+}
+
+/* dialog ----------------------------------------------------------------- */
+
+.x-dialog {
+	display: flex;
+	flex-flow: column;
+	margin: 20px;
+	padding: 1em 1em;
+	color: var(--x-fg);
+	background-color: var(--x-bg-popup);
+	border: 0;
+	border-radius: calc(var(--x-border-radius) * 2);
+	box-shadow: var(--x-shadow-dialog);
+}
+
+.x-dialog-heading {
+	color: var(--x-fg-disabled);
+	font-size: 200%;
+	font-weight: bold;
+	margin: .25em 0;
+}
+
+.x-dialog-xbutton {
+	position: absolute;
+	right: 8px;
+	top: 0px;
+	border-bottom-right-radius: var(--x-border-radius);
+	border-bottom-left-radius : var(--x-border-radius);
+	border: 1px solid var(--x-border-light);
+	border-top: 0;
+	width: 52px;
+	height: 18px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--x-fg-button);
+	-webkit-text-stroke: 1px var(--x-stroke-dialog-xbutton);
+}
+
+.x-dialog-xbutton:hover,
+.x-dialog-xbutton.active
+{
+	background-color: var(--x-bg-button);
+}
+
+.x-dialog-header {
+}
+
+.x-dialog-header,
+.x-dialog-footer,
+.x-dialog-content {
+	display: flex;
+	padding: 1em 0;
+}
+
+.x-dialog-content {
+	flex: auto;
+}
+
+.x-dialog-footer {
+	justify-content: flex-end;
+}
+
+/* toolbox ---------------------------------------------------------------- */
+
+.x-toolbox {
+
+	/* layout self */
+	z-index: 1; /* menu = 4, picker = 3, tooltip = 2, toolbox = 1 */
+
+	/* layout content */
+	display: flex;
+	flex-flow: column;
+	overflow: auto;
+
+	/* styling */
+	background-color: var(--x-bg-popup);
+
+	/* pinning */
+	opacity: .2;
+	transition: opacity .5s;
+
+	border: 0;
+	border-radius: var(--x-border-radius);
+	box-shadow: var(--x-shadow-toolbox);
+}
+
+.x-toolbox.popup {
+	position: fixed !important;
+}
+
+.x-toolbox.pinned,
+.x-toolbox:hover {
+	opacity: 1;
+	transition: opacity 0s;
+}
+
+.x-toolbox-titlebar {
+	display: flex;
+	align-items: baseline;
+	font-weight: bold;
+	font-size: 12px;
+	line-height: 2.2em;
+	background-color: var(--x-toolbox-titlebar-bg);
+	cursor: move;
+	padding: 0 0 0 .5em;
+}
+
+.x-toolbox:focus-within > .x-toolbox-titlebar {
+	background-color: var(--x-toolbox-titlebar-bg-focused);
+}
+
+.x-toolbox-title {
+	flex: auto;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+}
+
+.x-toolbox-button {
+	color: var(--x-fg-disabled);
+	flex: 0;
+	padding: .5em .5em;
+	cursor: default;
+}
+
+.x-toolbox-button-pin {
+	font-size: 85%;
+}
+
+.x-toolbox.pinned > .x-toolbox-titlebar > .x-toolbox-button-pin {
+	color: var(--x-fg-label);
+}
+
+.x-toolbox-button-close:hover {
+	color: var(--x-fg);
+}
+
+.x-toolbox-content {
+	flex: 1;
+	min-width : 0;    /* content can't overflow the toolbox */
+	min-height: 0;    /* content can't overflow the toolbox */
+	overflow: auto;
+	display: grid;
+}
+
+/* toolbox resizing by dragging the margins */
+
+.x-toolbox-resize-overlay {
+	position: absolute;
+	left: 0; top: 0; right: 0; bottom: 0;
+	clip-path: polygon(
+		0 0, 0 100%, 100% 100%, 100% 0, 0 0, /* outer rect, counter-clockwise */
+		5px 5px, calc(100% - 5px) 5px, calc(100% - 5px) calc(100% - 5px), 5px calc(100% - 5px), 5px 5px /* inner rect, clockwise */
+	);
+}
+
+.x-toolbox-resize-overlay[hit_side=top      ], .x-toolbox-resize-overlay[hit_side=bottom      ] { cursor: ns-resize  ; }
+.x-toolbox-resize-overlay[hit_side=left     ], .x-toolbox-resize-overlay[hit_side=right       ] { cursor: ew-resize  ; }
+.x-toolbox-resize-overlay[hit_side=top_left ], .x-toolbox-resize-overlay[hit_side=bottom_right] { cursor: nwse-resize; }
+.x-toolbox-resize-overlay[hit_side=top_right], .x-toolbox-resize-overlay[hit_side=bottom_left ] { cursor: nesw-resize; }
+
+/* items switcher --------------------------------------------------------- */
+
+.x-widget-switcher {
+	display: grid;
+}
+
+/* slides ----------------------------------------------------------------- */
+
+.x-slides {
+	margin: 0;
+	border: 0;
+	display: grid;
+}
+
+.x-slide {
+	grid-column-start: 1;
+	grid-row-start: 1;
+
+	opacity: 0;
+	transition: opacity .2s;
+}
+
+.x-slide:not(.x-slide-selected),
+.x-slide:not(.x-slide-selected) *
+{
+	pointer-events: none !important;
+}
+
+.x-slide-selected {
+	opacity: 1;
+	pointer-events: all;
+	transition: opacity .2s;
+}
+
+/* mustache --------------------------------------------------------------- */
+
+.x-mu {
+	border: 0;
+	margin: 0;
+}
+
+/* x-nav ------------------------------------------------------------------ */
+
+.x-loading-overlay {
+	padding: .5em;
+}
+
+.x-loading-overlay.error {
+	background-color: var(--x-smoke);
+}
+
+.x-loading-overlay-message {
+	padding: 1em 1em;
+	background-color: var(--x-bg-popup);
+	box-shadow: var(--x-shadow-tooltip);
+}
+
+.x-loading-overlay-message .x-button {
+	line-height: 1em;
+}
+
+.x-loading-overlay-detail {
+	font-family: monospace;
+	margin: 1em 0;
+}
+
+.x-loading-error-icon {
+	margin: 0 .5em;
+	color: var(--x-fg-error);
+}
+
+/* grid ------------------------------------------------------------------- */
+
+:root {
+	--x-grid-header-height: 3.4em;
+}
+
+.x-grid {
+	display: flex;
+	flex-flow: column;
+	overflow: hidden;          /* hide header overflow */
+	cursor: default;           /* don't show caret over text */
+}
+
+.x-vgrid {
+	flex-flow: row;
+}
+
+.x-vgrid > .x-grid-action-band {
+	flex-flow: column;
+}
+
+/* grid header */
+
+.x-grid-header {
+	position: relative;        /* make movable for scrolling horizontally */
+	border-width: 0;
+	border-color: var(--x-border-light);
+	border-style: solid;
+	border-bottom-width: 1px;
+	min-height: calc(var(--x-grid-header-height) + 1px);
+}
+
+.x-grid-header.with-filters {
+	min-height: calc(var(--x-grid-header-height) + 1px + .9em);
+}
+
+.x-vgrid > .x-grid-header {
+	border-bottom-width: 0;
+}
+
+/* grid header & row cell common styles that make them align */
+
+.x-grid-header-cell,
+.x-grid-cell {
+	position: relative;        /* qs-text is relative to it. */
+	white-space: nowrap;       /* row height is fixed */
+
+	/* sizing & styling */
+	padding-left   : var(--x-padding-x-input);
+	padding-right  : var(--x-padding-x-input);
+	padding-top    : var(--x-padding-y-input);
+	padding-bottom : var(--x-padding-y-input);
+	border: var(--x-item-border-width) solid #00000000;
+	border-right-color: var(--x-faint);
+	min-width: 20px;
+}
+
+/* grid header cells */
+
+.x-grid-header-cell {
+	height: 100%;
+	font-family: x-widget-condensed, sans-serif;
+	font-weight: bold;
+}
+
+.x-grid-header-cell {
+	position: absolute;
+}
+
+.x-vgrid > .x-grid-header > .x-grid-header-cell {
+	height: auto;
+}
+
+.x-hgrid > .x-grid-header > .x-grid-header-cell {
+	height: 100%;
+}
+
+.x-grid-header-cell-table {
+	width: 100%;               /* expand to fit column width */
+	table-layout: fixed;       /* don't expand based on content */
+}
+
+.x-grid-header-title-td {
+	padding: 0;
+	overflow: hidden;          /* hide title under the sort icon */
+	font-weight: bold;
+}
+
+.x-grid-header-sort-icon-td {
+	padding: 0;
+	width: 0;
+	vertical-align: baseline;
+}
+
+.x-grid-header-sort-icon-td.sorted {
+	width: 1.2em;              /* make space for it */
+}
+
+.x-grid-header-sort-icon-pri {
+	padding-left: 2px;
+	padding-right: 2px;
+	font-size: 85%;
+}
+
+/* grid cells: grid > view > ct > (cells, editor) > cell */
+
+.x-grid-cells-view {
+	overflow-x: auto;          /* show scrollbars as needed */
+	overflow-y: scroll;        /* show scrollbars always */
+	position: relative;        /* anchor rows div */
+	flex: 1 0 0;               /* grow to fill container but ignore overflow */
+	min-height: 0;
+	display: grid;
+}
+
+.x-grid-cells-ct {
+	grid-row-start: 1;
+	grid-column-start: 1;
+	overflow: hidden;          /* hide surplus bottom rows */
+	position: relative;        /* activates `overflow: hidden` on abs. pos. child */
+	z-index: 0;                /* stacking context for cell and editor */
+}
+
+.x-grid-cells {
+	position: absolute;        /* keep at y=0 while scrolling */
+}
+
+.x-grid-cell {
+	position: absolute; /* positioned in code */
+	overflow: hidden;
+	display: flex;       /* because vertical-align doesn't work with `position: absolute` */
+	align-items: center; /* works as `vertical-align: middle` */
+	background-color: var(--x-bg); /* make opaque because it overflows other cells on hover */
+}
+
+.x-grid-cell:hover,
+.x-grid-cell.focused {
+	overflow: visible;
+	z-index: 1; /* hover/focused = 1, moving = 1 */
+	width: auto !important;
+}
+
+.x-grid-cell:hover {
+	outline: 1px dotted var(--x-fg-label);
+	outline-offset: -1px;
+}
+
+.x-grid-cell[align=center] { justify-content: center; }
+.x-grid-cell[align=right]  { justify-content: flex-end; }
+
+.x-grid-cell.x-grid-cell.row-invalid {
+	outline: 2px solid var(--x-bg-error);
+	outline-offset: -2px;
+}
+
+/* tree node indent */
+
+.x-grid-cell-indent {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	font-size: 10px;
+	width: 0;
+	padding: 0 4px;
+	height: 100%;
+	color: var(--x-fg-disabled);
+}
+
+.x-grid-cell-indent:hover::before {
+	color: #666;
+}
+
+.x-grid-cell.focused > .x-grid-cell-indent {
+	color: #ccc;
+}
+
+.x-grid-cell.focused > .x-grid-cell-indent:hover::before {
+	color: #eee;
+}
+
+/* quicksearch overlay text */
+
+.x-grid-qs-text { /* child of x-grid-cell */
+	position: absolute;
+	top: 0;
+	color: var(--x-fg-search);
+	background-color: var(--x-bg-search) !important;
+	z-index: 1; /* qs-text = 1 */
+}
+
+/* grid col moving */
+
+.x-grid.col-moving {
+	cursor: grabbing;
+}
+
+.x-grid-header-cell.col-moving,
+.x-grid-cell.col-moving {
+	background-color: #eee;
+	opacity: .7;
+	z-index: 1; /* hover/focused = 1, moving = 1 */
+}
+
+.x-grid.col-moving .x-grid-header-cell:not(.col-moving),
+.x-grid.col-moving .x-grid-cell:not(.col-moving),
+.x-grid.col-moving .grid-editor:not(.col-moving) {
+	transition: top .1s, left .1s, right .1s;
+}
+
+/* grid row moving */
+
+.x-grid-cell.row-moving {
+	background-color: #eee;
+	opacity: .7;
+	z-index: 1; /* hover/focused = 1, moving = 1 */
+}
+
+.x-item.moving-parent-cell {
+	background-color: var(--x-smoke);
+}
+
+/* grid col resizing */
+
+/* NOTE: `col-resize` is almost invisible on a light background on Windows 7 */
+.x-grid.col-resize {
+	cursor: ew-resize;
+}
+.x-grid:not(.col-resize) .x-grid-header-cell {
+	cursor: pointer; /* resizing area is underneath */
+}
+
+.x-grid-resize-guides {
+	position: absolute;
+	top: 0;
+}
+
+.x-grid-resize-guide {
+	position: absolute;
+	width: 0;
+	margin-left: -1px;  /* TODO: see why this is needed and remove it */
+	border-left: 1px dashed #aaa;
+}
+
+/* grid editing */
+
+.x-grid-error {
+	position: absolute;
+}
+
+.x-widget.grid-editor {
+
+	/* layout self */
+	position: absolute;
+	width: min-content;
+	margin: 0;
+
+	/* style self */
+	font-size: inherit;
+	font-family: inherit;
+}
+
+.x-widget.grid-editor > .x-focus-box {
+	border-radius: 0;
+	border: 0;
+	padding: var(--x-item-border-width);
+	background-color: var(--x-bg-grid-editor);
+}
+
+.x-widget.grid-editor > .x-focus-box,
+.x-widget.grid-editor.open:not(.widget-selected) > .x-focus-box,           /* specificity over x-dropdown */
+.x-widget.grid-editor:focus-within:not(.widget-selected) > .x-focus-box    /* specificity over x-editbox */
+{
+	box-shadow: inset 2px 2px 6px -2px rgba(0,0,0,0.75);
+	outline: none;
+}
+
+.x-grid-cell.editing {
+	visibility: hidden;
+}
+
+/* load/save progress bar */
+
+.x-grid-progress-bar {
+	position: absolute;
+	top: calc(var(--x-grid-header-height) - 2px);
+	width: 0%;
+	height: 2px;
+	pointer-events: none;
+}
+
+.x-grid.loading > .x-grid-progress-bar {
+	background-color: green;
+}
+
+/* grid action band */
+
+.x-grid-action-band {
+	border-top: 1px solid var(--x-border-light);
+	background-color: var(--x-bg);
+}
+
+/* grid as picker */
+
+.x-widget.x-grid.picker {
+	min-height: 40px;
+	max-height: 300px;
+	max-width: 800px;
+	resize: both;
+}
+
+.x-widget.x-grid.picker > .x-grid-cells-view {
+	overflow-y: scroll;        /* show vert-scrollbars always when a picker */
+}
+
+/* TODO: grid filter dropdowns
+
+.x-widget.x-grid-filter-dropdown {
+	font-size: 85%;
+	bottom: 0;
+	left: 0;
+
+	position: absolute;
+	min-width: 0;
+	border: 0;
+	margin: 0;
+	border-radius: 0;
+
+	color: #36f;
+}
+
+.x-dropdown.x-grid-filter-dropdown.open {
+	box-shadow: none;
+}
+
+.x-grid-filter-dropdown-grid {
+	font-size: 90%;
+}
+
+*/
+
+/* grid widget editing */
+
+.x-widget.x-grid.widget-editing {
+	outline: none; /* many edit modes, each marked in its own ways */
+}
+
+.x-grid-header-cell.editing.editing {
+	outline: 2px dotted red;
+	outline-offset: -2px;
+	cursor: initial;
+}
+
+.x-grid-cells-view.editing > .x-grid-cells-ct {
+	display: none;
+}
+
+/* editable richtext ------------------------------------------------------ */
+
+.x-richtext {
+	overflow: auto;
+}
+
+.x-richtext:not(.x-richedit) {
+	margin: 0;
+	display: block;
+}
+.x-richtext:not(.x-richedit) > .x-focus-box {
+	border: 0;
+}
+
+.x-richtext-content {
+	outline: none;
+	overflow-y: auto;
+	padding: 10px;
+}
+
+.x-richtext-actionbar {
+	position: absolute;
+	display: flex;
+
+	background-color: var(--x-bg-popup);
+	border-bottom: 1px solid rgba(10, 10, 10, 0.1);
+}
+
+.x-richtext-button {
+	color: inherit;
+	font-size: inherit;
+	cursor: pointer;
+	height: 2em;
+	outline: 0;
+	width: 2em;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	background-color: var(--x-faint);
+	border: 1px solid var(--x-border-light);
+}
+
+.x-richtext-button:not(:first-child) {
+	border-left-width: 0;
+}
+
+.x-richtext-button:hover {
+	background-color: var(--x-smoke);
+}
+
+.x-richtext-button:active {
+	background-color: var(--x-fg-disabled);
+}
+
+.x-richtext-button.selected {
+	box-shadow: var(--x-shadow-button-pressed);
+	background-color: var(--x-fg-disabled);
+	color: var(--x-fg-inverted);
+}
+
+/* richedit widget -------------------------------------------------------- */
+
+.x-richedit {
+	display: inline-flex;
+	flex-flow: column;
+	min-height: 6em;
+}
+
+.x-richtext-actionbar-embedded {
+	position: relative;
+	margin-top  : -1px;
+	margin-left : -1px;
+	background-color: var(--x-faint);
+	border: 0;
+}
+
+.x-richedit > .x-focus-box {
+	overflow: auto; /* scroll instead of growing to overflow the css grid */
+	flex: 1;
+	display: flex;
+	flex-flow: column;
+}
+
+.x-richedit > .x-focus-box > .x-richtext-content {
+	flex: 1;
+}
+
+/* image ------------------------------------------------------------------ */
+
+.x-image {
+
+	/* layout self */
+	min-height: calc(var(--x-min-height-input) * 2 + var(--x-margin));
+
+	/* styling */
+	border-radius: var(--x-border-radius);
+	background-color: #000;
+
+	/* layout missing icon */
+	display: flex !important; /* override fontawesome !important */
+	justify-content: center;
+	align-items: center;
+	color: #888;
+
+}
+
+.x-image::before {
+	font-size: 2em !important; /* override fontawesome !important */
+}
+
+.x-image.empty {
+	background-color: var(--x-faint);
+	color: var(--x-smoke);
+}
+
+.x-image-img {
+	position: absolute;
+	min-width: 0;
+	min-height: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.x-image-img:not(.loaded) {
+	opacity: 0;
+	transition: opacity .2s;
+}
+
+.x-image-img.loaded {
+	opacity: 1;
+	transition: opacity .1s;
+}
+
+.x-image-overlay {
+	z-index: 2;
+	position: absolute;
+	left: 0; top: 0; right: 0; bottom: 0;
+	display: grid;
+	justify-items: end;
+	align-items: end;
+	opacity: .6;
+}
+
+.x-image-button {
+	margin: .5em .15em;
+	margin-top: 0;
+	font-size: 200%;
+	border-radius: 100%;
+	color: black;
+	background-color: white;
+	width: 1.5em;
+	height: 1.5em;
+	padding-top: .2em;
+	text-align: center;
+	box-shadow: 0px 0px 3px black;
+	cursor: pointer;
+	opacity: .7;
+}
+
+.x-image-download-button {
+	margin-right: .5em;
+}
+
+.x-image-overlay > * {
+	visibility: hidden;
+}
+
+.x-image-overlay:hover > * {
+	visibility: visible;
+}
+
+.x-image-overlay:hover::before {
+	visibility: hidden;
+}
+
+.x-image-button[disabled] {
+	opacity: .4;
+}
+
+.x-image-button:not([disabled]):hover {
+	opacity: .9;
+}
+
+.x-image-button:not([disabled]):active {
+	opacity: 1;
+}
+
+/* charts ----------------------------------------------------------------- */
+
+.x-chart {
+	padding: 1em;
+	height: 100%;
+	display: grid;
+}
+
+.x-chart-pie {
+	position: absolute;
+	border-radius: 50%;
+	box-shadow: 2px 2px 6px #000000cc;
+}
+
+.x-chart-stack {
+	display: flex;
+	flex-flow: column;
+}
+
+.x-chart-stack-slice-ct {
+	position: relative;
+	display: flex;
+}
+
+.x-chart-stack-slice {
+	width: 50px;
+	margin-right: .5em;
+}
+
+.x-chart[shape=pie] .x-chart-label {
+	position: absolute;
+}
+
+.x-chart-label {
+	font-family: x-widget-condensed, sans-serif;
+	font-weight: bold;
+	color: var(--x-fg-label);
+	line-height: 1;
+	width: max-content;
+	max-width: 7em;
+}
+
+/* countries listbox ------------------------------------------------------ */
+
+.x-countries-listbox-row {
+	display: flex;
+}
+
+.x-countries-listbox-flag-cell {
+	min-height: 20px;
+	min-width : 22px;
+	display: flex;
+	align-items: center;
+	justify-content: start;
+}
+
+/* icons listbox ---------------------------------------------------------- */
+
+.x-icons-listbox-item {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.x-icons-listbox-icon {
+	min-width : 20px;
+}
+
+/* xmodule stuff ---------------------------------------------------------- */
+
+.x-dev-toolbox > .x-toolbox-titlebar,
+.x-dev-toolbox .x-widget
+{
+	font-family: arial, sans-serif;
+	font-size: 12px;
+}
+
+.x-inspector .fa-eye, .x-inspector .fa-chevron, .x-inspector .fa-chevron-right {
+	font-size: 80%;
+}
+
+x-prop-layers-inspector > .x-grid-header {
+	min-height: calc(2em + 1px);
+}
+
+x-prop-inspector .x-grid-cell:not(.focused):not(.selected):not(.invalid).modified {
+	background-color: var(--x-row-bg-focused);
+}
+
+x-prop-inspector .x-grid-cell:not(.modified) {
+	color: var(--x-fg-disabled);
+}
+
+/* model editor ----------------------------------------------------------- */
+
+.x-modeleditor {
+	display: inline-block;
+}
+
+.x-modeleditor > canvas {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	user-select: none;
+}
+
+.model-editor-dot {
+	position: absolute;
+	pointer-events: none;
+	margin-left: -4px;
+	margin-top : -4px;
+	width : 8px;
+	height: 8px;
+	border: 1px solid black;
+}
+
+.model-editor-dot[snap=point] {
+	border-radius: 100%;
+	background-color: black;
+}
+
+.model-editor-dot[snap=line] {
+	background-color: #ff00ff;
+}
+
+.model-editor-dot[snap=line_middle] {
+	border-radius: 100%;
+	background-color: #ffff00;
+}
+
+.model-editor-dot[snap=face] {
+	transform: rotate(45deg);
+	background-color: #ff00ff;
+}
+
+.model-editor-dot[snap=line_plane_intersection] {
+	background-color: #00ffff;
+}
+
+.model-editor-dot[snap=ref_point] {
+	border-radius: 100%;
+	border-width: 1px;
+	margin-left: -3px;
+	margin-top : -3px;
+	width : 6px;
+	height: 6px;
+	background-color: white;
+	user-select: none;
+}
+
+.model-editor-dot-debug {
+	position: absolute;
+	pointer-events: none;
+	padding: 0 .2em;
+	background-color: white;
+	font-family: sans-serif;
+	font-size: 12px;
+	user-select: none;
+}
+
+.model-editor-dot-debug-face  { background-color: #ccccff; }
+.model-editor-dot-debug-point { background-color: #ffffff; }
+.model-editor-dot-debug-line  { background-color: #ffffcc; }
+
+.x-modeleditor-materials .x-grid-cell[field=thumbnail] {
+	padding: 1px;
+	border: 0;
+}
+
+/* ------------------------------------------------------------------------ */
+/* dark theme                                                               */
+/* ------------------------------------------------------------------------ */
+
+[theme=dark] {
+
+	--x-border-focused                :  #66a;
+	--x-border-focused-button         :  #999;
+	--x-border-focused-button-primary :  #5bde5b;
+
+	/* copy-pasted from the light theme to re-evaluate `--x-border-*` vars */
+	--x-shadow-focused                :  0    0    0   1px var(--x-border-focused);
+	--x-shadow-focused-button         :  0    0    0px 1px var(--x-border-focused-button);
+	--x-shadow-focused-button-primary :  0    0    0px 1px var(--x-border-focused-button-primary);
+
+	--x-shadow-button-pressed         : inset 0 0.15em 0.5em #1b1f2377;
+
+	--x-fg                   : #fff;
+	--x-fg-inverted          : #fff;
+	--x-p                    : #bbb;
+	--x-bg                   : #0d1117;
+	--x-fg-info              : var(--x-fg-inverted);
+	--x-bg-popup             : #1d2532;
+	--x-fg-disabled          : #ffffff66;
+	--x-fg-disabled-inverted : var(--x-fg-disabled);
+	--x-border-light         : #ffffff22;
+	--x-smoke                : #ffffff22;
+	--x-faint                : #ffffff11;
+	--x-fg-label             : #aaa;
+	--x-bg-new               : #2c2c5c;
+	--x-bg-modified          : #196119;
+	--x-bg-new-modified      : #293b34;
+	--x-fg-link              : var(--x-fg);
+	--x-fg-link-visited      : var(--x-fg);
+
+	--x-markbox-icon-color: #75b7fa;
+
+	--x-bg-button                 : #21262d;
+	--x-bg-button-danger          : var(--x-bg-button);
+	--x-fg-button-danger          : #a33;
+
+	--x-bg-select-button: var(--x-faint);
+
+	--x-toolbox-titlebar-bg         : #303030;
+	--x-toolbox-titlebar-bg-focused : #636363;
+
+	--x-stroke-dialog-xbutton       : #000000cc;
+
+	--x-bg-pagelist-bar: var(--x-fg);
+
+	--x-selected-widget-outline-color         : #aaa;
+	--x-selected-widget-outline-color-focused : var(--x-markbox-icon-color);
+
+	--x-outline-focused: #999;
+
+	/* these need to be opaque! */
+	--x-item-bg-unfocused-selected : #3a3f42;
+	--x-item-bg-unselected         : #1d2021;
+	--x-item-bg-selected           : #15385c;
+	--x-row-bg-focused             : #222;
+
+	--x-bg-grid-editor: #495560;
+
+	color: var(--x-fg);
+}
+
+[theme=dark] {
+	background-color: var(--x-bg);
+}
+
+/* dark widget on white body */
+body:not([theme=dark]) [theme=dark] {
+	--x-bg: var(--x-bg-popup);
+	background-color: var(--x-bg);
+}
+
+[theme=dark] .x-focus-box {
+	background-color: #060606;
+}
+
+[theme=dark]::-webkit-scrollbar,
+[theme=dark] ::-webkit-scrollbar
+{
+	/* enable browsers' lazy-work of custom-drawn scrollbars */
+	width : initial;
+	height: initial;
+}
+
+[theme=dark]::-webkit-scrollbar-corner,
+[theme=dark] ::-webkit-scrollbar-corner
+{
+	background: none;
+}
+
+[theme=dark]::-webkit-resizer,
+[theme=dark] ::-webkit-resizer
+{
+	background-color: var(--x-smoke);
+}
+
+[theme=dark]::selection,
+[theme=dark] ::selection
+{
+	color: #000;
+	background-color: #ff0;
+}
+
+[theme=dark] img[invertable] {
+	filter: invert(1);
+}
+
+/* thin scrollbars option ------------------------------------------------- */
+
+[thin-scrollbars]::-webkit-scrollbar,
+[thin-scrollbars] ::-webkit-scrollbar
+{
+	/* enable browsers' lazy-work of custom-drawn scrollbars */
+	width : 8px;
+	height: 8px;
+}
+
+[thin-scrollbars]::-webkit-scrollbar-thumb,
+[thin-scrollbars] ::-webkit-scrollbar-thumb
+{
+	border-radius: 50px;
+}
+
+[thin-scrollbars]::-webkit-scrollbar-thumb:hover,
+[thin-scrollbars] ::-webkit-scrollbar-thumb:hover
+{
+	background-color: var(--x-fg-disabled);
+}
+

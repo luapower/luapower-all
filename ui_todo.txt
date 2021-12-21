@@ -1,0 +1,677 @@
+t.getters = {
+	align_items_x = C.layer_get_align_items_x,
+	align_items_y = C.layer_get_align_items_y,
+	align_x = C.layer_get_align_x,
+	align_y = C.layer_get_align_y,
+	background_clip_border_offset = C.layer_get_background_clip_border_offset,
+	background_color = C.layer_get_background_color,
+	background_color_stop_count = C.layer_get_background_color_stop_count,
+	background_extend = C.layer_get_background_extend,
+	background_hittable = C.layer_get_background_hittable,
+	background_image_format = C.layer_get_background_image_format,
+	background_image_h = C.layer_get_background_image_h,
+	background_image_pixels = C.layer_get_background_image_pixels,
+	background_image_stride = C.layer_get_background_image_stride,
+	background_image_w = C.layer_get_background_image_w,
+	background_opacity = C.layer_get_background_opacity,
+	background_operator = C.layer_get_background_operator,
+	background_r1 = C.layer_get_background_r1,
+	background_r2 = C.layer_get_background_r2,
+	background_rotation = C.layer_get_background_rotation,
+	background_rotation_cx = C.layer_get_background_rotation_cx,
+	background_rotation_cy = C.layer_get_background_rotation_cy,
+	background_scale = C.layer_get_background_scale,
+	background_scale_cx = C.layer_get_background_scale_cx,
+	background_scale_cy = C.layer_get_background_scale_cy,
+	background_type = C.layer_get_background_type,
+	background_x = C.layer_get_background_x,
+	background_x1 = C.layer_get_background_x1,
+	background_x2 = C.layer_get_background_x2,
+	background_y = C.layer_get_background_y,
+	background_y1 = C.layer_get_background_y1,
+	background_y2 = C.layer_get_background_y2,
+	border_color = C.layer_get_border_color,
+	border_color_bottom = C.layer_get_border_color_bottom,
+	border_color_left = C.layer_get_border_color_left,
+	border_color_right = C.layer_get_border_color_right,
+	border_color_top = C.layer_get_border_color_top,
+	border_dash_count = C.layer_get_border_dash_count,
+	border_dash_offset = C.layer_get_border_dash_offset,
+	border_offset = C.layer_get_border_offset,
+	border_width = C.layer_get_border_width,
+	border_width_bottom = C.layer_get_border_width_bottom,
+	border_width_left = C.layer_get_border_width_left,
+	border_width_right = C.layer_get_border_width_right,
+	border_width_top = C.layer_get_border_width_top,
+	break_after = C.layer_get_break_after,
+	break_before = C.layer_get_break_before,
+	ch = C.layer_get_ch,
+	child_count = C.layer_get_child_count,
+	clip_content = C.layer_get_clip_content,
+	corner_radius = C.layer_get_corner_radius,
+	corner_radius_bottom_left = C.layer_get_corner_radius_bottom_left,
+	corner_radius_bottom_right = C.layer_get_corner_radius_bottom_right,
+	corner_radius_top_left = C.layer_get_corner_radius_top_left,
+	corner_radius_top_right = C.layer_get_corner_radius_top_right,
+	cw = C.layer_get_cw,
+	cx = C.layer_get_cx,
+	cy = C.layer_get_cy,
+	final_h = C.layer_get_final_h,
+	final_w = C.layer_get_final_w,
+	final_x = C.layer_get_final_x,
+	final_y = C.layer_get_final_y,
+	flex_flow = C.layer_get_flex_flow,
+	flex_wrap = C.layer_get_flex_wrap,
+	fr = C.layer_get_fr,
+	grid_col = C.layer_get_grid_col,
+	grid_col_fr_count = C.layer_get_grid_col_fr_count,
+	grid_col_gap = C.layer_get_grid_col_gap,
+	grid_col_span = C.layer_get_grid_col_span,
+	grid_flow = C.layer_get_grid_flow,
+	grid_min_lines = C.layer_get_grid_min_lines,
+	grid_row = C.layer_get_grid_row,
+	grid_row_fr_count = C.layer_get_grid_row_fr_count,
+	grid_row_gap = C.layer_get_grid_row_gap,
+	grid_row_span = C.layer_get_grid_row_span,
+	grid_wrap = C.layer_get_grid_wrap,
+	h = C.layer_get_h,
+	hardline_spacing = C.layer_get_hardline_spacing,
+	hit_test_area = C.layer_get_hit_test_area,
+	hit_test_layer = C.layer_get_hit_test_layer,
+	hit_test_mask = C.layer_get_hit_test_mask,
+	hit_test_text_cursor_which = C.layer_get_hit_test_text_cursor_which,
+	hit_test_text_offset = C.layer_get_hit_test_text_offset,
+	hit_test_x = C.layer_get_hit_test_x,
+	hit_test_y = C.layer_get_hit_test_y,
+	in_transition = C.layer_get_in_transition,
+	index = C.layer_get_index,
+	item_align_x = C.layer_get_item_align_x,
+	item_align_y = C.layer_get_item_align_y,
+	layout_type = C.layer_get_layout_type,
+	lib = C.layer_get_lib,
+	line_spacing = C.layer_get_line_spacing,
+	min_ch = C.layer_get_min_ch,
+	min_cw = C.layer_get_min_cw,
+	opacity = C.layer_get_opacity,
+	operator = C.layer_get_operator,
+	padding = C.layer_get_padding,
+	padding_bottom = C.layer_get_padding_bottom,
+	padding_left = C.layer_get_padding_left,
+	padding_right = C.layer_get_padding_right,
+	padding_top = C.layer_get_padding_top,
+	paragraph_spacing = C.layer_get_paragraph_spacing,
+	parent = C.layer_get_parent,
+	pixels_valid = C.layer_get_pixels_valid,
+	pos_parent = C.layer_get_pos_parent,
+	rotation = C.layer_get_rotation,
+	rotation_cx = C.layer_get_rotation_cx,
+	rotation_cy = C.layer_get_rotation_cy,
+	scale = C.layer_get_scale,
+	scale_cx = C.layer_get_scale_cx,
+	scale_cy = C.layer_get_scale_cy,
+	shadow_count = C.layer_get_shadow_count,
+	snap_x = C.layer_get_snap_x,
+	snap_y = C.layer_get_snap_y,
+	span_count = C.layer_get_span_count,
+	text = C.layer_get_text,
+	text_align_x = C.layer_get_text_align_x,
+	text_align_y = C.layer_get_text_align_y,
+	text_cursor_count = C.layer_get_text_cursor_count,
+	text_cursor_xs = C.layer_get_text_cursor_xs,
+	text_cursor_xs_len = C.layer_get_text_cursor_xs_len,
+	text_dir = C.layer_get_text_dir,
+	text_len = C.layer_get_text_len,
+	text_maxlen = C.layer_get_text_maxlen,
+	text_utf8_len = C.layer_get_text_utf8_len,
+	text_valid = C.layer_get_text_valid,
+	top_layer = C.layer_get_top_layer,
+	visible = C.layer_get_visible,
+	w = C.layer_get_w,
+	x = C.layer_get_x,
+	y = C.layer_get_y,
+}
+t.setters = {
+	align_items_x = C.layer_set_align_items_x,
+	align_items_y = C.layer_set_align_items_y,
+	align_x = C.layer_set_align_x,
+	align_y = C.layer_set_align_y,
+	background_clip_border_offset = C.layer_set_background_clip_border_offset,
+	background_color = C.layer_set_background_color,
+	background_color_stop_count = C.layer_set_background_color_stop_count,
+	background_extend = C.layer_set_background_extend,
+	background_hittable = C.layer_set_background_hittable,
+	background_opacity = C.layer_set_background_opacity,
+	background_operator = C.layer_set_background_operator,
+	background_r1 = C.layer_set_background_r1,
+	background_r2 = C.layer_set_background_r2,
+	background_rotation = C.layer_set_background_rotation,
+	background_rotation_cx = C.layer_set_background_rotation_cx,
+	background_rotation_cy = C.layer_set_background_rotation_cy,
+	background_scale = C.layer_set_background_scale,
+	background_scale_cx = C.layer_set_background_scale_cx,
+	background_scale_cy = C.layer_set_background_scale_cy,
+	background_type = C.layer_set_background_type,
+	background_x = C.layer_set_background_x,
+	background_x1 = C.layer_set_background_x1,
+	background_x2 = C.layer_set_background_x2,
+	background_y = C.layer_set_background_y,
+	background_y1 = C.layer_set_background_y1,
+	background_y2 = C.layer_set_background_y2,
+	border_color = C.layer_set_border_color,
+	border_color_bottom = C.layer_set_border_color_bottom,
+	border_color_left = C.layer_set_border_color_left,
+	border_color_right = C.layer_set_border_color_right,
+	border_color_top = C.layer_set_border_color_top,
+	border_dash_count = C.layer_set_border_dash_count,
+	border_dash_offset = C.layer_set_border_dash_offset,
+	border_line_to = C.layer_set_border_line_to,
+	border_offset = C.layer_set_border_offset,
+	border_width = C.layer_set_border_width,
+	border_width_bottom = C.layer_set_border_width_bottom,
+	border_width_left = C.layer_set_border_width_left,
+	border_width_right = C.layer_set_border_width_right,
+	border_width_top = C.layer_set_border_width_top,
+	break_after = C.layer_set_break_after,
+	break_before = C.layer_set_break_before,
+	ch = C.layer_set_ch,
+	child_count = C.layer_set_child_count,
+	clip_content = C.layer_set_clip_content,
+	corner_radius = C.layer_set_corner_radius,
+	corner_radius_bottom_left = C.layer_set_corner_radius_bottom_left,
+	corner_radius_bottom_right = C.layer_set_corner_radius_bottom_right,
+	corner_radius_top_left = C.layer_set_corner_radius_top_left,
+	corner_radius_top_right = C.layer_set_corner_radius_top_right,
+	cw = C.layer_set_cw,
+	cx = C.layer_set_cx,
+	cy = C.layer_set_cy,
+	flex_flow = C.layer_set_flex_flow,
+	flex_wrap = C.layer_set_flex_wrap,
+	fr = C.layer_set_fr,
+	grid_col = C.layer_set_grid_col,
+	grid_col_fr_count = C.layer_set_grid_col_fr_count,
+	grid_col_gap = C.layer_set_grid_col_gap,
+	grid_col_span = C.layer_set_grid_col_span,
+	grid_flow = C.layer_set_grid_flow,
+	grid_min_lines = C.layer_set_grid_min_lines,
+	grid_row = C.layer_set_grid_row,
+	grid_row_fr_count = C.layer_set_grid_row_fr_count,
+	grid_row_gap = C.layer_set_grid_row_gap,
+	grid_row_span = C.layer_set_grid_row_span,
+	grid_wrap = C.layer_set_grid_wrap,
+	h = C.layer_set_h,
+	hardline_spacing = C.layer_set_hardline_spacing,
+	hit_test_mask = C.layer_set_hit_test_mask,
+	in_transition = C.layer_set_in_transition,
+	index = C.layer_set_index,
+	item_align_x = C.layer_set_item_align_x,
+	item_align_y = C.layer_set_item_align_y,
+	layout_type = C.layer_set_layout_type,
+	line_spacing = C.layer_set_line_spacing,
+	min_ch = C.layer_set_min_ch,
+	min_cw = C.layer_set_min_cw,
+	opacity = C.layer_set_opacity,
+	operator = C.layer_set_operator,
+	padding = C.layer_set_padding,
+	padding_bottom = C.layer_set_padding_bottom,
+	padding_left = C.layer_set_padding_left,
+	padding_right = C.layer_set_padding_right,
+	padding_top = C.layer_set_padding_top,
+	paragraph_spacing = C.layer_set_paragraph_spacing,
+	parent = C.layer_set_parent,
+	pos_parent = C.layer_set_pos_parent,
+	rotation = C.layer_set_rotation,
+	rotation_cx = C.layer_set_rotation_cx,
+	rotation_cy = C.layer_set_rotation_cy,
+	scale = C.layer_set_scale,
+	scale_cx = C.layer_set_scale_cx,
+	scale_cy = C.layer_set_scale_cy,
+	shadow_count = C.layer_set_shadow_count,
+	snap_x = C.layer_set_snap_x,
+	snap_y = C.layer_set_snap_y,
+	span_count = C.layer_set_span_count,
+	text_align_x = C.layer_set_text_align_x,
+	text_align_y = C.layer_set_text_align_y,
+	text_cursor_count = C.layer_set_text_cursor_count,
+	text_dir = C.layer_set_text_dir,
+	text_maxlen = C.layer_set_text_maxlen,
+	visible = C.layer_set_visible,
+	w = C.layer_set_w,
+	x = C.layer_set_x,
+	y = C.layer_set_y,
+}
+t.methods = {
+	background_image_invalidate = C.layer_background_image_invalidate,
+	background_image_invalidate_rect = C.layer_background_image_invalidate_rect,
+	child = C.layer_child,
+	draw = C.layer_draw,
+	free = C.layer_free,
+	from_window = C.layer_from_window,
+	get_background_color_stop_color = C.layer_get_background_color_stop_color,
+	get_background_color_stop_offset = C.layer_get_background_color_stop_offset,
+	get_border_dash = C.layer_get_border_dash,
+	get_grid_col_fr = C.layer_get_grid_col_fr,
+	get_grid_row_fr = C.layer_get_grid_row_fr,
+	get_selected_text = C.layer_get_selected_text,
+	get_selected_text_baseline = C.layer_get_selected_text_baseline,
+	get_selected_text_color = C.layer_get_selected_text_color,
+	get_selected_text_features = C.layer_get_selected_text_features,
+	get_selected_text_font_face_index = C.layer_get_selected_text_font_face_index,
+	get_selected_text_font_id = C.layer_get_selected_text_font_id,
+	get_selected_text_font_size = C.layer_get_selected_text_font_size,
+	get_selected_text_lang = C.layer_get_selected_text_lang,
+	get_selected_text_len = C.layer_get_selected_text_len,
+	get_selected_text_opacity = C.layer_get_selected_text_opacity,
+	get_selected_text_operator = C.layer_get_selected_text_operator,
+	get_selected_text_paragraph_dir = C.layer_get_selected_text_paragraph_dir,
+	get_selected_text_script = C.layer_get_selected_text_script,
+	get_selected_text_underline = C.layer_get_selected_text_underline,
+	get_selected_text_underline_color = C.layer_get_selected_text_underline_color,
+	get_selected_text_underline_opacity = C.layer_get_selected_text_underline_opacity,
+	get_selected_text_utf8 = C.layer_get_selected_text_utf8,
+	get_selected_text_utf8_len = C.layer_get_selected_text_utf8_len,
+	get_selected_text_wrap = C.layer_get_selected_text_wrap,
+	get_shadow_blur = C.layer_get_shadow_blur,
+	get_shadow_color = C.layer_get_shadow_color,
+	get_shadow_content = C.layer_get_shadow_content,
+	get_shadow_inset = C.layer_get_shadow_inset,
+	get_shadow_passes = C.layer_get_shadow_passes,
+	get_shadow_x = C.layer_get_shadow_x,
+	get_shadow_y = C.layer_get_shadow_y,
+	get_span_baseline = C.layer_get_span_baseline,
+	get_span_features = C.layer_get_span_features,
+	get_span_font_face_index = C.layer_get_span_font_face_index,
+	get_span_font_id = C.layer_get_span_font_id,
+	get_span_font_size = C.layer_get_span_font_size,
+	get_span_lang = C.layer_get_span_lang,
+	get_span_offset = C.layer_get_span_offset,
+	get_span_paragraph_dir = C.layer_get_span_paragraph_dir,
+	get_span_script = C.layer_get_span_script,
+	get_span_text_color = C.layer_get_span_text_color,
+	get_span_text_opacity = C.layer_get_span_text_opacity,
+	get_span_text_operator = C.layer_get_span_text_operator,
+	get_span_underline = C.layer_get_span_underline,
+	get_span_underline_color = C.layer_get_span_underline_color,
+	get_span_underline_opacity = C.layer_get_span_underline_opacity,
+	get_span_wrap = C.layer_get_span_wrap,
+	get_text_caret_opacity = C.layer_get_text_caret_opacity,
+	get_text_caret_thickness = C.layer_get_text_caret_thickness,
+	get_text_cursor_offset = C.layer_get_text_cursor_offset,
+	get_text_cursor_sel_offset = C.layer_get_text_cursor_sel_offset,
+	get_text_cursor_sel_which = C.layer_get_text_cursor_sel_which,
+	get_text_cursor_which = C.layer_get_text_cursor_which,
+	get_text_cursor_x = C.layer_get_text_cursor_x,
+	get_text_insert_mode = C.layer_get_text_insert_mode,
+	get_text_selection_color = C.layer_get_text_selection_color,
+	get_text_selection_opacity = C.layer_get_text_selection_opacity,
+	get_text_utf8 = C.layer_get_text_utf8,
+	hit_test = C.layer_hit_test,
+	init = C.layer_init,
+	insert_text_at_cursor = C.layer_insert_text_at_cursor,
+	insert_text_utf8_at_cursor = C.layer_insert_text_utf8_at_cursor,
+	layer = C.layer_layer,
+	load_text_cursor_xs = C.layer_load_text_cursor_xs,
+	release = C.layer_release,
+	remove_selected_text = C.layer_remove_selected_text,
+	selected_text_has_baseline = C.layer_selected_text_has_baseline,
+	selected_text_has_color = C.layer_selected_text_has_color,
+	selected_text_has_features = C.layer_selected_text_has_features,
+	selected_text_has_font_face_index = C.layer_selected_text_has_font_face_index,
+	selected_text_has_font_id = C.layer_selected_text_has_font_id,
+	selected_text_has_font_size = C.layer_selected_text_has_font_size,
+	selected_text_has_lang = C.layer_selected_text_has_lang,
+	selected_text_has_opacity = C.layer_selected_text_has_opacity,
+	selected_text_has_operator = C.layer_selected_text_has_operator,
+	selected_text_has_paragraph_dir = C.layer_selected_text_has_paragraph_dir,
+	selected_text_has_script = C.layer_selected_text_has_script,
+	selected_text_has_underline = C.layer_selected_text_has_underline,
+	selected_text_has_underline_color = C.layer_selected_text_has_underline_color,
+	selected_text_has_underline_opacity = C.layer_selected_text_has_underline_opacity,
+	selected_text_has_wrap = C.layer_selected_text_has_wrap,
+	set_background_color_stop_color = C.layer_set_background_color_stop_color,
+	set_background_color_stop_offset = C.layer_set_background_color_stop_offset,
+	set_background_image = C.layer_set_background_image,
+	set_border_dash = C.layer_set_border_dash,
+	set_grid_col_fr = C.layer_set_grid_col_fr,
+	set_grid_row_fr = C.layer_set_grid_row_fr,
+	set_selected_text_baseline = C.layer_set_selected_text_baseline,
+	set_selected_text_color = C.layer_set_selected_text_color,
+	set_selected_text_features = C.layer_set_selected_text_features,
+	set_selected_text_font_face_index = C.layer_set_selected_text_font_face_index,
+	set_selected_text_font_id = C.layer_set_selected_text_font_id,
+	set_selected_text_font_size = C.layer_set_selected_text_font_size,
+	set_selected_text_lang = C.layer_set_selected_text_lang,
+	set_selected_text_opacity = C.layer_set_selected_text_opacity,
+	set_selected_text_operator = C.layer_set_selected_text_operator,
+	set_selected_text_paragraph_dir = C.layer_set_selected_text_paragraph_dir,
+	set_selected_text_script = C.layer_set_selected_text_script,
+	set_selected_text_underline = C.layer_set_selected_text_underline,
+	set_selected_text_underline_color = C.layer_set_selected_text_underline_color,
+	set_selected_text_underline_opacity = C.layer_set_selected_text_underline_opacity,
+	set_selected_text_wrap = C.layer_set_selected_text_wrap,
+	set_shadow_blur = C.layer_set_shadow_blur,
+	set_shadow_color = C.layer_set_shadow_color,
+	set_shadow_content = C.layer_set_shadow_content,
+	set_shadow_inset = C.layer_set_shadow_inset,
+	set_shadow_passes = C.layer_set_shadow_passes,
+	set_shadow_x = C.layer_set_shadow_x,
+	set_shadow_y = C.layer_set_shadow_y,
+	set_span_baseline = C.layer_set_span_baseline,
+	set_span_features = C.layer_set_span_features,
+	set_span_font_face_index = C.layer_set_span_font_face_index,
+	set_span_font_id = C.layer_set_span_font_id,
+	set_span_font_size = C.layer_set_span_font_size,
+	set_span_lang = C.layer_set_span_lang,
+	set_span_offset = C.layer_set_span_offset,
+	set_span_paragraph_dir = C.layer_set_span_paragraph_dir,
+	set_span_script = C.layer_set_span_script,
+	set_span_text_color = C.layer_set_span_text_color,
+	set_span_text_opacity = C.layer_set_span_text_opacity,
+	set_span_text_operator = C.layer_set_span_text_operator,
+	set_span_underline = C.layer_set_span_underline,
+	set_span_underline_color = C.layer_set_span_underline_color,
+	set_span_underline_opacity = C.layer_set_span_underline_opacity,
+	set_span_wrap = C.layer_set_span_wrap,
+	set_text = C.layer_set_text,
+	set_text_caret_opacity = C.layer_set_text_caret_opacity,
+	set_text_caret_thickness = C.layer_set_text_caret_thickness,
+	set_text_cursor_offset = C.layer_set_text_cursor_offset,
+	set_text_cursor_sel_offset = C.layer_set_text_cursor_sel_offset,
+	set_text_cursor_sel_which = C.layer_set_text_cursor_sel_which,
+	set_text_cursor_which = C.layer_set_text_cursor_which,
+	set_text_cursor_x = C.layer_set_text_cursor_x,
+	set_text_insert_mode = C.layer_set_text_insert_mode,
+	set_text_selection_color = C.layer_set_text_selection_color,
+	set_text_selection_opacity = C.layer_set_text_selection_opacity,
+	set_text_utf8 = C.layer_set_text_utf8,
+	text_cursor_move_near = C.layer_text_cursor_move_near,
+	text_cursor_move_near_line = C.layer_text_cursor_move_near_line,
+	text_cursor_move_near_page = C.layer_text_cursor_move_near_page,
+	text_cursor_move_to = C.layer_text_cursor_move_to,
+	text_cursor_move_to_point = C.layer_text_cursor_move_to_point,
+}
+
+
+PRIORITY ---------------------------------------------------------------------
+
+- REVIEW: dropdown!
+- REWRITE: colorpicker with grid/flexbox.
+
+LOW-LEVEL --------------------------------------------------------------------
+
+- finish libpng
+	- revive imagefile (libjpeg, libpng, bmp)
+		- revive sg_*
+
+NW ---------------------------------------------------------------------------
+
+- BUG parent doesn't get repainted right after closing a child popup.
+- FEAT get a window's children in z-order so we can forward mouse wheel events
+to non-activable children.
+
+TR ---------------------------------------------------------------------------
+
+- tr: store paragraph base direction for all paragraphs.
+	- text_run.align_x <- override for all enclosed lines/paragraphs.
+
+UI ---------------------------------------------------------------------------
+
+- design bug: widget module autoloading vs css decl. order conflict.
+- design bug: allow freeing self inside events (with a double-free barrier).
+
+EDITBOX ----------------------------------------------------------------------
+
+- mask:
+	- select/navigate text with the mask or without
+	- 0	digit required
+	- 9	digit or space, optional
+	- #	digit or space or +/-
+	- L	a-zA-Z
+
+- eye_icon for password mask.
+
+- make the caret a layer so it can be styled.
+--make selection rectangles layers so they can be styled.
+--drag & drop selection in/out of the editor and between editboxes.
+
+- IME integration.
+
+DROPDOWN ---------------------------------------------------------------------
+
+- maskedit dropdown with calendar.
+
+- autocomplete mode: while typing, the pickup grid filters the results
+	and the editbox contain the rest of the text selected.
+
+TABLIST ----------------------------------------------------------------------
+
+- vertical left/right
+
+BUTTON -----------------------------------------------------------------------
+
+- profiles: text, outlined, contained, toggle
+
+- icon, icon_align left/right
+
+CHECKBOX ---------------------------------------------------------------------
+
+- tristate
+
+- children, indent
+
+SLIDER -----------------------------------------------------------------------
+
+- label and/or numeric editbox on the left side or right side.
+
+CALENDAR ---------------------------------------------------------------------
+
+- review/add a date-math lib to luapower
+
+- make week start day configurable (ui.week_start_day = 'Mo' / 'Su')
+	- make sunday column movable but only to position 1 or 7
+- add month & year above with left-right nav buttons
+- change month by keyboard left-right page-up/down navigation
+- change start week (scroll weeks vertically) by keyboard up/down navigation
+	- scroll with scroll wheel too
+	- alternate cell colors on consecutive months
+	- change title to reflect month-in-view and surrounding months
+		- we're always viewing 2 or 3 months
+- multi-cell select restricted to consecutive days
+	- make it work with vertical scrolling as well
+	- allow multiple restricted multi-cell selections
+- left bar with week-of-the-year number
+
+COLOR PICKER -----------------------------------------------------------------
+
+- editboxes: hsL
+	- parse the text and change the display accordingly
+- display chosen color + complementary hues
+- color history / select color from history
+	- history name so we can have diff. histories depending on usage context
+- color dropper tool from anywhere on the desktop
+- hue wheel with configurable granularity + lum/sat triangle
+- hue/sat square with lum ramp instead of sat/lum with hue ramp
+
+MENU BAR ---------------------------------------------------------------------
+
+-
+
+MENU -------------------------------------------------------------------------
+
+-
+
+POPUP MENU -------------------------------------------------------------------
+
+-
+
+LINEAR CALENDAR --------------------------------------------------------------
+
+-
+
+GRID -------------------------------------------------------------------------
+
+
+- cell navigation: go to next/prev row on left-right nav
+- cell navigation: tab to advance cell
+
+--ctrl+page-up/page-down navigation based on fixed pages
+
+- multiple row move
+- row move with animation
+
+- col %-size
+
+- cell/col border collapse option
+
+- cell formatting: format-string/class/function
+
+- tooltip display on hover for clipped cells
+
+- editable
+	- immediate mode (click) or click-click mode
+	- tab goes to next cell
+	- right/left goes to next/prev cell
+	- automatic cell advancing
+	- cell advancing with tab
+
+- tree-column
+	- expand/collapse-all nodes option
+	- row moving to another parent via drag & drop
+
+- col colapse/show
+
+- col shrink/expand-to-widest-row option on double-clicking between columns
+
+
+LATER/DATASET
+- sorting
+	- sort by multiple columns
+	? client-side sorting with collation
+- filtering
+	- quick filter (i.e. by value list)
+	- search-in-column filter
+	- result can be highlighting or hiding
+- filter by range
+- grouping:
+	- group-by hierarchy
+	- group-by multiple fields
+	- expand/collapse all children
+	- hide/show grouping header
+	- invert selection
+	- row moving to another group via drag&drop
+
+
+LATER/HARD
+- column bands
+- summary row
+- save/load grid configurations
+
+LATER/NEVER
+- auto row height based on wrapped text
+- multi-line cell text with word-wrapping
+- cell auto-ellipsis
+- vertical grid with bands
+
+
+DOCKING TABLIST --------------------------------------------------------------
+
+- define docking layers and auto-accept tabs on the same docking_group.
+- drag tab to dock sides to split a dock tablist horizontally or vertically.
+
+- later: move tab outside its window to wrap in a popup.
+- later: move a popup over the window to dock it back.
+
+SETTINGS WIDGET --------------------------------------------------------------
+
+- group options by category and show a scroll-following list of categories on the side.
+- filter/highlight options which have changed from default and show the default.
+- option type definitions for booleans, numbers, strings, multiple options etc.
+	- boolean -> toggle, checkbox
+	- number + range + step -> editbox, slider
+	- single option -> choicebutton, slider, dropdown, radio buttons, grid with checkbox column
+	- multiple options -> checkboxes
+	- multiple options grouped -> checkbox tree
+	- text -> editbox, multiline editbox
+	- records -> grid, grid + CRUD,
+	- color -> color picker
+	- color scheme (i.e. list of colors) -> little wizard
+	- embelishments:
+		- description
+		- warning popup when changing the option
+		-
+		- image
+		- buttons
+- use an object with r/w properties to get/set the settings.
+- cascading hierarchy of options files:
+	- "project" options file (look into dir and all parent dirs).
+	- "home" options file (look in all HOME locations -- put that in fs or path).
+	- other custom option files.
+- show options file hierarchy and select which file to affect changes to.
+
+
+RTL --------------------------------------------------------------------------
+
+- menu bar right alignment and reverse item order
+- tablist right alignment and reverse item order
+- menu right alignment
+- button bar right alignment and mirror specific mirrorable icons
+- status bar reverse item order
+- use auto-reversible hierarchical flow layouts to layout:
+	- label + actionable pairs, eg:
+		- label + editbox combinations
+		- icon + title + x-button on tablist items
+	- a row of buttons
+	- entire sections of the UI
+
+
+BETTER TAB-ORDER ALGORITHM ---------------------------------------------------
+
+--TODO: make a new tab-order-assigning algorithm based on horizontal and
+--vertical overlap between widgets and the vertical/horizontal distance
+--between them.
+
+--TIPS: make a weighted DAG from inspecting all positiblities
+--(that's O(n^2) btw) and then sort the nodes at each level based on the
+--weights and walk the graph in toplogical+weighted order.
+
+--[[
+local function overlap(
+	ax1, ay1, ax2, ay2,
+	bx1, by1, bx2, by2,
+	t1, t2
+)
+	local overlap_v = math.min(ay2, by2) - math.max(ay1, by1)
+	local max_overlap_v = math.min(ay2 - ay1, by2 - by1)
+	local distance_h = bx1 - ax2
+
+	print(
+		t1.id or t1.parent.id,
+		t2.id or t2.parent.id,
+		string.format('%.2f\t%.2f', overlap_v, distance_h),
+		not (overlap_v < 0 or distance_h < 0) and '!!!' or ''
+	)
+
+	if overlap_v < 0 or distance_h < 0 then
+		return 0
+	end
+	assert(max_overlap_v > 0)
+
+	return (overlap_v / max_overlap_v) / distance_h
+end
+
+	print()
+	print()
+	print()
+
+	if self.iswindow_view then
+		for i,t in ipairs(t) do
+			local x1, y1 = t:to_window(0, 0)
+			local x2, y2 = t:to_window(t.w, t.h)
+			print(
+				t.id or t.parent.id,
+				x1, y1
+			)
+		end
+	end
+
+]]
+

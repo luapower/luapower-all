@@ -1,0 +1,18 @@
+freetype 2.9.1 from http://download.savannah.gnu.org/releases/freetype/ (FTL/BSD License)
+requires: libpng, harfbuzz
+
+NOTE: Building harfbuzz requires a freetype binary, but freetype requires
+harfbuzz, so do a build of freetype first with NO_HARFBUZZ=1 env var set
+if you don't have a harfbuzz binary, in order to build harfbuzz so that
+you can build freetype again with harfbuzz.
+
+Demos depend on:
+	fonts-amiri
+	fonts-dejavuserif
+	fonts-fixedsys
+	fonts-fireflysung
+
+Directories:
+	./custom    customization headers
+	./include   original include dir in full
+	./src       original src dir stripped

@@ -1,0 +1,6 @@
+ucdn 1.8.2 from http://www.freedesktop.org/software/harfbuzz/release/ (MIT License)
+
+
+NOTE: added UCDN_EXPORT ifdef because couldn't find a way to not hide
+symbols with existing defines.
+

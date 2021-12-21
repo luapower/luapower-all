@@ -1,0 +1,16 @@
+diff --git a/config b/config
+index e1d5e35..9304fd4 100644
+--- a/config
++++ b/config
+@@ -49,9 +49,9 @@ if [ -n "$LUAJIT_INC" -o -n "$LUAJIT_LIB" ]; then
+         NGX_TEST_LD_OPT="$ngx_lua_opt_L $NGX_TEST_LD_OPT"
+ 
+         if [ $NGX_RPATH = YES ]; then
+-            ngx_feature_libs="-R$LUAJIT_LIB $ngx_lua_opt_L -lluajit-5.1 -lm -ldl"
++            ngx_feature_libs="-R$LUAJIT_LIB $ngx_lua_opt_L -lluajit -lm -ldl"
+         else
+-            ngx_feature_libs="$ngx_lua_opt_L -lluajit-5.1 -lm -ldl"
++            ngx_feature_libs="$ngx_lua_opt_L -lluajit -lm -ldl"
+         fi
+ 
+         . auto/feature

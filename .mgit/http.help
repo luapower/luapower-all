@@ -1,0 +1,5 @@
+ HTTP COMMANDS:
+
+   cert ca                    gen self-signed CA test-ca.pem to add to browser
+   cert server HOST           gen host SSL cert signed by test-ca CA
+

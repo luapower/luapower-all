@@ -1,0 +1,23 @@
+Bugs
+==============================================================================
+
+- shadow count change crash
+
+- operator leak bug
+
+- shadow bitmap size calculation wrong under rotation and scaling
+
+- how to validate transforms such that no series of them can result in a non-invertible matrix?
+	- if it's not possible, find ways to contain the effects of such transforms
+		eg. make the layer invalid (and thus invisible) or ignore the transform.
+
+- return stable but meaningless values for computed values of invisible elements?
+
+
+Features
+==============================================================================
+
+- margins
+
+- keep and expose a full transform matrix for layer and background?
+

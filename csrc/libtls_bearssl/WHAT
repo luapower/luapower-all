@@ -1,0 +1,5 @@
+libtl-bearssl 746f1d0 from https://git.sr.ht/~mcf/libtls-bearssl (MIT License)
+requires: bearssl
+
+NOTE: shims added in compat/* and includes changed for building with MinGW on Windows.
+Fork maintained at: https://github.com/capr/libtls-bearssl

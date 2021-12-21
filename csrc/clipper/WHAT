@@ -1,0 +1,5 @@
+Clipper HEAD-2013-05-22 from http://sourceforge.net/p/polyclipping/code/HEAD/tree/trunk/cpp/ (Boost License)
+
+
+clipper.c is the C wrapper I made so I can bind clipper with LuaJIT ffi.
+CleanPolygon() in clipper.cpp has been pached by Angus.

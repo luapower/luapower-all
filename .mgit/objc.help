@@ -1,0 +1,6 @@
+ OBJC COMMANDS:
+
+   bridgesupport copy VOLUME_DIR     copy bridgesupport files 
+                                     from an OSX older than 10.13 
+                                     to luapower/bridgesupport dir
+

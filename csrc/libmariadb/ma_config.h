@@ -1,0 +1,34 @@
+#define LIBMARIADB 1
+#define THREAD 1
+#define HAVE_MEMCPY 1
+#define HAVE_SETLOCALE 1
+#define HAVE_DLOPEN 1
+#define HAVE_ALLOCA
+
+#define SIZEOF_CHARP 8
+#define SIZEOF_INT 4
+#define SIZEOF_LONG_LONG 8
+#define SIZEOF_SIZE_T 8
+
+#define HAVE_COMPRESS 1
+#define HAVE_TLS 1
+#define HAVE_NONBLOCK 1
+
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_STDDEF_H 1
+#define HAVE_STDINT_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_FLOAT_H 1
+#define HAVE_LIMITS_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_DLERROR 1
+
+#define LOCAL_INFILE_MODE_OFF  0
+#define LOCAL_INFILE_MODE_ON   1
+#define LOCAL_INFILE_MODE_AUTO 2
+#define ENABLED_LOCAL_INFILE LOCAL_INFILE_MODE_AUTO
+
+#define MARIADB_DEFAULT_CHARSET "latin1"

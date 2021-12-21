@@ -1,0 +1,89 @@
+
+/* reset ------------------------------------------------------------------ */
+
+* { box-sizing: border-box; }
+
+html, body, table, tr, td, div, img, button {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+/* let `body` do the scrolling instead of `html` so that modals can cover the scrollbars */
+html {
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+}
+body {
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	/*
+	For document-style UIs use `overflow-y: scroll` to avoid the annoying
+	horizontal shifting of a centered page that happens between pages that fit
+	the height of the window and those that don't. For split-screen-style UIs
+	OTOH use `overflow-y: auto` because they use full-screen splitters that
+	do the scrolling instead so the body itself should never have to scroll.
+	*/
+	/* overflow-y: scroll; */
+}
+
+img {
+	display: block; /* don't align to surrounding text */
+	max-width: 100%; /* make shrinkable */
+}
+
+hr {
+	border: 0;
+	border-top-width: 1px;
+	border-top-style: solid;
+}
+
+[hidden] { display: none !important; } /* because css `display` overrides it! */
+
+.popup {
+	position: absolute !important;
+	white-space: nowrap; /* expand width to fit contents for `absolute` elements. I know... */
+}
+
+[disabled] {
+	opacity: .5;
+	filter: grayscale();
+}
+
+[disabled],
+[disabled] *
+{
+	cursor: default !important;
+}
+
+.modal-dialog {
+	position: fixed;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0,0,0,0.4);
+	display: grid;
+	justify-content: center;
+	align-content: center;
+	z-index: 100; /* show over 10 levels of popups */
+}
+
+/* general vocabulary ----------------------------------------------------- */
+
+[nowrap] {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+[gray], [gray] a, [gray] a:visited { color: #999; }
+[gray] a { text-decoration: underline; }
+[small] { font-size: 95%; }
+[tight] { line-height: 130%; }
+[b] { font-weight: bold; }
+[i] { font-style: italic; }
+
+[vflex] { display: flex; flex-flow: column; }

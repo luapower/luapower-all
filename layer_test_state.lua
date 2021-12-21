@@ -1,0 +1,3 @@
+return {
+	session='1'
+}

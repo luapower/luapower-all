@@ -1,0 +1,13 @@
+--- a/util/mkdef.pl	2019-11-01 17:05:41.832237500 +0200
++++ b/util/mkdef.pl	2019-11-01 16:52:59.338868600 +0200
+@@ -195,8 +195,8 @@
+ 	$do_ctestall=1 if $_ eq "ctestall";
+ 	$do_checkexist=1 if $_ eq "exist";
+ 	}
+-$libname = $unified_info{sharednames}->{libcrypto} if $do_crypto;
+-$libname = $unified_info{sharednames}->{libssl} if $do_ssl;
++# $libname = $unified_info{sharednames}->{libcrypto} if $do_crypto;
++# $libname = $unified_info{sharednames}->{libssl} if $do_ssl;
+
+ if (!$libname) {
+ 	if ($do_ssl) {

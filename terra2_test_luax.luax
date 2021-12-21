@@ -1,0 +1,28 @@
+require'pp'
+import'terra2'
+print'hello'
+
+local int = 'int!'
+local bool = 'bool!'
+
+struct S {
+
+	x: int,
+	y: bool,
+
+}
+
+terra g :: {int, int} -> bool
+
+terra f(a: bool, b: int) : {int, bool}
+
+	var i: int, j: bool = 5, true
+
+end
+
+a = 2 + 3 / 5 ^ 7
+
+pp(S)
+pp(g)
+pp(f)
+

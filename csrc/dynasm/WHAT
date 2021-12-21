@@ -1,0 +1,6 @@
+DynASM 1.4.0 from https://github.com/LuaJIT/LuaJIT (MIT License)
+
+
+
+The encoder part written in C was not modified.
+The Lua part was modified to support Lua mode (see docs for details).

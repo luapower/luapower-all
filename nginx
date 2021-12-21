@@ -1,0 +1,9 @@
+#!/bin/sh
+# nginx wrapper that can be called from Windows, Linux or OSX.
+[ "$PROCESSOR_ARCHITECTURE" = "AMD64" -o "$PROCESSOR_ARCHITEW6432" = "AMD64" ] && P=mingw64 || {
+	[ "${OSTYPE#darwin}" != "$OSTYPE" ] && P=osx64 || P=linux64
+}
+cd "${0%nginx}"
+mkdir -p tmp
+mkdir -p logs
+exec "${0%nginx}/bin/$P/nginx" "$@"

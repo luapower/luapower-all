@@ -1,0 +1,45 @@
+
+FINISH
+------------------------------------------------------------------------------
+
+- LIST_DROPDOWN null element.
+- GRID_DROPDOWN null element.
+- DATE_DROPDOWN null element.
+
+- GRID saving per-row, all, revert per-row, revert all.
+- GRID show row-level errors.
+- ROWSET_WIDGET review operations that create a rowmap.
+- ROWSET map error messages on check constraint violations.
+
+
+NEW
+------------------------------------------------------------------------------
+- contenteditable-based auto-growing inline input box
+- checklistbox
+- global shortcuts
+- file upload with progress
+
+
+FEATURES
+------------------------------------------------------------------------------
+
+- INPUT slim style.
+
+- CALENDAR select range
+- SLIDER select range
+- LISTBOX select range
+
+- LISTBOX drag-move row to other list
+- GRID drag-move row to other grid
+
+- POPUP auto side/align when not fitting container (test with dropdown & menu)
+- PAGELIST auto-menu with items that don't fit the bar
+
+
+SECURITY
+------------------------------------------------------------------------------
+CSRF:
+- no need for CRSF tokens, just send normal session cookie with `Secure; SameSite=Lax`.
+- on the server just check that the `Origin` header matches a static string on POST.
+XSS:
+- strings are never rendered directly as html.

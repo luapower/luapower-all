@@ -1,0 +1,9 @@
+FriBiDi 1.0.4 from https://github.com/fribidi/fribidi/releases (LGPL License)
+
+
+NOTE: the *.i files (pre-included in prev. versions) had to be generated
+on a Linux box with:
+
+	./autoconf.sh; ./configure; ./make
+
+Also config.h and fribidi-config.h were copied over from that compilation.

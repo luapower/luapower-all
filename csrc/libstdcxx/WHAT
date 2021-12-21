@@ -1,0 +1,10 @@
+libstdc++ 6.0.18 from http://ppa.launchpad.net/ubuntu-toolchain-r/test/ubuntu/pool/main/g/gcc-4.8/ (GPLv3+LINK license)
+requires: pthread (mingw32 mingw64)
+
+This is actually a combination of different builds of gnu libstdc++ and libgcc.
+
+1: linux32/64 binaries come from gcc 4.8.1 from the "test toolchain PPA" for Ubuntu 10.04. [1]
+2. mingw32/64 binaries come from gcc 4.9.2 from mingw64 mingw-builds. [2]
+
+[1] https://launchpad.net/~ubuntu-toolchain-r/+archive/ubuntu/test?field.series_filter=lucid
+[2] http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/

@@ -1,0 +1,18 @@
+ LUAPOWER EXTENSIONS:
+
+   REPO|--all up [MESSAGE]    add/commit/push combo
+   REPO|--all bump            bump current major version and push tags
+   REPO|--all uptag           update tag to current commit and push tags (!)
+   REPO|--all clear-history   clear all the history of the current branch (!)
+   REPO|--all update-perms    git-chmod +x all .sh files in repo
+
+   build ...                  build a single package
+   build-all ...              build packages in the right order
+   syms ...                   report symbols and dependent libraries
+   check-glibc-symvers        report glibc symbol versions > GLIBC 2.7
+   check-osx-rpath            check install_name on osx dylibs
+   check-other-symvers        list non-glibc symbol versions
+   precompile ...             precompile headers into Lua cdef files
+   platform [-o|-a]           detect current platform, OS or architecture
+   glue-usage                 report usage count for glue functions
+

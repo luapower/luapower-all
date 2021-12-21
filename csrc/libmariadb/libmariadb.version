@@ -1,0 +1,4 @@
+mariadb {
+  global: mysql_*; mariadb_*;
+  local: *;
+};

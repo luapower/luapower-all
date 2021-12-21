@@ -1,0 +1,245 @@
+--go@ luajit dynasm.lua *
+
+local ffi = require'ffi'                  -- required
+local dasm = require'dasm'                -- required
+
+|.arch ARCH
+|
+|.if not (X86 or X64)
+| .error invalid arch ARCH
+|.endif
+|
+|.actionlist actions                         // gen. `actions` to pass to dasm.new()
+|.externnames externnames                    // gen  `externnames` to pass to dasm.new() to solve extern names
+|.section sec1, sec2                         // gen. `DASM_SECTION_SEC1`, ..., `DASM_MAXSECTION`
+|.globals global_                            // gen. `global_<labelname>`, ..., `DASM_MAXGLOBAL`
+|.globalnames globalnames                    // gen. `globalnames` to get the names of global labels
+
+local demo = {}  --demo table: {name = codegen_func}
+local demos = {} --demo list in code order: {name1, ...}
+setmetatable(demo, {__newindex = function(t,k,v) rawset(demo, k, v); demos[#demos+1] = k end})
+
+--each code generator function generates some code into the Dst argument (which is a dasm state),
+--and optionally returns a function that knows how to test the resulting code (if nothing is returned,
+--the code will be just dumped for inspection).
+
+function demo.literals(Dst)
+	|  mov al,  0xff                          // number literals are translation-time and are range-checked.
+	|  mov eax, 0xffffffff                    // this is correct and will result in 0xffffffff.
+	|  mov eax, dword*0x22222222              // size overrides with number literals are also translation-time.
+	|  mov eax, [ebx + ecx * 8 + 0x7fffffff]  // this mov form allows +/- 2G literal displacements.
+	|.if X86
+	|  mov eax, [0xffffffff]                  // this mov form allows 0..4G literals.
+	|.else
+	|  mov eax, [0x7fffffff]                  // this mov form allows only 0..2G literals and you won't get an error!
+	|.endif
+end
+
+function demo.immediate_subst(Dst) --immediate value substitution
+	|  mov al,  0+0xff                        // expressions are encoding-time and coerced to int32.
+	|  mov eax, 0+0xffffffff                  // but expressions are also normalized first, so we can pass a full uint32.
+	|  mov eax, [ebx + ecx * 8 + 0x7fffffff]  // this mov form allows +/- 2G expression displacements.
+	|.if X86
+	|  mov eax, [0+0xffffffff]                // this mov form allows 0..4G expressions.
+	|.else
+	|  mov eax, [0+0x7fffffff]                // this mov form allows only 0..2G expressions and you won't get an error!
+	|  mov64 eax, [0+0xdeadbeefdeadbeefULL]   // mov64 allows full 64bit expressions (they're never literals).
+	|  mov64 rax, 0+0xdeadbeefdeadbeefULL     // mov64 allows full 64bit expressions (they're never literals).
+	|.endif
+end
+
+function demo.addr(Dst) --address substution for jump targets
+	local addr = ffi.arch == 'x86' and 0xdeadbeef or 0xdeadbeefdeadbeefULL
+	local ptr = ffi.cast("void*", addr)
+	|.if X86
+	|  jmp &addr                              // works with numbers
+	|  jmp &ptr                               // works with pointers too
+	|.else
+	|  mov64 rax, addr								// no `&` on x64 but you can load an address with `mov64`
+	|  mov64 rax, ptr									// works with pointers too
+	|.endif
+end
+
+function demo.var_reg(Dst) --variable register numbers
+	|  mov Rd(2), 0                           // Rd(2) = edx. this is always encoding-time.
+	|  fld Rf(2)                              // Rf(2) = st2. this is always encoding-time.
+end
+
+function demo.types(Dst) --type macros
+
+	if not rawget(_G, '__TYPEDEFS') then
+		rawset(_G, '__TYPEDEFS', true)
+		ffi.cdef'typedef struct Type1 {int f1; int f2;} Type1'
+		ffi.cdef'typedef Type1 Type2'
+	end
+
+	local n,m = 1,1
+
+	|.type TP1, Type1, eax
+	|.type TP2, Type2, ebx
+	|
+	|  mov eax, TP1:ebx                       // +0
+	|  mov ebx, TP1                           // +0
+	|  mov eax, TP1->f1                       // +0
+	|  mov ebx, TP1.f2                        // +4
+	|  mov ecx, TP2[n+m]->f1                  // +16
+	|  mov edx, TP2[n-2*m].f2                 // -4
+	|  mov edx, TP2:ecx[n-2*m].f2             // -4
+end
+
+function demo.code_sections(Dst)
+	|.sec1; mov ax, 1
+	|.sec2; mov ax, 2
+	|.sec1; mov bx, 1                         // append code to .sec1
+	|.sec2; mov bx, 2                         // append code to .sec2
+end
+
+function demo.global_labels(Dst)
+	|->l1:
+	|  jmp ->l2
+	|->l2:
+	|  jmp ->l1
+end
+
+function demo.local_labels(Dst)
+	|2:
+	|1:
+	|  jmp >1
+	|1:
+	|  jmp <2
+end
+
+function demo.label_subst(Dst)
+	|5:
+	|->label_subst:
+	|  mov eax, [<5]                          // encoded as abs. addr. on x86 and as rip-relative on x64
+	|  mov ebx, [->label_subst]
+end
+
+function demo.align(Dst)
+	local n = 0x90
+	|  mov eax, 0x22222222
+	|.byte n
+	|.align word                              // puts nop
+	|.word bit.bor(bit.lshift(n,8), n)        // expressions work too
+	|.align dword                             // puts nop
+	|.space 1+1, 0x90                         // size can be variable, filler must be constant
+	|  mov eax, 0x22222222
+end
+
+function demo.cond(Dst) --conditional compilation
+	|.define def1, 1
+	|.define def2, 1
+	|.if def1 + def2 == 2                     // any lua expression works. note: a 0 result evaluates to false!
+	|  nop
+	|.elif def2
+	|  .fatal this won't be parsed
+	|.else
+	|  .fatal this won't be parsed
+	|.endif
+end
+
+function demo.macros(Dst)
+	|.macro saveregs
+	|.if X86
+	|  push ebp; push edi; push esi; push ebx
+	|.else
+	|  push rbp; push rdi; push rsi; push rbx
+	|.endif
+	|.endmacro
+	|
+	|.macro restoreregs
+	|.if X86
+	|  pop ebx; pop esi; pop edi; pop ebp
+	|.else
+	|  pop rbx; pop rsi; pop rdi; pop rbp
+	|.endif
+	|.endmacro
+	|
+	|.macro cat, s1, s2, s3
+	| s1 .. s2 .. s3                          // concatenation like `##` in C
+	|.endmacro
+	|
+	|  saveregs
+	|  restoreregs
+	|  mov eax, 0xffffffff
+	|  cat n, o, p
+end
+
+function demo.captures(Dst)
+	|.capture c1; mov eax, 0x1a; .endcapture
+	|.capture c2; mov ebx, 0x2a; .endcapture
+	|.capture c1; mov eax, 0x1b; .endcapture
+	|.capture c2; mov ebx, 0x2b; .endcapture
+	|.dumpcapture c1
+	|.dumpcapture c2
+	|.dumpcapture c2  // we can dump it again
+end
+
+function demo.extern(Dst)
+
+	local s1, s2 = 'Hello from %s!\n', 'DynASM'
+	local p1 = ffi.cast('const char*', s1) -- with `const` we can take addr. of a Lua string without making a copy!
+	local p2 = ffi.cast('const char*', s2)
+	if ffi.arch == 'x64' then
+		ffi.cdef'void printf(...)' --we need this to get printf's address
+	end
+
+	|.if X86                       // ptr args in stack in reverse order
+	|  sub esp, 4                  // align the stack for OSX: 0 - call:4 - p1:4 - p2:4 = -12
+	|  push &p2
+	|  push &p1
+	|  call extern printf
+	|  add esp, 8                  // pop args
+	|  add esp, 4                  // dealign
+	|  ret
+	|.elif WINDOWS                 // ptr args in rcx, rdx, ...
+	|  sub rsp, 32                 // allocate shadow space for printf
+	|  mov64 rcx, p1
+	|  mov64 rdx, p2
+	|  mov64 rax, ffi.C.printf     // extern doesn't work on x64
+	|  call rax
+	|  add rsp, 32                 // put it back
+	|  ret
+	|.else                         // ptr args in rdi, rsi, ...
+	|  sub rsp, 8                  // align the stack for OSX: 0 - call:8 = -8
+	|  mov rdi, &p1
+	|  mov rsi, &p2
+	|  mov64 rdx, ffi.C.printf     // extern doesn't work on x64
+	|  call rdx
+	|  add rsp, 8
+	|  ret
+	|.endif
+
+	return function(buf)
+		local _ = s1, s2 --pin the strings
+		local code = ffi.cast('void __cdecl (*) ()', buf)
+		code()
+	end
+end
+
+function demo.multiply(Dst)
+
+	|.if X86                       // int args in stack in reverse order; int ret in eax
+	|  mov eax, [esp+4]
+	|  imul dword [esp+8]
+	|  ret
+	|.elif WINDOWS                 // int args in rcx, rdx, ...; int ret in rax
+	|  mov rax, rcx
+	|  imul rdx
+	|  ret
+	|.else                         // int args in rdi, rsi, ...; int ret in rax
+	|  mov rax, rdi
+	|  imul rsi
+	|  ret
+	|.endif
+
+	return function(buf)
+		local mul = ffi.cast('int32_t __cdecl (*) (int32_t x, int32_t y)', buf)
+		assert(mul(7, -5) == -35)
+		assert(mul(-4, 0x08000000) == -0x20000000)
+		print'ok'
+	end
+end
+
+return {demo, demos, actions, externnames, globalnames, DASM_MAXSECTION, DASM_MAXGLOBAL}

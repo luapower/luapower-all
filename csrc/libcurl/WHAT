@@ -1,0 +1,2 @@
+libcurl 7.67.0 from http://curl.haxx.se/download.html (MIT License)
+requires: openssl

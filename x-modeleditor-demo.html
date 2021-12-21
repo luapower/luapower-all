@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8>
+<script src="glue.js"></script>
+<script src="divs.js"></script>
+<script src="3d.js"></script>
+<script src="gl.js"></script>
+<script src="earcut.js"></script>
+<script src="suncalc.js"></script>
+<script src="x-widgets.js"></script>
+<script src="x-nav.js"></script>
+<script src="x-input.js"></script>
+<script src="x-listbox.js"></script>
+<script src="x-grid.js"></script>
+<script src="gl-renderer.js"></script>
+<script src="x-model3.js"></script>
+<script src="x-modeleditor.js"></script>
+<script src="x-module.js"></script>
+<link rel="stylesheet" type="text/css" href="fontawesome.css">
+<link rel="stylesheet" type="text/css" href="x-widgets.css">
+<style>
+* { box-sizing: border-box; }
+
+html, body {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	display: grid;
+	flex-flow: column;
+	flex: 1;
+	position: relative;
+	overflow: hidden;
+
+	font-family: arial;
+	font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+
+</body>
+
+<script>
+
+init_xmodule({
+	modules: {
+		demo: {icon: 'rocket'},
+	},
+	slots: {
+		base: {color: '#fff', icon: 'rocket'},
+	},
+	layers: [
+		{slot: 'base', module: 'demo', layer: 'demo'},
+	],
+})
+
+//show_toolboxes()
+
+window.on('load', function() {
+	let m = modeleditor()
+	document.body.add(m)
+	m.focus()
+})
+
+</script>
+</html>

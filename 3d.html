@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8>
+<script src=glue.js></script>
+<script src=divs.js></script>
+<script src=3d.js></script>
+<script src=gl.js></script>
+<script src=earcut.js></script>
+<script src=suncalc.js></script>
+<script src=x-3d-renderer.js></script>
+</head>
+<body>
+<canvas style="border: 1px solid black" id=canvas width=640 height=640></canvas>
+<script>
+{
+
+canvas.on('webglcontextlost', function() {
+	assert(false, 'webgl context lost')
+})
+
+gl = canvas.getContext('webgl2', {
+	//antialias: false, // MSAA FBOs can't be blitted to a MSAA canvas.
+})
+gl.wrap_calls()
+
+// scene ---------------------------------------------------------------------
+
+// geometry
+
+let points = [
+	 0,  0,  0,
+	 2,  0,  0,
+	 2,  2,  0,
+	 0,  2,  0,
+	 0,  0,  2,
+	 2,  0,  2,
+	 2,  2,  2,
+	 0,  2,  2,
+]
+
+face3 = poly3
+
+let tex1 = gl.texture().load('checker-big.png', 0.001, scale_texture)
+
+let mat1 = {
+	diffuse_color: 0,
+	diffuse_map: tex1,
+	uv: v2(1, 1),
+}
+
+let faces = [
+	face3({material: mat1, points: points, valid: true, id: 0, uvm: mat3().translate(.1, .1).scale(1)}, [1, 0, 3, 2]),
+	face3({material: mat1, points: points, valid: true, id: 1, uvm: mat3().scale(1).invert()}, [4, 5, 6, 7]),
+	face3({material: mat1, points: points, valid: true, id: 2, uvm: mat3().scale(1).invert()}, [7, 6, 2, 3]), //[6, 2, 3],
+	face3({material: mat1, points: points, valid: true, id: 3, uvm: mat3().scale(1).invert()}, [4, 0, 1, 5]),
+	face3({material: mat1, points: points, valid: true, id: 4, uvm: mat3().scale(1).invert()}, [0, 4, 7, 3]),
+	face3({material: mat1, points: points, valid: true, id: 5, uvm: mat3().scale(1).invert()}, [5, 1, 2, 6]),
+]
+
+mat1.faces = faces
+
+let materials = map()
+materials.set(mat1, faces)
+
+function scale_texture(tex) {
+	print('scale_texture')
+	let pi = 0
+	let _uv = v2()
+	for (let face of faces) {
+		for (let i = 0, tris = face.triangles(), n = tris.length; i < n; i++) {
+			let uv = face.uv_at(tris[i], face.uvm, tex.uv, _uv)
+			//uv.to_array(uvs, 2*pi)
+			pi++
+		}
+	}
+}
+
+let inst_mat1 = mat4()
+
+let inst_mats = [
+	...inst_mat1,
+	...mat4().translate( -1,   0,  -1),
+	...mat4().translate( 11,   0,  -1),
+	...mat4().translate(  0,  10,   0),
+	...mat4().translate( 10,  10,   0),
+	...mat4().translate(  0,   0, -10),
+	...mat4().translate( 10,   0, -10),
+	...mat4().translate(  0,  10, -10),
+	...mat4().translate( 10,  10, -10),
+]
+
+let    points_dbuf = gl.dyn_v3_buffer(points)
+let inst_mat_dbuf = gl.dyn_mat4_instance_buffer(inst_mats)
+
+let solid_lines = [
+	4, 5,  5, 6,  6, 7,  7, 4,
+]
+let solid_line_pis_buf = gl.dyn_index_buffer(solid_lines)
+
+let dashed_lines = [
+	0, 1,  1, 2,  2, 3,  3, 0,
+]
+let dashed_line_pis_buf = gl.dyn_index_buffer(dashed_lines)
+
+let camera = camera3()
+
+let skybox
+
+function update_camera() {
+	camera.update()
+	if (skybox)
+		skybox.update_view(camera.pos)
+}
+
+function update_viewport_size() {
+	let w = gl.canvas.cw
+	let h = gl.canvas.ch
+	//camera.frustum(-1, 1, -1, 1, 3, 1e6)
+	//camera.ortho(-1, 1, -1, 1, -1e2, 1e2).scale(.3)
+	//camera.ortho(-10, 10, -10, 10, -1e2, 1e2)
+	camera.view_size.set(w, h)
+	camera.perspective()
+	update_camera()
+}
+
+function canvas_resized() {
+	update_viewport_size()
+}
+
+canvas_resized()
+
+//camera.pos.set(10, 10, 10)
+//camera.dir.set(.4, .2, 1)
+//camera.update()
+
+function hit_test(mx, my) {
+	let ray = camera.raycast(mx, my, line3())
+	let hit = hit_test_rr.hit_test(mx, my)
+	if (hit) {
+		let model = mat4().from_mat4_array(inst_mats, hit.inst_id)
+		let inv_model = mat4().set(model).invert()
+		ray.transform(inv_model)
+		let face = faces[hit.geom_id]
+		let target = face.plane().intersect_line(ray, null, v3())
+		return target && target.transform(model)
+	} else {
+		return ray.at(min(FAR / 10, camera.pos.len()), v3())
+	}
+}
+
+canvas.on('pointerdown', function(ev, mx0, my0) {
+	let r = canvas.rect()
+	mx0 -= r.x
+	my0 -= r.y
+	let target = hit_test(mx0, my0)
+	if (!target)
+		return
+	let cam0 = camera.clone()
+	return canvas.capture_pointer(ev, function(ev, mx, my) {
+		mx -= r.x
+		my -= r.y
+		let dx = mx - mx0
+		let dy = my - my0
+		camera.set(cam0)
+		if (ev.shiftKey) {
+			camera.pan(target, mx0, my0, mx, my)
+		} else {
+			camera.orbit(target, dy / 200, dx / 200, 0)
+		}
+		camera.update()
+	})
+})
+
+canvas.on('wheel', function(ev, dy, mx, my) {
+	let r = canvas.rect()
+	mx -= r.x
+	my -= r.y
+	let target = hit_test(mx, my)
+	if (target) {
+		camera.dolly(target, 1 + 0.2 * dy)
+		camera.update()
+	}
+})
+
+document.on('keydown', function(key) {
+	print(key)
+})
+
+// rendering
+
+let points_rr = gl.points_renderer()
+let faces_rr = gl.faces_renderer()
+let solid_lines_rr = gl.solid_lines_renderer()
+let dashed_lines_rr = gl.dashed_lines_renderer()
+let fat_lines_rr = gl.fat_lines_renderer()
+
+faces_rr.update(materials)
+faces_rr.model = inst_mat_dbuf.buffer
+
+solid_lines_rr.model = inst_mat_dbuf.buffer
+solid_lines_rr.pos = points_dbuf.buffer
+solid_lines_rr.index = solid_line_pis_buf.buffer
+
+dashed_lines_rr.base_color = v3(0, 0, 1)
+dashed_lines_rr.model = inst_mat_dbuf.buffer
+dashed_lines_rr.pos = points_dbuf.buffer
+dashed_lines_rr.index  = dashed_line_pis_buf.buffer
+
+let fat_lines = [
+	line3(v3(0, 0, 0), v3(10, 10, 10)),
+	line3(v3(0, 0, 0), v3(0, 1, 0)),
+	line3(v3(0, 0, 0), v3(1, 0, 0)),
+]
+TRACE1=1
+fat_lines_rr.update((f) => fat_lines.forEach(f), fat_lines.length)
+TRACE1=0
+fat_lines_rr.base_color = 0x0000ff
+fat_lines_rr.model = inst_mat_dbuf.buffer
+
+let rot = 0
+
+function start_frame() {
+
+	rot += 0.05
+	let radius = 10
+
+	inst_mat1
+		.reset()
+		.translate(0, 3, 0)
+		.rotate(v3.up, -20 + rad * 20 * rot)
+	inst_mat_dbuf.buffer.upload(inst_mat1, 0)
+
+	//camera.dir.x = sin(rot/10) * radius
+	//camera.pos.y = sin(rot/10) * radius
+	//camera.dir.z = cos(rot/10) * radius
+	//camera.dolly(v3(11, 2, -9), .99)
+	update_camera()
+
+	//pos_dbuf.array[0] = rot += 0.01
+	//pos_dbuf.invalidate(0, 1)
+}
+
+let scene_rr = gl.scene_renderer({
+	sunlight_dir: v3.up.clone(),
+	enable_shadows: false,
+	camera: camera,
+})
+
+let hit_test_rr = gl.hit_test_renderer()
+
+skybox = gl.skybox({
+	images: {
+		posx: 'skybox/posx.jpg',
+		negx: 'skybox/negx.jpg',
+		posy: 'skybox/posy.jpg',
+		negy: 'skybox/negy.jpg',
+		posz: 'skybox/posz.jpg',
+		negz: 'skybox/negz.jpg',
+	},
+})
+
+let axes_rr = gl.axes_renderer()
+let axes = axes_rr.axes()
+
+let tq
+
+function draw(prog) {
+	if (!tq && !prog && scene_rr.enable_shadows) {
+		let [sm_tex] = gl.uniforms.shadow_map
+		if (sm_tex)
+			tq = gl.shadow_map_quad(sm_tex, mat4f32().translate(5, 5, -15).scale(5))
+	}
+	if (tq && !prog)
+		tq.draw()
+	skybox.draw(prog)
+	axes_rr.draw(prog)
+	points_rr.pos = points_dbuf.buffer
+	points_rr.model = inst_mat_dbuf.buffer
+	points_rr.draw(prog)
+	faces_rr.draw(prog)
+	solid_lines_rr.draw(prog)
+	dashed_lines_rr.draw(prog)
+	fat_lines_rr.draw(prog)
+}
+
+function animate() {
+	start_frame()
+	if (!scene_rr.enable_shadows)
+		scene_rr.sunlight_dir.set(camera.dir)
+	scene_rr.update()
+	scene_rr.render(draw)
+	hit_test_rr.render(draw)
+	raf(animate)
+}
+
+canvas.on('pointermove', function(ev, mx, my) {
+	let r = this.rect()
+	mx -= r.x
+	my -= r.y
+	let hit = {}
+	hit_test_rr.hit_test(mx, my, hit)
+	//print(hit)
+})
+
+animate()
+
+} // module scope (avoid BS js error about let redeclaration).
+</script>
+</body>
+</html>
