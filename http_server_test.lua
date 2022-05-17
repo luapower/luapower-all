@@ -1,25 +1,29 @@
 
---ffi.tls_libname = 'tls_libressl'
+local ffi = require'ffi'
 local server  = require'http_server'
---local libtls = require'libtls'
---libtls.debug = print
+ffi.tls_libname = 'tls_bearssl'
 
 --local webb_respond = require'http_server_webb'
 
 local server = server:new{
-	libs = 'sock zlib', --sock_libtls
+	libs = 'sock zlib sock_libtls',
 	listen = {
 		{
 			host = 'localhost',
-			--port = 443,
-			port = 8080,
-			tls = false,
+			addr = '127.0.0.1',
+			port = 80,
+		},
+		{
+			--host = 'localhost',
+			addr = '127.0.0.1',
+			port = 443,
+			tls = true,
 			tls_options = {
 				keypairs = {
 					{
 						cert_file = 'localhost.crt',
 						key_file  = 'localhost.key',
-					}
+					},
 				},
 			},
 		},
@@ -37,10 +41,11 @@ local server = server:new{
 			local s = ffi.string(buf, sz)
 			print(s)
 		end
-		local write_body = req:respond({
+		local out = req:respond({
 			--compress = false,
-		}, true)
-		write_body(('hello '):rep(1000))
+			want_out_function = true,
+		})
+		out(('hello '):rep(1000))
 		--raise{status = 404, content = 'Dude, no page here'}
 	end,
 	--respond = webb_respond,

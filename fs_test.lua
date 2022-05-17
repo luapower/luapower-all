@@ -92,12 +92,15 @@ end
 function test.wrap_file() --indirectly tests wrap_fd() and wrap_handle()
 	local name = 'fs_test_wrap_file'
 	os.remove(name)
-	local F = io.open(name, 'w')
-	F:write'hello'
-	F:flush()
-	local f = fs.wrap_file(F)
-	assert(f:attr'size' == 5)
-	F:close()
+	local f = io.open(name, 'w')
+	f:write'hello'
+	f:flush()
+	if linux then
+		os.execute'sleep .2' --WTF??
+	end
+	local f2 = fs.wrap_file(f)
+	assert(f2:attr'size' == 5)
+	f:close()
 	os.remove(name)
 end
 
@@ -109,17 +112,26 @@ function test.pipe() --I/O test in proc_test.lua
 	wf:close()
 end
 
-function test.named_pipe() --I/O test in proc_test.lua
+--NOTE: I/O tests in proc_test.lua!
+function test.named_pipe_win()
+	if not win then return end
 	local opt = 'rw' --'rw single_instance'
-	local name = win and [[\\.\pipe\fs_test_pipe]] or 'fs_test_pipe'
+	local name = [[\\.\pipe\fs_test_pipe]]
 	local p1 = assert(fs.pipe(name, opt))
 	local p2 = assert(fs.pipe(name, opt))
-	if win then
-		print(p1.handle)
-		print(p2.handle)
-		p1:close()
-		p2:close()
-	end
+	p1:close()
+	p2:close()
+end
+
+--NOTE: I/O tests in proc_test.lua!
+function test.named_pipe_posix()
+	if win then return end
+	local opt = 'rw'
+	local file = prefix..'fs_test_pipe'
+	os.remove(file)
+	local p = assert(fs.pipe(name, opt))
+	p:close()
+	os.remove(file)
 end
 
 --i/o ------------------------------------------------------------------------
@@ -210,15 +222,12 @@ end
 --truncate -------------------------------------------------------------------
 
 function test.truncate_seek()
-	local testfile = 'fs_test_truncate_seek'
+	local testfile = prefix..'fs_test_truncate_seek'
 	--truncate/grow
 	local f = assert(fs.open(testfile, 'w'))
 	local newpos = 1024^2
-	local pos = assert(f:seek(newpos))
-	assert(pos == newpos)
-	assert(f:truncate())
-	local pos = assert(f:seek())
-	assert(pos == newpos)
+	assert(f:truncate(newpos))
+	assert(f:seek() == newpos)
 	assert(f:close())
 	--check size
 	local f = assert(fs.open(testfile, 'r+'))
@@ -226,7 +235,7 @@ function test.truncate_seek()
 	assert(pos == newpos)
 	--truncate/shrink
 	local pos = assert(f:seek('end', -100))
-	assert(f:truncate())
+	assert(f:truncate(pos))
 	assert(pos == newpos - 100)
 	assert(f:close())
 	--check size
@@ -236,10 +245,6 @@ function test.truncate_seek()
 	assert(f:close())
 
 	assert(fs.remove(testfile))
-end
-
-function test.file_size_set()
-	--TODO: test f:size(sz) and also fs.attr(path, {size=, sparse=})
 end
 
 --filesystem operations ------------------------------------------------------
@@ -509,7 +514,6 @@ function test.symlink_attr_deref()
 	local f1 = prefix..'fs_test_readlink_file'
 	local f2 = prefix..'fs_test_readlink_file_target'
 	mksymlink_file(f1, f2)
-	local pp = require'pp'
 	local lattr = assert(fs.attr(f1, false))
 	local tattr1 = assert(fs.attr(f1, true))
 	local tattr2 = assert(fs.attr(f2))
@@ -573,7 +577,7 @@ function test.times()
 end
 
 function test.times_set()
-	local testfile = 'fs_test_time'
+	local testfile = prefix..'fs_test_time'
 	local f = assert(fs.open(testfile, 'w'))
 
 	--TODO: futimes() on OSX doesn't use tv_usec
@@ -622,6 +626,7 @@ function test.paths()
 	print('tmpdir ', fs.tmpdir())
 	print('exepath', fs.exepath())
 	print('exedir' , fs.exedir())
+	print('scriptdir', fs.scriptdir())
 end
 
 --file attributes ------------------------------------------------------------
@@ -629,7 +634,6 @@ end
 function test.attr()
 	local testfile = 'fs_test.lua'
 	local attr = assert(fs.attr(testfile, false))
-	--pp(attr)
 	assert(attr.type == 'file')
 	assert(attr.size > 10000)
 	assert(attr.atime)
@@ -738,16 +742,15 @@ function test.pagesize()
 	assert(fs.pagesize() % 4096 == 0)
 end
 
---[[
-
 local function zerosize_file(filename)
-	local file = filename or file
+	local file = filename or 'fs_test_zerosize'
 	os.remove(file)
 	local f = assert(io.open(file, 'w'))
 	f:close()
 	return file
 end
 
+--[[
 function test.filesize()
 	local file = zerosize_file()
 	assert(mmap.filesize(file) == 0)
@@ -757,6 +760,7 @@ function test.filesize()
 	assert(mmap.filesize(file) == 63)
 	os.remove(file)
 end
+]]
 
 local function fill(map)
 	assert(map.size/4 <= 2^32)
@@ -781,8 +785,8 @@ local function check_empty(map)
 	end
 end
 
-function test.anonymous_write(size)
-	local map = assert(mmap.map{access = 'w', size = size or mediumsize})
+function test.map_anonymous_write(size)
+	local map = assert(fs.map{access = 'w', size = size or mediumsize})
 	check_empty(map)
 	fill(map)
 	check_filled(map)
@@ -790,33 +794,35 @@ function test.anonymous_write(size)
 end
 
 --NOTE: there's no point in making an unshareable read-only mapping.
-function test.anonymous_readonly_empty()
-	local map = assert(mmap.map{access = 'r', size = mediumsize})
+function test.map_anonymous_readonly_empty()
+	local map = assert(fs.map{access = 'r', size = mediumsize})
 	check_empty(map)
 	map:free()
 end
 
-function test.file_read()
-	local map = assert(mmap.map{file = 'mmap.lua'})
-	assert(ffi.string(map.addr, 20):find'memory mapping')
+function test.map_file_read()
+	local map = assert(fs.map{file = 'fs_test.lua'})
+	assert(ffi.string(map.addr, map.size):find'test%.map_file_read')
 	map:free()
 end
 
-function test.file_write()
+function test.map_file_write()
+	local file = prefix..'fs_test_mmap'
 	os.remove(file)
-	local map1 = assert(mmap.map{file = file, size = mediumsize, access = 'w'})
+	local map1 = assert(fs.map{file = file, size = mediumsize, access = 'w'})
 	fill(map1)
 	map1:free()
-	local map2 = assert(mmap.map{file = file, access = 'r'})
+	local map2 = assert(fs.map{file = file, access = 'r'})
 	check_filled(map2)
 	map2:free()
 	os.remove(file)
 end
 
-function test.file_write_live()
+function test.map_file_write_live()
+	local file = prefix..'fs_test_mmap'
 	os.remove(file)
-	local map1 = assert(mmap.map{file = file, size = mediumsize, access = 'w'})
-	local map2 = assert(mmap.map{file = file, access = 'r'})
+	local map1 = assert(fs.map{file = file, size = mediumsize, access = 'w'})
+	local map2 = assert(fs.map{file = file, access = 'r'})
 	fill(map1)
 	map1:flush()
 	check_filled(map2)
@@ -825,33 +831,35 @@ function test.file_write_live()
 	os.remove(file)
 end
 
-function test.file_copy_on_write()
+function test.map_file_copy_on_write()
+	local file = prefix..'fs_test_mmap'
 	os.remove(file)
 	local size = mediumsize
-	local map = assert(mmap.map{file = file, access = 'w', size = size})
+	local map = assert(fs.map{file = file, access = 'w', size = size})
 	fill(map)
 	map:free()
-	local map = assert(mmap.map{file = file, access = 'c'})
+	local map = assert(fs.map{file = file, access = 'c'})
 	assert(map.size == size)
 	ffi.fill(map.addr, map.size, 123)
 	map:flush()
 	map:free()
 	--check that the file wasn't altered by fill()
-	local map = assert(mmap.map{file = file})
+	local map = assert(fs.map{file = file})
 	assert(map.size == size)
 	check_filled(map)
 	map:free()
 	os.remove(file)
 end
 
-function test.file_copy_on_write_live()
+function test.map_file_copy_on_write_live()
+	local file = prefix..'fs_test_mmap'
 	--TODO: COW on opened file doesn't work on OSX
 	if ffi.os == 'OSX' then return end
 	os.remove(file)
 	local size = mediumsize
-	local mapw = assert(mmap.map{file = file, access = 'w', size = size})
-	local mapc = assert(mmap.map{file = file, access = 'c'})
-	local mapr = assert(mmap.map{file = file, access = 'r'})
+	local mapw = assert(fs.map{file = file, access = 'w', size = size})
+	local mapc = assert(fs.map{file = file, access = 'c'})
+	local mapr = assert(fs.map{file = file, access = 'r'})
 	assert(mapw.size == size)
 	assert(mapc.size == size)
 	assert(mapr.size == size)
@@ -871,14 +879,13 @@ function test.file_copy_on_write_live()
 	os.remove(file)
 end
 
-function test.shared_via_tagname()
+function test.map_shared_via_tagname()
+	local name = 'mmap_test_tagname'
 	local size = mediumsize
-	local map1 = assert(mmap.map{tagname = 'mmap_test',
-		access = 'w', size = size})
-	local map2 = assert(mmap.map{tagname = 'mmap_test',
-		access = 'r', size = size})
-	map1:unlink() --can be called while mappings are alive.
-	map2:unlink() --no-op if file not found.
+	local map1 = assert(fs.map{tagname = name, access = 'w', size = size})
+	local map2 = assert(fs.map{tagname = name, access = 'r', size = size})
+	assert(map1:unlink()) --can be called while mappings are alive.
+	assert(map2:unlink()) --ok even if file not found.
 	assert(map1.addr ~= map2.addr)
 	assert(map1.size == map2.size)
 	fill(map1)
@@ -888,19 +895,20 @@ function test.shared_via_tagname()
 	map2:free()
 end
 
-function test.file_exec()
-	--TODO: test by exec'ing some code in the memory
-	local map = assert(mmap.map{file = 'bin/mingw64/luajit.exe', access = 'x'})
+function test.map_file_exec()
+	--TODO: test by exec'ing some code in the memory.
+	local map = assert(fs.map{file = 'bin/mingw64/luajit.exe', access = 'x'})
 	assert(ffi.string(map.addr, 2) == 'MZ')
 	map:free()
 end
 
-function test.offset_live()
+function test.map_offset_live()
+	local file = prefix..'fs_test_mmap'
 	os.remove(file)
-	local offset = mmap.pagesize()
+	local offset = fs.pagesize()
 	local size = offset * 2
-	local map1 = assert(mmap.map{file = file, size = size, access = 'w'})
-	local map2 = assert(mmap.map{file = file, offset = offset})
+	local map1 = assert(fs.map{file = file, size = size, access = 'w'})
+	local map2 = assert(fs.map{file = file, offset = offset})
 	fill(map1)
 	map1:flush()
 	check_filled(map2, offset)
@@ -909,85 +917,76 @@ function test.offset_live()
 	os.remove(file)
 end
 
-function test.mirror()
-	os.remove(file)
-	local times = 50
-	local map = assert(mmap.mirror{file = file, times = times})
-	local addr = map.addr
-	local p = ffi.cast('char*', addr)
+function test.map_mirror_buffer(addr)
+	local map = assert(fs.mirror_buffer(1, addr))
+	local p = ffi.cast('char*', map.addr)
 	p[0] = 123
-	for i = 1, times-1 do
-		assert(p[i*map.size] == 123)
-	end
+	assert(p[map.size] == 123)
 	map:free()
-	os.remove(file)
+end
+
+function test.map_mirror_buffer_fixed_addr()
+	test.map_mirror_buffer(0x100000000)
 end
 
 --mmap failure modes
 
-function test.filesize_disk_full()
-	local file = zerosize_file()
-	local size, errmsg = mmap.filesize(file, 1024^4)
-	assert(not size and errmsg == 'disk_full')
-	local actual_size = mmap.filesize(file)
-	assert(actual_size == 0) --file has the same size on error
-end
-
-function test.invalid_size()
-	local ok, err = pcall(mmap.map, {file = 'mmap.lua', size = 0})
+function test.map_invalid_size()
+	local ok, err = pcall(fs.map, {file = 'fs_test.lua', size = 0})
 	assert(not ok and err:find'size')
 end
 
-function test.invalid_offset()
-	local ok, err = pcall(mmap.map, {file = 'mmap.lua', offset = 1})
+function test.map_invalid_offset()
+	local ok, err = pcall(fs.map, {file = 'fs_test.lua', offset = 1})
 	assert(not ok and err:find'aligned')
 end
 
-function test.invalid_address()
-	local map, errmsg = mmap.map{size = mmap.pagesize() * 1,
-		addr = ffi.os == 'Windows' and mmap.pagesize()  --TODO: not robust
-			or ffi.cast('uintptr_t', -mmap.pagesize()),  --TODO: not robust
+function test.map_invalid_address()
+	local map, err = fs.map{
+		size = fs.pagesize() * 1,
+		addr = ffi.os == 'Windows' and fs.pagesize()  --TODO: test not robust
+			or ffi.cast('uintptr_t', -fs.pagesize()),  --TODO: test not robust
 	}
-	assert(not map and errmsg == 'out_of_mem')
+	assert(not map and err == 'out_of_mem')
 end
 
-function test.size_too_large()
+function test.map_size_too_large()
 	local size = 1024^3 * (ffi.abi'32bit' and 3 or 1024^3)
-	local map, errmsg = mmap.map{access = 'w', size = size}
-	assert(not map and errmsg == 'out_of_mem')
+	local map, err = fs.map{access = 'w', size = size}
+	assert(not map and err == 'out_of_mem')
 end
 
-function test.readonly_not_found()
-	local map, errmsg = mmap.map{file = 'askdfask8920349zjk'}
-	assert(not map and errmsg == 'not_found')
+function test.map_readonly_not_found()
+	local map, err = fs.map{file = 'askdfask8920349zjk'}
+	assert(not map and err == 'not_found')
 end
 
-function test.readonly_too_short()
-	local map, errmsg = mmap.map{file = 'mmap.lua', size = 1024*1000}
-	assert(not map and errmsg == 'file_too_short')
+function test.map_readonly_too_short()
+	local map, err = fs.map{file = 'fs_test.lua', size = 1024*1000}
+	assert(not map and err == 'file_too_short')
 end
 
-function test.readonly_too_short_zero()
-	local map, errmsg = mmap.map{file = zerosize_file()}
-	assert(not map and errmsg == 'file_too_short')
+function test.map_readonly_too_short_zero()
+	local map, err = fs.map{file = zerosize_file()}
+	assert(not map and err == 'file_too_short')
 end
 
-function test.write_too_short_zero()
-	local map, errmsg = mmap.map{file = zerosize_file(), access = 'w'}
-	assert(not map and errmsg == 'file_too_short')
+function test.map_write_too_short_zero()
+	local map, err = fs.map{file = zerosize_file(), access = 'w'}
+	assert(not map and err == 'file_too_short')
 end
 
 function test.map_disk_full()
-	--TODO: how to test for disk full on 32bit? need a < 3G partition
-	if ffi.abi'32bit' then return end
-	local map, errmsg = mmap.map{
+	local file = prefix..'fs_test_file_huge'
+	os.remove(file)
+	local map, err = fs.map{
 		file = file,
-		size = 1024^4,
+		size = 1024^4, --let's see how this is gonna last...
 		access = 'w',
 	}
-	assert(not map and errmsg == 'disk_full')
+	os.remove(file)
+	assert(not map and err == 'disk_full')
 end
-]]
 
 --virtual files --------------------------------------------------------------
 

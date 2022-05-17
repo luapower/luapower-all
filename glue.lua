@@ -6,11 +6,11 @@ if not ... then require'glue_test'; return end
 
 local glue = {}
 
-local min, max, floor, ceil, ln =
-	math.min, math.max, math.floor, math.ceil, math.log
-local select, unpack, pairs, rawget = select, unpack, pairs, rawget
-local concat = table.concat
-local type = type
+local min, max, floor, ceil, ln, random =
+	math.min, math.max, math.floor, math.ceil, math.log, math.random
+local insert, remove, sort, concat = table.insert, table.remove, table.sort, table.concat
+local char = string.char
+local type, select, unpack, pairs, rawget = type, select, unpack, pairs, rawget
 
 --types ----------------------------------------------------------------------
 
@@ -64,7 +64,7 @@ function glue.repl(x, v, r)
 end
 
 if jit then
-	local random, str = math.random, require'ffi'.string
+	local str = require'ffi'.string
 	function glue.random_string(n)
 		local buf = glue.u32a(n/4+1)
 		for i=0,n/4 do
@@ -73,7 +73,6 @@ if jit then
 		return str(buf, n)
 	end
 else
-	local char, unpack, random = string.char, unpack, math.random
 	function glue.random_string(n)
 		local t = {}
 		for i=1,n do
@@ -81,6 +80,14 @@ else
 		end
 		return char(unpack(t))
 	end
+end
+
+function glue.uuid()
+	return ('%08x-%04x-%04x-%04x-%08x%04x'):format(
+		random(0xffffffff), random(0xffff),
+		0x4000 + random(0x0fff), --4xxx
+		0x8000 + random(0x3fff), --10bb-bbbb-bbbb-bbbb
+		random(0xffffffff), random(0xffff))
 end
 
 --varargs --------------------------------------------------------------------
@@ -131,11 +138,11 @@ function glue.keys(t, cmp)
 		dt[#dt+1]=k
 	end
 	if cmp == true or cmp == 'asc' then
-		table.sort(dt)
+		sort(dt)
 	elseif cmp == 'desc' then
-		table.sort(dt, desc_cmp)
+		sort(dt, desc_cmp)
 	elseif cmp then
-		table.sort(dt, cmp)
+		sort(dt, cmp)
 	end
 	return dt
 end
@@ -217,9 +224,9 @@ end
 
 --insert n elements at i, shifting elemens on the right of i (i inclusive)
 --to the right.
-local function insert(t, i, n)
+local function insert_n(t, i, n)
 	if n == 1 then --shift 1
-		table.insert(t, i, false)
+		insert(t, i, false)
 		return
 	end
 	for p = #t,i,-1 do --shift n
@@ -229,10 +236,10 @@ end
 
 --remove n elements at i, shifting elements on the right of i (i inclusive)
 --to the left.
-local function remove(t, i, n)
+local function remove_n(t, i, n)
 	n = min(n, #t-i+1)
 	if n == 1 then --shift 1
-		table.remove(t, i)
+		remove(t, i)
 		return
 	end
 	for p=i+n,#t do --shift n
@@ -247,9 +254,9 @@ end
 --or further to the right.
 function glue.shift(t, i, n)
 	if n > 0 then
-		insert(t, i, n)
+		insert_n(t, i, n)
 	elseif n < 0 then
-		remove(t, i, -n)
+		remove_n(t, i, -n)
 	end
 	return t
 end
@@ -359,13 +366,12 @@ end
 
 do --array that stays sorted with insertion, searching and removal in O(log n).
 	local sa = {}
-	local push, pop = table.insert, table.remove
 	function sa:find(v) return glue.binsearch(v, self, self.cmp) end
-	function sa:push(v) push(self, self:find(v) or #self+1, v) end
+	function sa:push(v) insert(self, self:find(v) or #self+1, v) end
 	function sa:remove_value(v)
 		local i = self:find(v)
 		if not i then return nil end
-		return pop(self, i)
+		return remove(self, i)
 	end
 	function glue.sortedarray(t)
 		return glue.object(sa, t)
@@ -565,7 +571,7 @@ function glue.string.tohex(s, upper)
 end
 
 --hex to binary string.
-function glue.string.fromhex(s, isvalid)
+local function fromhex(s, isvalid)
 	if not isvalid then
 		if s:find'[^0-9a-fA-F]' then
 			return nil
@@ -574,12 +580,13 @@ function glue.string.fromhex(s, isvalid)
 		s = s:gsub('[^0-9a-fA-F]', '')
 	end
 	if #s % 2 == 1 then
-		return glue.string.fromhex('0'..s)
+		return fromhex('0'..s)
 	end
 	return (s:gsub('..', function(cc)
-		return string.char(assert(tonumber(cc, 16)))
+		return char(assert(tonumber(cc, 16)))
 	end))
 end
+glue.string.fromhex = fromhex
 
 function glue.string.starts(s, p) --5x faster than s:find'^...' in LuaJIT 2.1
 	return s:sub(1, #p) == p
@@ -1163,6 +1170,9 @@ end
 
 local suffixes = {'k', 'M', 'G', 'T'}
 function glue.kbytes(x, decimals)
+	if x > -1024 and x < 1024 then
+		return tostring(x)
+	end
 	local base = ln(x) / ln(1024)
 	local suffix = suffixes[floor(base)] or ''
 	local fmt = decimals and decimals ~= 0 and '%.'..decimals..'f%s' or '%.0f%s'
@@ -1324,41 +1334,6 @@ local dir = rawget(_G, 'arg') and arg[0]
 	and arg[0]:gsub('[/\\]?[^/\\]+$', '') or '' --remove file name
 glue.bin = dir == '' and '.' or dir
 
---portable way to add more paths to package.path, at any place in the list.
---negative indices count from the end of the list like string.sub().
---index 'after' means 0.
-function glue.luapath(path, index, ext)
-	ext = ext or 'lua'
-	index = index or 1
-	local psep = package.config:sub(1,1) --'/'
-	local tsep = package.config:sub(3,3) --';'
-	local wild = package.config:sub(5,5) --'?'
-	local paths = glue.collect(glue.gsplit(package.path, tsep, nil, true))
-	path = path:gsub('[/\\]', psep) --normalize slashes
-	if index == 'after' then index = 0 end
-	if index < 1 then index = #paths + 1 + index end
-	table.insert(paths, index,  path .. psep .. wild .. psep .. 'init.' .. ext)
-	table.insert(paths, index,  path .. psep .. wild .. '.' .. ext)
-	package.path = concat(paths, tsep)
-end
-
---portable way to add more paths to package.cpath, at any place in the list.
---negative indices count from the end of the list like string.sub().
---index 'after' means 0.
-function glue.cpath(path, index)
-	index = index or 1
-	local psep = package.config:sub(1,1) --'/'
-	local tsep = package.config:sub(3,3) --';'
-	local wild = package.config:sub(5,5) --'?'
-	local ext = package.cpath:match('%.([%a]+)%'..tsep..'?') --dll | so | dylib
-	local paths = glue.collect(glue.gsplit(package.cpath, tsep, nil, true))
-	path = path:gsub('[/\\]', psep) --normalize slashes
-	if index == 'after' then index = 0 end
-	if index < 1 then index = #paths + 1 + index end
-	table.insert(paths, index,  path .. psep .. wild .. '.' .. ext)
-	package.cpath = concat(paths, tsep)
-end
-
 --allocation -----------------------------------------------------------------
 
 --freelist for Lua tables.
@@ -1434,28 +1409,18 @@ end
 
 --like glue.buffer() but preserves data on reallocations
 --also returns minlen instead of capacity.
-local have_sbuf, sbuf = pcall(require, 'string.buffer')
 function glue.dynarray(ctype, min_capacity)
 	ctype = ctype or glue.u8a
-	if have_sbuf and ffi.istype(ctype, glue.u8a) then --faster version without copy.
-		--NOTE: this version returns a `T*` not a `T[?]` so don't use ffi.istype() on it.
-		local sbuf = sbuf.new()
-		return function(minlen)
-			local buf, capacity = sbuf:reserve(max(min_capacity or 0, minlen))
-			return buf, minlen
+	local buffer = glue.buffer(ctype)
+	local elem_size = ffi.sizeof(ctype, 1)
+	local buf0, minlen0
+	return function(minlen)
+		local buf, len = buffer(max(min_capacity or 0, minlen))
+		if buf ~= buf0 and buf ~= nil and buf0 ~= nil then
+			ffi.copy(buf, buf0, minlen0 * elem_size)
 		end
-	else
-		local buffer = glue.buffer(ctype)
-		local elem_size = ffi.sizeof(ctype, 1)
-		local buf0, minlen0
-		return function(minlen)
-			local buf, len = buffer(max(min_capacity or 0, minlen))
-			if buf ~= buf0 and buf ~= nil and buf0 ~= nil then
-				ffi.copy(buf, buf0, minlen0 * elem_size)
-			end
-			buf0, minlen0 = buf, minlen
-			return buf, minlen
-		end
+		buf0, minlen0 = buf, minlen
+		return buf, minlen
 	end
 end
 
@@ -1591,18 +1556,26 @@ function glue.dynarray_loader(dynarr)
 end
 
 --load up a dynarray with repeated reads given a `read(self, buf, sz, expires)` method.
-function glue.readall(read, self, expires)
+function glue.readall(read, self, ...)
 	local get, put, collect = glue.dynarray_loader()
 	while true do
 		local buf, sz = get(4096)
-		local len, err = read(self, buf, sz, expires)
-		if not len then --short read
-			return nil, err, collect()
-		elseif len == 0 then --eof
-			return collect()
-		else
-			put(len)
-		end
+		local len, err = read(self, buf, sz, ...)
+		if not len then return nil, err, collect() end --short read
+		if len == 0 then return collect() end --eof
+		put(len)
+	end
+end
+
+function glue.buffer_reader(p, n)
+	return function(buf, sz)
+		if p == nil then return p, n end
+		sz = math.min(n, sz)
+		if sz == 0 then return nil, 'eof' end
+		ffi.copy(buf, p, sz)
+		p = p + sz
+		n = n - sz
+		return sz
 	end
 end
 

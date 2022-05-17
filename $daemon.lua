@@ -44,15 +44,20 @@ end
 
 --init -----------------------------------------------------------------------
 
+--for strict mode...
+app_name, cmd, wincmd, lincmd, help = nil
+var_dir = var_dir
+tmp_dir = tmp_dir
+
 function daemon(app_name)
+
+	_G.app_name = assert(app_name)
 
 	local app = {}
 	cmd = {}
 	wincmd = {}
 	lincmd = {}
 	help = {}
-
-	_G.app_name = assert(app_name)
 
 	--consider this module loaded so that other app submodules that
 	--require it at runtime don't try to load it again.
@@ -64,12 +69,20 @@ function daemon(app_name)
 		--standalone luajit exe. files are in luapower dir at ../..
 		app_dir = indir(indir(app_dir, '..'), '..')
 	end
-	_G.var_dir = rawget(_G, 'var_dir') or path.normalize(indir(app_dir, app_name..'-var'))
-	_G.tmp_dir = rawget(_G, 'tmp_dir') or path.normalize(indir(indir(app_dir, 'tmp'), app_name))
+	var_dir = var_dir or path.normalize(indir(app_dir, app_name..'-var'))
+	tmp_dir = tmp_dir or path.normalize(indir(indir(app_dir, 'tmp'), app_name))
 
-	--r:run_cmdequire an optional config file.
+	app.conf = {
+		app_name = app_name,
+		var_dir  = var_dir,
+		tmp_dir  = tmp_dir,
+	}
+
+	--require an optional config file.
 	local ok, opt = pcall(require, app_name..'_conf')
-	app.conf = ok and type(opt) == 'table' and opt or {}
+	if ok and type(opt) == 'table' then
+		update(app.conf, opt)
+	end
 
 	local wrapped = {help=1, start=1}
 	function cmd.help(extra)
@@ -100,6 +113,8 @@ function daemon(app_name)
 		self:finish()
 		return exit_code
 	end
+
+	function app:init() end --stub
 
 	--if you override run_cmd() then you have to call this!
 	function app:finish()
@@ -156,6 +171,8 @@ function daemon(app_name)
 		if app.conf.log_host and app.conf.log_port then
 			logging:toserver(app.conf.log_host, app.conf.log_port)
 		end
+
+		self:init()
 
 		return self:run_cmd(f, select(i, ...))
 	end

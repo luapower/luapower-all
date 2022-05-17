@@ -5,7 +5,9 @@ tagline: package categories
 * Runtimes
 	* [luajit]
 	* [terra]
-	* [terra2] (WIP)
+	* [terra2]
+	* [luastate]
+	* [dynasm]
 * Deployment
 	* [bundle]
 	* [terra.binder]
@@ -18,6 +20,7 @@ tagline: package categories
 	* [errors]
 	* [lpeglabel]
 	* [dollar]
+	* [logging]
 * Portable OS APIs
 	* [fs]
 	* [nw]
@@ -25,11 +28,11 @@ tagline: package categories
 	* [pthread]
 	* [proc]
 	* [time]
-	* [hidapi]
+	* [path]
 * Portable UI (WIP)
-	* [ui] (WIP)
-	* [terra.layer] (WIP)
-	* [terra.tr] (WIP)
+	* [ui]
+	* [terra.layer]
+	* [terra.tr]
 * Portable 2D Graphics
 	* [cairo]
 	* [bitmap]
@@ -49,7 +52,7 @@ tagline: package categories
 * Image Formats
 	* [giflib]
 	* [libjpeg]
-	* [libpng]
+	* [libspng]
 	* [bmp]
 * Unicode
 	* [utf8]
@@ -67,25 +70,25 @@ tagline: package categories
 	* [minizip2]
 * Networking
 	* [sock]
+	* [connpool]
 	* [resolver]
 	* [http]
 	* [uri]
 	* [rsync]
-* Networking / TLS (WIP)
-	* [libtls] (WIP)
-	* [libtls_bearssl] (WIP)
-	* [bearssl] (WIP)
+	* [libtls]
+	* [libtls_bearssl]
+	* [bearssl]
 * Databases
 	* [sqlpp]
    * [mysql]
 	* [tarantool]
 	* [schema]
 * Data Exchange
+	* [base64]
 	* [cjson]
 	* [msgpack]
 	* [expat]
 	* [genx]
-	* [libb64]
 	* [csv]
 	* [xlsxwriter]
 * Templating
@@ -97,23 +100,19 @@ tagline: package categories
 	* [hunspell]
 * Data Structures
 	* [heap]
+	* [queue]
+	* [linkedlist]
+	* [lrucache]
+	* [rangelist]
 * Math
 	* [amoeba]
 	* [eq]
 	* [ldecnumber]
-* Lua Support Libs
+* Support Libs
 	* [opengl]
-	* [luastate]
 	* [cbframe]
-	* [path]
 	* [unixperms]
-	* [dynasm]
-	* [rangelist]
-	* [uuid]
-* C Support Libs
 	* [pixman]
-	* [libmariadb]
-	* [openssl]
 	* [lua-headers]
 	* [shm]
 	* [llvm]
@@ -121,8 +120,10 @@ tagline: package categories
 	* [harfbuzz]
 	* [fribidi]
 	* [libunibreak]
-	* [pcre]
 	* [lx]
+	* [ffi_reflect]
+	* [jsmin]
+	* [linebuffer]
 * Development Tools
 	* [inspect]
 	* [cplayer]
@@ -130,7 +131,6 @@ tagline: package categories
 	* [hash_benchmark]
 	* [unit]
 	* [testui]
-	* [jsmin]
 * Web Development
 	* [webb]
 	* [x-widgets]
@@ -157,6 +157,7 @@ tagline: package categories
 	* [luapower]
 	* [luapower_db]
 	* [luapower-repos]
+	* [luapower-repos-abandoned]
 	* [luapower-ci]
 * Help needed
 	* [libsoundio]
@@ -166,13 +167,11 @@ tagline: package categories
 	* [libsodium]
 	* [libogg]
 	* [rs232]
-* Unmaintained
+	* [hidapi]
+* Abandoned
 	* [ui0]
 	* [tr0]
-	* [linkedlist]
-	* [lrucache]
 	* [bnet]
-	* [ffi_reflect]
 	* [struct]
 	* [minizip]
 	* [lanes]
@@ -187,4 +186,10 @@ tagline: package categories
    * [resty.mail]
    * [resty.string]
 	* [mysql_connector]
+	* [libmysql]
+	* [libmariadb]
 	* [lpeg]
+	* [libb64]
+	* [pcre]
+	* [libpng]
+	* [openssl]

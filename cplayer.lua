@@ -498,6 +498,7 @@ glue.autoload(player, {
 --main loop
 
 function player:play(...)
+	--uncomment this for profiling: nw:app():maxfps(1/0)
 	if ... then --player loaded as module, return it instead of running it
 		return player
 	end

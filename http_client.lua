@@ -23,7 +23,6 @@ local client = {
 	max_conn_per_target = 20,
 	max_pipelined_requests = 10,
 	client_ips = {},
-	max_retries = 0,
 	max_redirects = 20,
 	max_cookie_length = 8192,
 	max_cookies = 1e6,
@@ -98,7 +97,9 @@ function client:target(t) --t is request options
 		target.connect_timeout = t.connect_timeout
 		target.http_args = {
 			target = target,
+			host = host,
 			port = port,
+			client_ip = client_ip,
 			https = https,
 			max_line_size = t.max_line_size,
 			debug = t.debug,
@@ -118,7 +119,7 @@ function client:inc_conn_count(target, n)
 	n = n or 1
 	self.conn_count = (self.conn_count or 0) + n
 	target.conn_count = (target.conn_count or 0) + n
-	self:dp(target, (n > 0 and '+' or '-')..'CONN_COUNT', '%s=%d, total=%d',
+	self:dp(target, (n > 0 and '+' or '-')..'CO', '%s=%d, total=%d',
 		target, target.conn_count, self.conn_count)
 end
 
@@ -141,7 +142,7 @@ end
 function client:push_wait_conn_thread(thread, target)
 	local queue = attr(self, 'wait_conn_queue')
 	push(queue, {thread, target})
-	self:dp(target, '+WAIT_CONN', '%s %s', thread, target)
+	self:dp(target, '+WAIT_CO', '%s %s Q: %d', thread, target, #queue)
 end
 
 function client:pull_wait_conn_thread()
@@ -149,7 +150,7 @@ function client:pull_wait_conn_thread()
 	local t = queue and pull(queue)
 	if not t then return end
 	local thread, target = t[1], t[2]
-	self:dp(target, '-WAIT_CONN', '%s', thread)
+	self:dp(target, '-WAIT_CO', '%s Q: %d', thread, #queue)
 	return thread, target
 end
 
@@ -160,7 +161,7 @@ function client:pull_matching_wait_conn_thread(target)
 		if t[2] == target then
 			table.remove(queue, i)
 			local thread = t[1]
-			self:dp(target, '-MATCHING_WAIT_CONN', '%s: %s', target, thread)
+			self:dp(target, '-WAIT_CO', '%s: %s Q: %d', target, thread, #queue)
 			return thread
 		end
 	end
@@ -177,7 +178,7 @@ function client:_can_connect_now(target)
 end
 function client:can_connect_now(target)
 	local can = self:_can_connect_now(target)
-	self:dp(target, '?CAN_CONNECT_NOW', '%s', can)
+	self:dp(target, '?CAN_CO', '%s', can)
 	return can
 end
 
@@ -204,14 +205,14 @@ function client:connect_now(target)
 	local dt = target.connect_timeout
 	local expires = dt and time.clock() + dt or nil
 	local ok, err, errcode = tcp:connect(self:resolve(host), port, expires)
-	self:dp(target, '+CONNECT', '%s %s', tcp, err or '')
+	self:dp(target, '+CO', '%s %s', tcp, err or '')
 	if not ok then
 		self:dec_conn_count(target)
 		return nil, err, errcode
 	end
 	local function pass(closed, ...)
 		if not closed then
-			self:dp(target, '-CLOSE', '%s', tcp)
+			self:dp(target, '-CO', '%s', tcp)
 			self:dec_conn_count(target)
 			self:resume_next_wait_conn_thread()
 		end
@@ -230,14 +231,13 @@ function client:connect_now(target)
 	end
 	target.http_args.tcp = tcp
 	local http = http:new(target.http_args)
-	self:dp(target, ' HTTP_BIND', '%s %s', tcp, http)
+	self:dp(target, ' BIND', '%s %s', tcp, http)
 	return http
 end
 
 function client:wait_conn(target)
 	local thread = self.currentthread()
 	self:push_wait_conn_thread(thread, target)
-	self:dp(target, '=WAIT_CONN', '%s %s', thread, target)
 	local http = self.suspend()
 	if http == 'connect' then
 		return self:connect_now(target)
@@ -259,24 +259,24 @@ end
 function client:resume_next_wait_conn_thread()
 	local thread, target = self:pull_wait_conn_thread()
 	if not thread then return end
-	self:dp(target, '^WAIT_CONN', '%s', thread)
+	self:dp(target, '^WAIT_CO', '%s', thread)
 	self.resume(thread, 'connect')
 end
 
 function client:resume_matching_wait_conn_thread(target, http)
 	local thread = self:pull_matching_wait_conn_thread(target)
 	if not thread then return end
-	self:dp(target, '^WAIT_CONN', '%s < %s', thread, http)
+	self:dp(target, '^WAIT_CO', '%s < %s', thread, http)
 	self.resume(thread, http)
 	return true
 end
 
 function client:can_pipeline_new_requests(http, target, req)
 	local close = req.close
-	local pr_count = http.wait_response_count or 0
+	local pr_count = http.wait_response_threads and #http.wait_response_threads or 0
 	local max_pr = target.max_pipelined_requests or self.max_pipelined_requests
 	local can = not close and pr_count < max_pr
-	self:dp(target, '?CAN_PIPELINE', '%s (wait:%d, close:%s)', can, pr_count, close)
+	self:dp(target, '?CAN_PIPE', '%s (wait: %d, close: %s)', can, pr_count, close)
 	return can
 end
 
@@ -284,23 +284,22 @@ end
 
 function client:push_wait_response_thread(http, thread, target)
 	push(attr(http, 'wait_response_threads'), thread)
-	http.wait_response_count = (http.wait_response_count or 0) + 1
-	self:dp(target, '+WAIT_RESPONSE')
+	self:dp(target, '+WAIT_RS', 'wait: %d', #http.wait_response_threads)
 end
 
 function client:pull_wait_response_thread(http, target)
 	local queue = http.wait_response_threads
 	local thread = queue and pull(queue)
 	if not thread then return end
-	self:dp(target, '-WAIT_RESPONSE')
+	self:dp(target, '-WAIT_RS', 'wait: %d', #queue)
 	return thread
 end
 
 function client:read_response_now(http, req)
 	http.reading_response = true
-	self:dp(http.target, '+READ_RESPONSE', '%s.%s.%s', http.target, http, req)
+	self:dp(http.target, '+READ_RS', '%s.%s.%s', http.target, http, req)
 	local res, err, errtype, errcode = http:read_response(req)
-	self:dp(http.target, '-READ_RESPONSE', '%s.%s.%s %s %s %s',
+	self:dp(http.target, '-READ_RS', '%s.%s.%s %s %s %s',
 		http.target, http, req, err or '', errtype or '', errcode or '')
 	http.reading_response = false
 	return res, err, errtype
@@ -434,7 +433,7 @@ function client:request(t)
 
 	local target = self:target(t)
 
-	self:dp(target, '+REQUEST', '%s = %s', target, tostring(target))
+	self:dp(target, '+RQ', '%s = %s', target, tostring(target))
 
 	local http, err = self:get_conn(target)
 	if not http then return nil, err end
@@ -444,13 +443,13 @@ function client:request(t)
 
 	local req = http:build_request(t, cookies)
 
-	self:dp(target, '+SEND_REQUEST', '%s.%s.%s %s %s',
+	self:dp(target, '+SEND_RQ', '%s.%s.%s %s %s',
 		target, http, req, req.method, req.uri)
 
 	local ok, err = http:send_request(req)
 	if not ok then return nil, err, req end
 
-	self:dp(target, '-SEND_REQUEST', '%s.%s.%s', target, http, req)
+	self:dp(target, '-SEND_RQ', '%s.%s.%s', target, http, req)
 
 	local waiting_response
 	if http.reading_response then
@@ -490,7 +489,7 @@ function client:request(t)
 		end
 	end
 
-	self:dp(target, '-REQUEST', '%s.%s.%s body: %d bytes',
+	self:dp(target, '-RQ', '%s.%s.%s body: %d bytes',
 		target, http, req,
 		res and type(res.content) == 'string' and #res.content or 0)
 
@@ -526,7 +525,7 @@ function client:log(target, severity, module, event, fmt, ...)
 end
 
 function client:dp(target, ...)
-	return self:log(target, '', 'htcli', ...)
+	return self:log(target, '', 'htcl', ...)
 end
 
 function client:new(t)
@@ -547,14 +546,15 @@ function client:new(t)
 
 	if self.debug then
 
-		local function pass(rc, ...)
-			self:dp(nil, ('<'):rep(1+rc)..('-'):rep(78-rc))
+		local function pass(target, rc, ...)
+			self:dp(target, '', ('<'):rep(1+rc)..('-'):rep(30-rc))
 			return ...
 		end
 		glue.override(self, 'request', function(inherited, self, t, ...)
 			local rc = t.redirect_count or 0
-			self:dp(nil, ('>'):rep(1+rc)..('-'):rep(78-rc))
-			return pass(rc, inherited(self, t, ...))
+			local target = self:target(t)
+			self:dp(target, '', ('>'):rep(1+rc)..('-'):rep(30-rc))
+			return pass(target, rc, inherited(self, t, ...))
 		end)
 
 	else

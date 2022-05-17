@@ -1,10 +1,59 @@
+--[=[
 
---math for 2D rectangles defined as (x, y, w, h).
---Written by Cosmin Apreutesei. Public Domain.
+	Math for 2D rectangles defined as (x, y, w, h) where w > 0 and h > 0.
+	Written by Cosmin Apreutesei. Public Domain.
 
---a "1D segment" is defined as (x1, x2); a "side" is defined as (x1, x2, y)
---so it's a segment + an altitude. the corners are (x1, y1, x2, y2), where
---(x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+DEFINITIONS
+
+	A "1D segment" is defined as (x1, x2); a "side" is defined as (x1, x2, y)
+	so it's a segment + an altitude. the corners are (x1, y1, x2, y2), where
+	(x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+
+PROCEDURAL API
+
+	box2d.corners(x, y, w, h) -> x1, y1, x2, y2
+	box2d.rect(x1, y1, x2, y2) -> x, y, w, h
+	box2d.normalize(x, y, w, h) -> x, y, w, h
+	box2d.align(w, h, halign, valign, bx, by, bw, bh) -> x, y, w, h
+	box2d.vsplit(i, sh, x, y, w, h) -> x, y, w, h
+	box2d.hsplit(i, sw, x, y, w, h) -> x, y, w, h
+	box2d.nsplit(i, n, direction, x, y, w, h) -> x, y, w, h
+	box2d.translate(dx, dy, x, y, w, h) -> x, y, w, h
+	box2d.offset(d, x, y, w, h) -> x, y, w, h
+	box2d.fit(w, h, bw, bh) -> w, h
+	box2d.hit(x0, y0, x, y, w, h) -> t|f
+	box2d.hit_edges(x0, y0, d, x, y, w, h) -> hit, left, top, right, bottom
+	box2d.snap_edges(d, x, y, w, h, rectangles[, opaque]) -> x, y, w, h
+	box2d.snap_pos(d, x, y, w, h, rectangles[, opaque]) -> x, y, w, h
+	box2d.snapped_edges(d, x1, y1, w1, h1, x2, y2, w2, h2[, opaque]) -> snapped, left, top, right, bottom
+	box2d.overlapping(x1, y1, w1, h1, x2, y2, w2, h2) -> t|f
+	box2d.clip(x, y, w, h, x0, y0, w0, h0) -> x1, y1, w1, h1
+	box2d.bounding_box(x1, y1, w1, h1, x2, y2, w2, h2) -> x, y, w, h
+	box2d.scroll_to_view(x, y, w, h, pw, ph, sx, sy) -> sx, sy
+
+OOP API
+
+	box2d(x, y, w, h) -> box               create a new box object
+	box.x, box.y, box.w, box.h             get box coordinates (for reading and writing)
+	box:rect() -> x, y, w, h               get coordinates unpacked
+	box() -> x, y, w, h                    get coordinates unpacked
+	box:corners() -> x1, y1, x2, y2        left,top and right,bottom corners
+	box:align(halign, valign, parent_box) -> box   align box
+	box:vsplit(i, sh) -> box               split box vertically
+	box:hsplit(i, sw) -> box               split box horizontally
+	box:nsplit(i, n, direction) -> box     split box in equal parts
+	box:translate(dx, dy) -> box           move box by (dx, dy)
+	box:offset(d) -> box                   offset by d (outward if d is positive)
+	box:fit(parent_box, halign, valign) -> box     enlarge/shrink-to-fit and align
+	box:hit(x0, y0) -> t|f                 hit test
+	box:hit_edges(x0, y0, d) -> hit, left, top, right, bottom   hit test for edges
+	box:snap_edges(d, boxes) -> box        snap the edges to a list of boxes
+	box:snap_pos(d, boxes) -> box          snap the position
+	box:overlapping(box) -> t|f            overlapping test
+	box:clip(box) -> box                   clip box to fit inside another box
+	box:join(box)                          make box the bounding box of itself and another box
+
+]=]
 
 local min, max, abs = math.min, math.max, math.abs
 
@@ -82,15 +131,16 @@ local function nsplit(i, n, direction, x, y, w, h) --direction = 'v' or 'h'
 	end
 end
 
-local function translate(x0, y0, x, y, w, h) --move a box
-	return x + x0, y + y0, w, h
+local function translate(dx, dy, x, y, w, h) --move a box
+	return x + dx, y + dy, w, h
 end
 
 local function offset(d, x, y, w, h) --offset a rectangle by d (outward if d is positive)
 	return x - d, y - d, w + 2*d, h + 2*d
 end
 
-local function fit(w, h, bw, bh) --deals only with sizes; use align() to position the box
+--fit box (w, h) into (bw, bh) preserving aspect ratio. use align() to position the box.
+local function fit(w, h, bw, bh)
 	if w / h > bw / bh then
 		return bw, bw * h / w
 	else
@@ -242,6 +292,9 @@ end
 
 --edge snapping
 
+--snap the sides of rect (x, y, w, h) against a list of rectangles of form
+--{{x=,y=,w=,h=},...}. If `opaque`, the rectangles are considered opaque,
+--in which case they must be sorted front-to-back.
 local function snap_edges(d, x, y, w, h, rectangles, opaque)
 	local snap = opaque and snap_opaque or snap_transparent
 	local ax1, ay1, ax2, ay2 = corners(x, y, w, h)
@@ -268,6 +321,7 @@ local function snap_seg_pos(ax1, ax2, cx1, cx2)
 	return cx1, cx2
 end
 
+--snap (x, y) of rect (x, y, w, h) against a list of rectangles.
 local function snap_pos(d, x, y, w, h, rectangles, opaque)
 	local snap = opaque and snap_opaque or snap_transparent
 	local ax1, ay1, ax2, ay2 = corners(x, y, w, h)
@@ -328,8 +382,7 @@ local function bounding_box(x1, y1, w1, h1, x3, y3, w2, h2)
 		max(y1, y2, y3, y4))
 end
 
---box scroll-to-view box
-
+--move box from (sx, sy) inside (pw, ph) so that it becomes fully visible.
 local function scroll_to_view(x, y, w, h, pw, ph, sx, sy)
 	local min_sx = -x
 	local min_sy = -y
@@ -375,8 +428,8 @@ function box:nsplit(i, n, direction)
 	return new(nsplit(i, n, direction, self()))
 end
 
-function box:translate(x0, y0)
-	return new(translate(x0, y0, self()))
+function box:translate(dx, dy)
+	return new(translate(dx, dy, self()))
 end
 
 function box:offset(d) --offset a rectangle by d (outward if d is positive)

@@ -1,5 +1,4 @@
-libwinpthread 8.1.0-posix-seh from http://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/ (BSD)
-
+libwinpthread 9.0.0 from https://sourceforge.net/p/mingw-w64/mingw-w64/ci/master/tree/mingw-w64-libraries/winpthreads/ (BSD License)
 
 libwinpthread wasn't built from source.
-it was taken from mingw64 mingw-builds 8.1.0.
+it was taken from msys2-mingw64.

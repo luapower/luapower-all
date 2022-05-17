@@ -50,7 +50,7 @@ function sqlpp.new(init)
 
 	--parsing string literals -------------------------------------------------
 
-	function collect_strings(s, repl)
+	local function collect_strings(s, repl)
 		local i = 1
 		local t = {}
 		::next_string::

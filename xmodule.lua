@@ -2,6 +2,7 @@
 require'xrowset'
 local path = require'path'
 local fs = require'fs'
+local _ = string.format
 
 --rowsets --------------------------------------------------------------------
 

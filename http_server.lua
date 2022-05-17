@@ -104,7 +104,7 @@ function server:new(t)
 				break
 			end
 
-			local finished, write_body, sending_response
+			local finished, out_func, sending_response
 
 			local function send_response(opt)
 				if opt.content == nil then
@@ -117,14 +117,14 @@ function server:new(t)
 				finished = true
 			end
 
-			function req.respond(req, opt, want_write_body)
-				if want_write_body then
-					write_body = self.cowrap(function(yield)
+			function req.respond(req, opt)
+				if opt.want_out_function then
+					out_func = self.cowrap(function(yield)
 						opt.content = yield
 						send_response(opt)
 					end)
-					write_body()
-					return write_body
+					out_func()
+					return out_func
 				else
 					send_response(opt)
 				end
@@ -158,8 +158,8 @@ function server:new(t)
 					error(_('respond() error:\n%s', err))
 				end
 			elseif not finished then --eof not signaled.
-				if write_body then
-					write_body() --eof
+				if out_func then
+					out_func() --eof
 				else
 					send_response({})
 				end

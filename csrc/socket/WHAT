@@ -1,0 +1,4 @@
+LuaSocket 3.0-rc1 from https://github.com/diegonehab/luasocket (MIT license)
+
+
+Patched for compatibility with LuaSec.

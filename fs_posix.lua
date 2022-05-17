@@ -6,6 +6,7 @@ if not ... then require'fs_test'; return end
 
 local ffi = require'ffi'
 local bit = require'bit'
+local bor, band, bnot, shl = bit.bor, bit.band, bit.bnot, bit.lshift
 setfenv(1, require'fs_common')
 
 local C = ffi.C
@@ -41,7 +42,7 @@ local function parse_perms(s, base)
 		local unixperms = require'unixperms'
 		return unixperms.parse(s, base)
 	else --pass-through
-		return s or tonumber(666, 8), false
+		return s or tonumber('600', 8), false
 	end
 end
 
@@ -101,7 +102,7 @@ local O_NONBLOCK  = 0x800
 
 function file.make_async(f)
 	local fl = C.fcntl(f.fd, F_GETFL)
-	assert(check(C.fcntl(f.fd, F_SETFL, ffi.cast('int', bit.bor(fl, O_NONBLOCK))) == 0))
+	assert(check(C.fcntl(f.fd, F_SETFL, ffi.cast('int', bor(fl, O_NONBLOCK))) == 0))
 	local sock = require'sock'
 	local ok, err = sock._register(f)
 	if not ok then return nil, err end
@@ -137,19 +138,21 @@ function fs.open(path, opt)
 		opt = assert(str_opt[opt], 'invalid mode %s', opt)
 	end
 	local flags = flags(opt.flags or 'rdonly', o_bits)
-	flags = bit.bor(flags, opt.async and O_NONBLOCK or 0)
+	flags = bor(flags, opt.async and O_NONBLOCK or 0)
 	local mode = parse_perms(opt.perms)
-	local fd = C.open(path, flags, mode)
+	local open = opt.open or C.open
+	local fd = open(path, flags, mode)
 	if fd == -1 then return check() end
 	local f, err = fs.wrap_fd(fd, opt.async, opt.is_pipe_end)
 	if not f then return nil, err end
 	if opt.seek_end then
-		local ok, err = f:seek('end', 0)
-		if not ok then
+		local pos, err = f:seek('end', 0)
+		if not pos then
 			assert(f:close())
 			return nil, err
 		end
 	end
+	f.shm = opt.shm and true or false
 	return f
 end
 
@@ -176,7 +179,8 @@ int fileno(struct FILE *stream);
 
 function fs.fileno(file)
 	local fd = C.fileno(file)
-	return check(fd ~= -1 and fd or nil)
+	if fd == -1 then return check() end
+	return fd
 end
 
 function fs.wrap_file(file, ...)
@@ -204,14 +208,13 @@ function fs.pipe(path, mode)
 	opt = opt or {}
 	mode = parse_perms(mode)
 	if path then
-		local fd, err = check(C.mkfifo(path, mode) ~= 0)
-		if not fd then return nil, err end
+		local fd = C.mkfifo(path, mode)
+		if fd == -1 then return check() end
 		return fs.wrap_fd(fd, opt.async, true)
 	else --unnamed pipe
 		local fds = ffi.new'int[2]'
-		if C.pipe(fds) ~= 0 then
-			return check()
-		end
+		local ok = C.pipe(fds) == 0
+		if not ok then return check() end
 		local rf, err1 = fs.wrap_fd(fds[0], opt.async or opt.read_async, true)
 		local wf, err2 = fs.wrap_fd(fds[1], opt.async or opt.write_async, true)
 		if not (rf and wf) then
@@ -242,7 +245,7 @@ int fsync(int fd);
 int64_t lseek(int fd, int64_t offset, int whence) asm("lseek%s");
 ]], linux and '64' or ''))
 
-function file.read(f, buf, sz)
+function file.read(f, buf, sz, expires)
 	assert(sz > 0) --because it returns 0 for EOF
 	if f._async then
 		local sock = require'sock'
@@ -254,7 +257,7 @@ function file.read(f, buf, sz)
 	end
 end
 
-function file._write(f, buf, sz)
+function file._write(f, buf, sz, expires)
 	if f._async then
 		local sock = require'sock'
 		return sock._file_async_write(f, buf, sz, expires)
@@ -275,15 +278,13 @@ function file._seek(f, whence, offset)
 	return tonumber(offs)
 end
 
---truncate/getsize/setsize ---------------------------------------------------
+--truncate -------------------------------------------------------------------
 
-cdef[[
-int ftruncate(int fd, int64_t length);
-]]
+cdef'int ftruncate(int fd, int64_t length);'
 
 --NOTE: ftruncate() creates a sparse file (and so would seeking to size-1
---and writing '\0'), so we need fallocate() to reserve disk space. OTOH,
---fallocate() only works on ext4. On all other filesystems
+--and writing '\0' there), so we need to call fallocate() to actually reserve
+--any disk space. OTOH, fallocate() is only efficient on some file systems.
 
 local fallocate
 
@@ -313,54 +314,50 @@ if osx then
 		if ret == -1 then --too fragmented, allocate non-contiguous space
 			store.fst_flags = F_ALLOCATEALL
 			local ret = C.fcntl(fd, F_PREALLOCATE, ffi.cast(void, store))
-			if ret == -1 then return check() end
+			if ret == -1 then return check(false) end
 		end
 		return true
 	end
 
 else
 
-	cdef[[
-	int fallocate64(int fd, int mode, off64_t offset, off64_t len);
-	int posix_fallocate64(int fd, off64_t offset, off64_t len);
-	]]
+	cdef'int fallocate64(int fd, int mode, off64_t offset, off64_t len);'
 
-	function fallocate(fd, size, emulate)
-		if emulate then
-			return check(C.posix_fallocate64(fd, 0, size) == 0)
-		else
-			return check(C.fallocate64(fd, 0, 0, size) == 0)
-		end
+	function fallocate(fd, size)
+		return check(C.fallocate64(fd, 0, 0, size) == 0)
 	end
 
 end
 
-function file_setsize(f, size, opt)
-	opt = opt or 'fallocate emulate' --emulate Windows behavior
-	if opt:find'fallocate' then
-		local cursize, err = file_getsize(f)
-		if not cursize then return nil, err end
-		local ok, err = fallocate(f.fd, size, opt:find'emulate')
-		if not ok then
-			if err == 'disk_full' then
-				--when fallocate() fails because disk is full, a file is still
-				--created filling up the entire disk, so shrink back the file
-				--to its original size. this is courtesy: we don't check to see
-				--if this fails or not, and we return the original error code.
-				C.ftruncate(fd, cursize)
-			end
-			if opt:find'fail' then
-				return nil, err
+--NOTE: lseek() is not defined for shm_open()'ed fds, that's why we ask
+--for a `size` arg. The seek() behavior is just for compat with Windows.
+function file.truncate(f, size, opt)
+	assert(type(size) == 'number', 'size expected')
+	if not f.shm then
+		local pos, err = f:seek('set', size)
+		if not pos then return nil, err end
+	end
+	if not f.shm then
+		opt = opt or 'fallocate fail' --emulate Windows behavior.
+		if opt:find'fallocate' then
+			local cursize, err = f:attr'size'
+			if not cursize then return nil, err end
+			local ok, err = fallocate(f.fd, size)
+			if not ok then
+				if err == 'disk_full' then
+					--when fallocate() fails because disk is full, a file is still
+					--created filling up the entire disk, so shrink back the file
+					--to its original size. this is courtesy: we don't check to see
+					--if this fails or not, and we return the original error code.
+					C.ftruncate(f.fd, cursize)
+				end
+				if opt:find'fail' then
+					return nil, err
+				end
 			end
 		end
 	end
 	return check(C.ftruncate(f.fd, size) == 0)
-end
-
-function file.truncate(f, opt)
-	local size, err = f:seek()
-	if not size then return nil, err end
-	return file_setsize(f, size, opt)
 end
 
 --filesystem operations ------------------------------------------------------
@@ -389,10 +386,11 @@ end
 local ERANGE = 34
 
 function getcwd()
+	initial_cwd()
 	while true do
 		local buf, sz = cbuf(256)
 		if C.getcwd(buf, sz) == nil then
-			if ffi.errno() ~= ERANGE then
+			if ffi.errno() ~= ERANGE or buf >= 2048 then
 				return check()
 			else
 				buf, sz = cbuf(sz * 2)
@@ -401,6 +399,7 @@ function getcwd()
 		return ffi.string(buf)
 	end
 end
+initial_cwd = memoize(getcwd)
 
 function rmfile(path)
 	return check(C.unlink(path) == 0)
@@ -573,12 +572,12 @@ local file_types = {
 	[0x1000] = 'pipe',
 }
 local function st_type(mode)
-	local type = bit.band(mode, 0xf000)
+	local type = band(mode, 0xf000)
 	return file_types[type]
 end
 
 local function st_perms(mode)
-	return bit.band(mode, bit.bnot(0xf000))
+	return band(mode, bnot(0xf000))
 end
 
 local function st_time(s, ns)
@@ -657,7 +656,7 @@ if linux then
 	int utimensat(int dirfd, const char *path, const struct timespec times[2], int flags);
 	]]
 
-	local UTIME_OMIT = bit.lshift(1,30)-2
+	local UTIME_OMIT = shl(1,30)-2
 
 	local function set_timespec(ts, t)
 		if ts then
@@ -714,7 +713,7 @@ elseif osx then
 	end
 
 	--TODO: find a way to change btime too (probably with CF or Cocoa, which
-	--means many more LOC and more BS for setting one more integer).
+	--means many more LOC and more BS for setting one damn integer).
 	local tv_ct = ffi.typeof'struct timeval[2]'
 	local tv
 	local function wrap(utimes_func, stat_func)
@@ -732,7 +731,7 @@ elseif osx then
 		end
 	end
 	futimes = wrap(function(f, tv) return C.futimes(f.fd, tv) end, fstat)
-	utimes = wrap(C.utimes, stat)
+	utimes  = wrap(C.utimes, stat)
 	lutimes = wrap(C.lutimes, lstat)
 
 end
@@ -959,6 +958,19 @@ end
 
 --memory mapping -------------------------------------------------------------
 
+local mmap_errors = {
+	[12] = 'out_of_mem', --ENOMEM
+	[22] = 'file_too_short', --EINVAL
+	[27] = 'disk_full', --EFBIG
+	[osx and 69 or 122] = 'disk_full', --EDQUOT
+}
+
+local librt = C
+if linux then --for shm_open()
+	local ok, rt = pcall(ffi.load, 'rt')
+	if ok then librt = rt end
+end
+
 if linux then
 	cdef'int __getpagesize();'
 elseif osx then
@@ -971,23 +983,6 @@ int shm_open(const char *name, int oflag, mode_t mode);
 int shm_unlink(const char *name);
 ]]
 
-local librt = C
-if linux then
-	local ok, rt = pcall(ffi.load, 'rt')
-	if ok then librt = rt end
-end
-
-local function open(path, write, exec, shm)
-	local oflags = write and bit.bor(O_RDWR, O_CREAT) or O_RDONLY
-	local perms = oct'444' +
-		(write and oct'222' or 0) +
-		(exec and oct'111' or 0)
-	local open = shm and librt.shm_open or C.open
-	local fd = open(path, oflags, perms)
-	if fd == -1 then return reterr() end
-	return fd
-end
-
 cdef(string.format([[
 void* mmap(void *addr, size_t length, int prot, int flags,
 	int fd, off64_t offset) asm("%s");
@@ -996,147 +991,215 @@ int msync(void *addr, size_t length, int flags);
 int mprotect(void *addr, size_t len, int prot);
 ]], osx and 'mmap' or 'mmap64'))
 
---mmap() access flags
 local PROT_READ  = 1
 local PROT_WRITE = 2
 local PROT_EXEC  = 4
 
---mmap() flags
+local function protect_bits(write, exec, copy)
+	return bor(PROT_READ,
+		(write or copy) and PROT_WRITE or 0,
+		exec and PROT_EXEC or 0)
+end
+
+local function mmap(...)
+	local addr = C.mmap(...)
+	local ok, err = check(ffi.cast('intptr_t', addr) ~= -1, nil, mmap_errors)
+	if not ok then return nil, err end
+	return addr
+end
+
 local MAP_SHARED  = 1
 local MAP_PRIVATE = 2 --copy-on-write
 local MAP_FIXED   = 0x0010
 local MAP_ANON    = osx and 0x1000 or 0x0020
 
---msync() flags
-local MS_ASYNC      = 1
-local MS_INVALIDATE = 2
-local MS_SYNC       = osx and 0x0010 or 4
+function fs_map(file, access, size, offset, addr, tagname, perms)
 
-local function protect_bits(write, exec, copy)
-	return bit.bor(
-		PROT_READ,
-		bit.bor(
-			(write or copy) and PROT_WRITE or 0,
-			exec and PROT_EXEC or 0))
-end
+	local write, exec, copy = parse_access(access or '')
 
-function fs_map(file, write, exec, copy, size, offset, addr, tagname)
+	--open the file, if any.
 
-	local fd, close
-	if type(file) == 'string' then
-		local errmsg
-		fd, errmsg = open(file, write, exec)
-		if not fd then return nil, errmsg end
-	elseif tagname then
-		tagname = '/'..tagname
-		local errmsg
-		fd, errmsg = open(tagname, write, exec, true)
-		if not fd then return nil, errmsg end
+	local function exit(err)
+		if file then file:close() end
+		return nil, err
 	end
-	local f = fs.wrap_fd(fd)
+
+	file = file or tagname and check_tagname(tagname)
+
+	if type(file) == 'string' then
+		local flags = write and 'rdwr creat' or 'rdonly'
+		local perms = perms and parse_perms(perms)
+			or tonumber('400', 8) +
+				(write and tonumber('200', 8) or 0) +
+				(exec  and tonumber('100', 8) or 0)
+		local err
+		file, err = fs.open(file, {
+				flags = flags, perms = perms,
+				open = tagname and librt.shm_open,
+				shm = tagname and true or nil,
+			})
+		if not file then
+			return nil, err
+		end
+	end
 
 	--emulate Windows behavior for missing size and size mismatches.
+
 	if file then
-		if not size then --if size not given, assume entire file
-			local filesize, errmsg = f:attr'size'
+		if not size then --if size not given, assume entire file.
+			local filesize, err = file:attr'size'
 			if not filesize then
-				if close then close() end
-				return nil, errmsg
-			end
-			--32bit OSX allows mapping on 0-sized files, dunno why
-			if filesize == 0 then
-				if close then close() end
-				return nil, 'file_too_short'
+				return exit(err)
 			end
 			size = filesize - offset
-		elseif write then --if writable file too short, extend it
-			local filesize = f:attr'size'
-			if filesize < offset + size then
-				local ok, err = f:seek(offset + size)
-				if not ok then
-					if close then close() end
-					return nil, errmsg
-				end
-				local ok, errmsg = f:truncate()
-				if not ok then
-					if close then close() end
-					return nil, errmsg
-				end
-			end
-		else --if read/only file too short
-			local filesize, errmsg = mmap.filesize(fd)
+		elseif write then --if writable file too short, extend it.
+			local filesize, err = file:attr'size'
 			if not filesize then
-				if close then close() end
-				return nil, errmsg
+				return exit(err)
 			end
 			if filesize < offset + size then
-				return nil, 'file_too_short'
+				local ok, err = file:truncate(offset + size)
+				if not ok then
+					return exit(err)
+				end
+			end
+		else --if read/only file too short.
+			local filesize, err = file:attr'size'
+			if not filesize then
+				return exit(err)
+			end
+			if filesize < offset + size then
+				return exit'file_too_short'
 			end
 		end
-	elseif write then
-		--NOTE: lseek() is not defined for shm_open()'ed fds
-		local ok = C.ftruncate(fd, size) == 0
-		if not ok then return check() end
 	end
 
-	--flush the buffers before mapping to see the current view of the file.
-	if file then
-		local ret = C.fsync(fd)
-		if ret == -1 then
-			local err = ffi.errno()
-			if close then close() end
-			return reterr(err)
-		end
-	end
+	--mmap the file.
 
 	local protect = protect_bits(write, exec, copy)
 
-	local flags = bit.bor(
+	local flags = bor(
 		copy and MAP_PRIVATE or MAP_SHARED,
-		fd and 0 or MAP_ANON,
+		file and 0 or MAP_ANON,
 		addr and MAP_FIXED or 0)
 
-	local addr = C.mmap(addr, size, protect, flags, fd or -1, offset)
+	local addr, err = mmap(addr, size, protect, flags, file and file.fd or -1, offset)
+	if not addr then return exit(err) end
 
-	local ok = ffi.cast('intptr_t', addr) ~= -1
-	if not ok then
-		local err = ffi.errno()
-		if close then close() end
-		return reterr(err)
-	end
+	--create the map object.
+
+	local MS_ASYNC      = 1
+	local MS_INVALIDATE = 2
+	local MS_SYNC       = osx and 0x0010 or 4
 
 	local function flush(self, async, addr, sz)
 		if type(async) ~= 'boolean' then --async arg is optional
 			async, addr, sz = false, async, addr
 		end
 		local addr = fs.aligned_addr(addr or self.addr, 'left')
-		local flags = bit.bor(async and MS_ASYNC or MS_SYNC, MS_INVALIDATE)
-		local ok = C.msync(addr, sz or self.size, flags) ~= 0
-		if not ok then return reterr() end
+		local flags = bor(async and MS_ASYNC or MS_SYNC, MS_INVALIDATE)
+		local ok = C.msync(addr, sz or self.size, flags) == 0
+		if not ok then return check(false) end
 		return true
 	end
 
 	local function free()
 		C.munmap(addr, size)
-		if close then close() end
+		exit()
 	end
 
 	local function unlink()
-		assert(tagname, 'no tagname given')
-		librt.shm_unlink(tagname)
+		return fs.unlink_mapfile(tagname)
 	end
 
-	return {addr = addr, size = size, free = free, flush = flush,
-		unlink = unlink, protect = protect}
-end
+	return {addr = addr, size = size, free = free,
+		flush = flush, unlink = unlink, access = access}
 
-function fs.protect(addr, size, access)
-	local write, exec = parse_access(access or 'x')
-	local protect = protect_bits(write, exec)
-	checkz(C.mprotect(addr, size, protect))
 end
 
 function fs.unlink_mapfile(tagname)
-	librt.shm_unlink('/'..check_tagname(tagname))
+	local ok, err = check(librt.shm_unlink(check_tagname(tagname)) == 0)
+	if ok or err == 'not_found' then return true end
+	return nil, err
 end
 
+function fs.protect(addr, size, access)
+	local protect = protect_bits(parse_access(access or 'x'))
+	return check(C.mprotect(addr, size, protect) == 0)
+end
+
+--mirror buffer --------------------------------------------------------------
+
+if linux then
+
+cdef'int memfd_create(const char *name, unsigned int flags);'
+local MFD_CLOEXEC = 0x0001
+
+function fs.mirror_buffer(size, addr)
+
+	local size = fs.aligned_size(size or 1)
+
+	local fd = C.memfd_create('mirror_buffer', MFD_CLOEXEC)
+	if fd == -1 then return check() end
+
+	local addr1, addr2
+
+	local function free()
+		if addr1 then C.munmap(addr1, size) end
+		if addr2 then C.munmap(addr2, size) end
+		if fd then C.close(fd) end
+	end
+
+	local ok, err = check(C.ftruncate(fd, size) == 0)
+	if not ok then
+		free()
+		return nil, err
+	end
+
+	for i = 1, 100 do
+
+		local addr = ffi.cast('void*', addr)
+		local flags = bor(MAP_PRIVATE, MAP_ANON, addr ~= nil and MAP_FIXED or 0)
+		local addr0, err = mmap(addr, size * 2, 0, flags, 0, 0)
+		if not addr0 then
+			free()
+			return nil, err
+		end
+
+		C.munmap(addr0, size * 2)
+
+		local protect = bor(PROT_READ, PROT_WRITE)
+		local flags = bor(MAP_SHARED, MAP_FIXED)
+
+		addr1, err = mmap(addr0, size, protect, flags, fd, 0)
+		if not addr1 then
+			goto skip
+		end
+
+		addr2 = ffi.cast('uint8_t*', addr1) + size
+		addr2, err = mmap(addr2, size, protect, flags, fd, 0)
+		if not addr2 then
+			C.munmap(addr1, size)
+			goto skip
+		end
+
+		C.close(fd)
+		fd = nil
+
+		do return {addr = addr1, size = size, free = free} end
+
+		::skip::
+	end
+
+	free()
+	return nil, 'max_tries'
+
+end
+
+elseif osx then
+
+function fs.mirror_buffer(size, addr)
+	error'NYI'
+end
+
+end --if linux

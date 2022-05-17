@@ -8,6 +8,8 @@
 
 local ffi = require'ffi'
 
+assert(ffi.abi'win', 'platform not Windows')
+
 if ffi.abi'64bit' then
 	ffi.cdef[[
 		typedef int32_t  __int1632;

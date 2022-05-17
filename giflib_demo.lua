@@ -1,107 +1,96 @@
-local player = require'cplayer'
+
 local giflib = require'giflib'
-local cairo = require'cairo'
-local glue = require'glue'
 local ffi = require'ffi'
-
-require'unit'
-
-local files = dir'media/gif/*'
+local fs = require'fs'
+local testui = require'testui'
 
 local white_bg = false
-local source_type = 'path'
-local opaque = false
 local max_cutsize = 65536
 local cut_size = max_cutsize
+local opaque = false
+local bottom_up = false
+local stride_aligned = false
 local frame_state = {} --{[filename] = {frame = <current_frame_no>, time = <next_frame_time>}
 
-function player:on_render(cr)
+function testui:repaint()
 
 	self:checkerboard()
 
-	white_bg = self:mbutton{
-		id = 'white_bg', x = 10, y = 10, w = 130, h = 24,
-		texts = {[true] = 'white bg', [false] = 'dark bg'},
-		values = {true, false},
-		selected = white_bg}
+	self:pushgroup'down'
 
-	self.theme = self.themes[white_bg and 'light' or 'dark']
+	self:pushgroup'right'
+	self.min_w = 100
 
-	source_type = self:mbutton{
-	id = 'source_type', x = 150, y = 10, w = 290, h = 24,
-	values = {'path', 'cdata', 'string'},
-	selected = source_type}
+	local _
+	_,cut_size  = self:slide('cut_size', 'cut size', cut_size, 0, max_cutsize, 1)
+	_,opaque    = self:button('opaque', opaque)
+	_,bottom_up = self:button('bottom_up', bottom_up)
+	_,stride_aligned = self:button('stride_aligned', stride_aligned)
 
-	if source_type ~= 'path' then
-		cut_size = self:slider{
-			id = 'cut_size', x = 700, y = 10, w = 190, h = 24,
-			i0 = 0, i1 = max_cutsize, i = cut_size,
-			text = 'cut size'}
-	end
+	self:nextgroup()
+	self.y = self.y + 10
 
-	opaque = self:mbutton{
-		id = 'mode', x = 450, y = 10, w = 190, h = 24,
-		texts = {[true] = 'opaque', [false] = 'transparent'},
-		values = {true, false},
-		selected = opaque}
+	for filename in fs.dir'media/gif' do
+		local path = 'media/gif/'..filename
 
-	local cx, cy = 0, 40
-	local maxh = 0
-
-	for i,filename in ipairs(files) do
-
-		local t = {}
-		if source_type == 'path' then
-			t.path = filename
-		elseif source_type == 'cdata' then
-			local s = glue.readfile(filename)
-			s = s:sub(1, cut_size)
-			local cdata = ffi.new('unsigned char[?]', #s+1, s)
-			t.cdata = cdata
-			t.size = #s
-		elseif source_type == 'string' then
-			local s = glue.readfile(filename)
-			s = s:sub(1, cut_size)
-			t.string = s
+		local f = assert(fs.open(path))
+		local bufread = f:buffered_read()
+		local left = cut_size
+		local function read(buf, sz)
+			if left == 0 then return 0 end
+			local readsz, err = bufread(buf, math.min(left, sz))
+			if not readsz then return nil, err end
+			left = left - readsz
+			return readsz
 		end
-		t.opaque = opaque
 
-		local ok,err = pcall(function()
+		local gif, err = giflib.open{read = read}
+		if not gif then
+			f:close()
+			goto skip
+		end
 
-			local gif = giflib.load(t)
+		local frames, err = gif:load{opaque = opaque,
+			accept = {bottom_up = bottom_up, stride_aligned = stride_aligned}}
+		if not frames then
+			gif:free()
+			f:close()
+			goto skip
+		end
 
-			local state = frame_state[filename]
-			if not state then
-				state = {frame = 0, time = 0}
-				frame_state[filename] = state
+		local state = frame_state[filename]
+		if not state then
+			state = {frame = 0, clock = 0}
+			frame_state[filename] = state
+		end
+
+		local image
+		if self.clock >= state.clock then
+			state.frame = state.frame + 1
+			if state.frame > #frames then
+				state.frame = 1
 			end
+			image = frames[state.frame]
+			state.clock = self.clock + (image.delay or 0)
+		else
+			image = frames[state.frame]
+		end
 
-			local image
-			if self.clock >= state.time then
-				state.frame = state.frame + 1
-				if state.frame > #gif.frames then
-					state.frame = 1
-				end
-				image = gif.frames[state.frame]
-				state.time = self.clock + (image.delay_ms or 0) / 1000
-			else
-				image = gif.frames[state.frame]
-			end
+		if self.x + image.w >= self.window:client_size() then --wrap
+			self:nextgroup()
+		end
 
-			if cx + gif.w > self.w then
-				cx = 0
-				cy = cy + maxh + 10
-				maxh = 0
-			end
+		self:image(image)
 
-			self:image{x = cx + image.x, y = cy + image.y, image = image}
+		gif:free()
+		f:close()
 
-			cx = cx + gif.w + 10
-			maxh = math.max(maxh, gif.h)
-		end)
-
+		::skip::
 	end
+
+	collectgarbage()
 end
 
-player:play()
-
+testui:init()
+testui:continuous_repaint(true)
+testui:run()

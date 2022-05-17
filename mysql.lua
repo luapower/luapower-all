@@ -988,8 +988,8 @@ local function recv_field_packets(self, field_count, field_attrs, opt)
 	end
 	if field_attrs then
 		for name, attrs in pairs(field_attrs) do
-			if cols[name] then
-				update(cols[name], attrs)
+			if fields[name] then
+				update(fields[name], attrs)
 			end
 		end
 	end

@@ -20,6 +20,8 @@ test(glue.clamp(6, 2, 5), 5)
 test(#glue.random_string(1), 1)
 test(#glue.random_string(200), 200)
 
+assert(glue.uuid():gsub('[0-9a-f]', 'x') == 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
+
 --tables ---------------------------------------------------------------------
 
 test(glue.count({[0] = 1, 2, 3, a = 4}), 4)
@@ -442,17 +444,6 @@ assert(x == 1)
 assert(y == 1)
 assert(z == 1)
 assert(p == 1)
-
-glue.luapath('foo')
-glue.cpath('bar')
-glue.luapath('baz', 'after')
-glue.cpath('zab', 'after')
-local so = package.cpath:match'%.dll' and 'dll' or 'so'
-local norm = function(s) return s:gsub('/', package.config:sub(1,1)) end
-assert(package.path:match('^'..glue.esc(norm'foo/?.lua;')))
-assert(package.cpath:match('^'..glue.esc(norm'bar/?.'..so..';')))
-assert(package.path:match(glue.esc(norm'baz/?.lua;baz/?/init.lua')..'$'))
-assert(package.cpath:match(glue.esc(norm'zab/?.'..so)..'$'))
 
 --ffi
 

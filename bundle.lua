@@ -3,6 +3,7 @@
 -- Written by Cosmin Apreutesei. Public Domain.
 
 local ffi = require'ffi'
+local fs = require'fs'
 local external_dir = require'package.exedir'
 local BBIN_PREFIX = 'Bbin_'
 
@@ -42,7 +43,6 @@ local function canopen_blob(file)
 end
 
 local function fs_open_blob(file)
-	local fs = require'fs'
 	local buf, sz = blob_data(file)
 	if not buf then return nil end
 	return fs.open_buffer(buf, sz)
@@ -95,7 +95,6 @@ function bundle.open_dir_listing(dir, s)
 end
 
 local function fs_dir_blob(dir)
-	local fs = require'fs'
 	return bundle.open_dir_listing(dir, load_blob(dir))
 end
 
@@ -111,11 +110,11 @@ local function load_file(file)
 end
 
 local function mmap_file(file)
-	local s = load_file(file)
-	if not s then return end
-	--TODO: use fs.mmap() here
-	return {data = ffi.cast('const void*', s), size = #s,
-		close = function() local _ = s; end}
+	local m, err = fs.map(file)
+	if not m then return nil, err end
+	m.data = ffi.cast('const void*', m.addr)
+	m.close = m.free
+	return m
 end
 
 local function canopen_file(file)
@@ -125,12 +124,10 @@ local function canopen_file(file)
 end
 
 function fs_open_file(file)
-	local fs = require'fs'
 	return (fs.open(file))
 end
 
 function fs_dir_file(dir)
-	local fs = require'fs'
 	if not fs.is(dir, 'dir') then return nil end
 	return fs.dir(dir)
 end

@@ -11,6 +11,7 @@ extensions:
   * [LuaJIT's bit, ffi and jit modules](http://luajit.org/extensions.html#modules)
   * [LuaJIT's extensions from Lua 5.2](http://luajit.org/extensions.html#lua52),
     including those enabled with `DLUAJIT_ENABLE_LUA52COMPAT`
+  * [LuaJIT's WIP string.buffer module](https://htmlpreview.github.io/?https://github.com/LuaJIT/LuaJIT/blob/v2.1/doc/ext_buffer.html)
   * [OpenResty's extensions](https://github.com/openresty/luajit2#openresty-extensions)
   * `package.exedir` module which returns the full path of the directory of the executable.
   * `package.exepath` module which returns the full path of the executable.

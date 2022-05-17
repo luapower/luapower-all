@@ -12,7 +12,7 @@ GZip compression can be enabled with `client.http.zlib = require'zlib'`.
 
 ## Status
 
-<warn>WIP<warn>
+<warn>Needs hostile testing<warn>
 
 ## API
 

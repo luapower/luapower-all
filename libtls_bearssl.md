@@ -1,2 +1,2 @@
 
-libtls API for BearSSL. Use it from Lua via [libtls].
+libtls API for [bearssl]. Use it from Lua via [libtls].

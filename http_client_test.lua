@@ -2,6 +2,8 @@
 local ffi = require'ffi'
 --ffi.tls_libname = 'tls_bearssl'
 ffi.tls_libname = 'tls_libressl'
+local logging = require'logging'
+logging.debug = true
 
 local client  = require'http_client'
 local time    = require'time'
@@ -21,19 +23,22 @@ function mbytes(n)
 end
 
 local client = client:new{
-	max_conn = 5,
+	max_conn = 1,
 	max_pipelined_requests = 10,
 	debug = {protocol = true},
 	libs = 'sock sock_libtls zlib',
 }
 local n = 0
-for i=1,1 do
+for i=1,5 do
+	--client.max_pipelined_requests = 0
 	client.thread(function()
-		print('sleep .5')
-		client.sleep(.5)
-		local res, req, err_class = client:request{
+		--print('sleep .5')
+		--client.sleep(.5)
+		local res, req, err = client:request{
 			--host = 'www.websiteoptimization.com', uri = '/speed/tweak/compress/',
+			--host = 'www.libpng.org', uri = '/pub/png/spec/1.2/PNG-Chunks.html',
 			host = 'luapower.com', uri = '/',
+			--max_redirects = 0,
 			--https = true,
 			--host = 'mokingburd.de',
 			--host = 'www.google.com', https = true,
@@ -45,6 +50,7 @@ for i=1,1 do
 			--request_timeout = 0.5,
 			--reply_timeout = 0.3,
 		}
+		require'pp'(res, req, err)
 		if res then
 			n = n + (res and res.content and #res.content or 0)
 		else

@@ -6,9 +6,10 @@ if not ... then require'fs_test'; return end
 
 local ffi = require'ffi'
 local bit = require'bit'
+local glue = require'glue'
 local path = require'path'
 
-local min, max, floor, ceil, log =
+local min, max, floor, ceil, ln =
 	math.min, math.max, math.floor, math.ceil, math.log
 
 local C = ffi.C
@@ -28,78 +29,45 @@ file = {} --file object methods
 stream = {} --FILE methods
 dir = {} --dir listing object methods
 
-function update(dt, t)
-	for k,v in pairs(t) do dt[k]=v end
-	return dt
-end
-
---binding tools --------------------------------------------------------------
-
-local char_ptr_ct = ffi.typeof'char*'
-local uint64_ct = ffi.typeof'uint64_t'
+local uint64_ct   = ffi.typeof'uint64_t'
 local void_ptr_ct = ffi.typeof'void*'
-local uintptr_ct = ffi.typeof'uintptr_t'
+local uintptr_ct  = ffi.typeof'uintptr_t'
 
---assert() with string formatting.
-function assert(v, err, ...)
-	if v then return v end
-	err = err or 'assertion failed!'
-	if select('#',...) > 0 then
-		err = string.format(err,...)
-	end
-	error(err, 2)
-end
+local u8p = glue.u8p
+local readall = glue.readall
 
---next power of two (from glue).
-local function nextpow2(x)
-	return max(0, 2^(ceil(log(x) / log(2))))
-end
-
---static, auto-growing buffer allocation pattern (from glue, simplified).
-function buffer(ctype)
-	local ctype = ffi.typeof(ctype)
-	local buf, len = nil, -1
-	return function(minlen)
-		if minlen > len then
-			len = nextpow2(minlen)
-			buf = ctype(len)
-		end
-		return buf, len
-	end
-end
+memoize = glue.memoize
+assert = glue.assert
+buffer = glue.buffer
+update = glue.update
 
 --error reporting ------------------------------------------------------------
 
 cdef'char *strerror(int errnum);'
 
-local error_classes = {
+local errors = {
 	[2] = 'not_found', --ENOENT, _open_osfhandle(), _fdopen(), open(), mkdir(),
 	                   --rmdir(), opendir(), rename(), unlink()
 	[5] = 'io_error', --EIO, readlink(), read()
 	[13] = 'access_denied', --EACCESS, mkdir() etc.
 	[17] = 'already_exists', --EEXIST, open(), mkdir()
 	[20] = 'not_found', --ENOTDIR, opendir()
-	--[21] = 'access_denied', --EISDIR, unlink()
+	[21] = 'is_dir', --EISDIR, unlink()
 	[linux and 39 or osx and 66 or ''] = 'not_empty', --ENOTEMPTY, rmdir()
 	[28] = 'disk_full', --ENOSPC: fallocate()
 	[linux and 95 or ''] = 'not_supported', --EOPNOTSUPP: fallocate()
 	[linux and 32 or ''] = 'eof', --EPIPE: write()
-	--TODO: mmap
-	[12] = 'out_of_mem', --ENOMEM
-	[22] = 'file_too_short', --EINVAL
-	[27] = 'disk_full', --EFBIG
-	[osx and 69 or 122] = 'disk_full', --EDQUOT
 }
 
-function check_errno(ret, errno)
+function check_errno(ret, errno, xtra_errors)
 	if ret then return ret end
 	errno = errno or ffi.errno()
-	local err = error_classes[errno]
+	local err = errors[errno] or (xtra_errors and xtra_errors[errno])
 	if not err then
 		local s = C.strerror(errno)
 		err = s ~= nil and ffi.string(s) or 'Error '..errno
 	end
-	return ret, err, errno
+	return ret, err
 end
 
 --flags arg parsing ----------------------------------------------------------
@@ -186,22 +154,18 @@ function fs.isfile(f)
 end
 
 --returns a read(buf, maxsz) -> sz function which reads ahead from file.
-function file.buffered_read(f, ctype, bufsize)
-	local elem_ct = ffi.typeof(ctype or 'char')
-	local ptr_ct = ffi.typeof('$*', elem_ct)
-	assert(ffi.sizeof(elem_ct) == 1)
-	local buf_ct = ffi.typeof('$[?]', elem_ct)
+function file.buffered_read(f, bufsize)
+	local ptr_ct = ffi.typeof'uint8_t*'
+	local buf_ct = ffi.typeof'uint8_t[?]'
 	local bufsize = bufsize or 4096
 	local buf = buf_ct(bufsize)
 	local ofs, len = 0, 0
 	local eof = false
 	return function(dst, sz)
 		if not dst then --skip bytes (libjpeg semantics)
-			local pos0, err = f:seek'cur'
-			if not pos0 then return nil, err end
-			local pos, err = f:seek('cur', sz)
-			if not pos then return nil, err end
-			return pos - pos0
+			local i, err = f:seek('cur')    ; if not i then return nil, err end
+			local j, err = f:seek('cur', sz); if not j then return nil, err end
+			return j - i
 		end
 		local rsz = 0
 		while sz > 0 do
@@ -218,7 +182,7 @@ function file.buffered_read(f, ctype, bufsize)
 					return rsz
 				end
 			end
-			--TODO: don't copy, read less.
+			--TODO: benchmark: read less instead of copying.
 			local n = min(sz, len)
 			ffi.copy(ffi.cast(ptr_ct, dst) + rsz, buf + ofs, n)
 			ofs = ofs + n
@@ -241,7 +205,7 @@ stream_ct = ffi.typeof'struct FILE'
 
 function stream.close(fs)
 	local ok = C.fclose(fs) == 0
-	if not ok then return check_errno() end
+	if not ok then return check_errno(false) end
 	return true
 end
 
@@ -271,7 +235,7 @@ function file:write(buf, sz, expires)
 		end
 		assert(len > 0)
 		if type(buf) == 'string' then --only make pointer on the rare second iteration.
-			buf = ffi.cast(char_ptr_ct, buf)
+			buf = ffi.cast(u8p, buf)
 		end
 		buf = buf + len
 		sz  = sz  - len
@@ -292,33 +256,23 @@ function file:readn(buf, sz, expires)
 	return true
 end
 
---truncate/getsize/setsize ---------------------------------------------------
-
---get/set file size implementations in terms of f:seek() and f:truncate().
---to be overwritten by backends if they have better ones.
-
-function file_getsize(f)
-	local curpos, err = f:seek()
-	if not curpos then return nil, err end
-	local size, err = f:seek'end'
-	if not size then return nil, err end
-	if curpos ~= size then
-		local _, err = f:seek('set', curpos)
-		if not _ then return nil, err end
+local u8a = ffi.typeof'uint8_t[?]'
+function file:readall(expires)
+	if self.type == 'file' then
+		local size, err = self:attr'size'; if not size then return nil, err end
+		local offset, err = self:seek(); if not offset then return nil, err end
+		local sz = size - offset
+		if sz == 0 then return nil, 0 end
+		local buf = ffi.new(u8a, sz)
+		local n, err = self:read(buf, sz)
+		if not n then return nil, err end
+		if n < sz then return nil, 'partial', buf, n end
+		return buf, n
+	elseif self.type == 'pipe' then
+		return readall(self.read, self, expires)
+	else
+		assert(false)
 	end
-	return size
-end
-
-function file_setsize(f, newsize, opt)
-	local curpos, err = f:seek()
-	if not curpos then return nil, err end
-	local _, err = f:seek('set', newsize)
-	if not _ then return nil, err end
-	local _, err = f:truncate(opt)
-	if not _ then return nil, err end
-	local _, err = f:seek('set', curpos)
-	if not _ then return nil, err end
-	return newsize
 end
 
 --filesystem operations ------------------------------------------------------
@@ -405,13 +359,14 @@ function fs.remove(dirfile, recursive)
 	end
 end
 
-function fs.cd(path)
+function fs.cwd(path)
 	if path then
 		return chdir(path)
 	else
 		return getcwd()
 	end
 end
+fs.cd = fs.cwd
 
 --symlinks -------------------------------------------------------------------
 
@@ -449,6 +404,10 @@ end
 function fs.exedir()
 	return path.dir(fs.exepath())
 end
+
+fs.scriptdir = memoize(function()
+	return path.normalize((path.combine(initial_cwd(), glue.bin)))
+end)
 
 --file attributes ------------------------------------------------------------
 
@@ -578,6 +537,23 @@ end
 
 --memory mapping -------------------------------------------------------------
 
+do
+local m = ffi.new[[
+	union {
+		struct { uint32_t lo; uint32_t hi; };
+		uint64_t x;
+	}
+]]
+function split_uint64(x)
+	m.x = x
+	return m.hi, m.lo
+end
+function join_uint64(hi, lo)
+	m.hi, m.lo = hi, lo
+	return m.x
+end
+end
+
 function fs.aligned_size(size, dir) --dir can be 'l' or 'r' (default: 'r')
 	if ffi.istype(uint64_ct, size) then --an uintptr_t on x64
 		local pagesize = fs.pagesize()
@@ -598,141 +574,50 @@ function fs.aligned_addr(addr, dir)
 		fs.aligned_size(ffi.cast(uintptr_ct, addr), dir))
 end
 
-function map_check_tagname(tagname)
-	assert(tagname, 'no tagname given')
-	assert(not tagname:find'[/\\]', 'invalid tagname')
-	return tagname
-end
-
---[[
-function protect(map, offset, size)
-	local offset = offset or 0
-	assert(offset >= 0 and offset < map.size, 'offset out of bounds')
-	local size = min(size or map.size, map.size - offset)
-	assert(size >= 0, 'negative size')
-	local addr = ffi.cast('const char*', map.addr) + offset
-	fs.protect(addr, size)
-end
-]]
-
-function map_access_args(access)
-	assert(not access:find'[^rwcx]', 'invalid access flags')
-	local write = access:find'w' and true or false
-	local copy = access:find'c' and true or false
-	local exec = access:find'x' and true or false
+function parse_access(s)
+	assert(not s:find'[^rwcx]', 'invalid access flags')
+	local write = s:find'w' and true or false
+	local exec  = s:find'x' and true or false
+	local copy  = s:find'c' and true or false
 	assert(not (write and copy), 'invalid access flags')
 	return write, exec, copy
 end
 
-local function map_args(t,...)
+function check_tagname(tagname)
+	assert(not tagname:find'[/\\]', 'tagname cannot contain `/` or `\\`')
+	return tagname
+end
 
-	--dispatch args
-	local file, access, size, offset, addr, tagname
+function file.map(f, ...)
+	local access, size, offset, addr
 	if type(t) == 'table' then
-		file, access, size, offset, addr, tagname =
-			t.file, t.access, t.size, t.offset, t.addr, t.tagname
+		access, size, offset, addr = t.access, t.size, t.offset, t.addr
 	else
-		file, access, size, offset, addr, tagname = t, ...
+		offset, size, addr, access = ...
 	end
+	return fs.map(f, access or f.access, size, offset, addr)
+end
 
-	--apply defaults/convert
-	local access = access or ''
-	local offset = file and offset or 0
-	local addr = addr and ffi.cast(void_ptr_ct, addr)
-	local access_write, access_exec, access_copy = map_access_args(access)
-
-	--check
+function fs.map(t,...)
+	local file, access, size, offset, addr, tagname, perms
+	if type(t) == 'table' then
+		file, access, size, offset, addr, tagname, perms =
+			t.file, t.access, t.size, t.offset, t.addr, t.tagname, t.perms
+	else
+		file, access, size, offset, addr, tagname, perms = t, ...
+	end
+	assert(not file or type(file) == 'string' or fs.isfile(file), 'invalid file argument')
 	assert(file or size, 'file and/or size expected')
-	assert(not (file and tagname), 'cannot have both file and tagname')
 	assert(not size or size > 0, 'size must be > 0')
+	local offset = file and offset or 0
 	assert(offset >= 0, 'offset must be >= 0')
 	assert(offset == fs.aligned_size(offset), 'offset not page-aligned')
+	local addr = addr and ffi.cast(void_ptr_ct, addr)
 	assert(not addr or addr ~= nil, 'addr can\'t be zero')
-	assert(not addr or addr == fs.aligned_addr(addr),
-		'addr not page-aligned')
-	if tagname then check_tagname(tagname) end
-
-	return file, access_write, access_exec, access_copy,
-		size, offset, addr, tagname
-end
-
-function fs.map(...)
-	return fs_map(map_args(...))
-end
-
-function file.mirror_map(f, t, ...)
-	local size, times, addr
-	if type(t) == 'table' then
-		size, times, addr = t.size, t.times, t.addr
-	else
-		size, times, addr = t, ...
-	end
-	return fs.mirror_map(f, size, times, addr)
-end
-
-function fs.mirror_map(f, ...)
-
-	--dispatch args
-	local file, size, times, addr
-	if type(t) == 'table' then
-		file, size, times, addr = t.file, t.size, t.times, t.addr
-	else
-		file, size, times, addr = t, ...
-	end
-
-	--apply defaults/convert/check
-	local size = fs.aligned_size(size or fs.pagesize())
-	local times = times or 2
-	local access = 'w'
-	assert(times > 0, 'times must be > 0')
-
-	local retries = -1
-	local max_retries = 100
-	::try_again::
-	retries = retries + 1
-	if retries > max_retries then
-		return nil, 'maximum retries reached', 'max_retries'
-	end
-
-	--try to allocate a contiguous block
-	local map, err = fs.map{
-		file = file,
-		size = size * times,
-		access = access,
-		addr = addr,
-	}
-	if not map then
-		return nil, err
-	end
-
-	--now free it so we can allocate it again in chunks all pointing at
-	--the same offset 0 in the file, thus mirroring the same data.
-	local maps = {addr = map.addr, size = size}
-	map:free()
-
-	local addr = ffi.cast(char_ptr_ct, maps.addr)
-
-	function maps:free()
-		for _,map in ipairs(self) do
-			map:free()
-		end
-	end
-
-	for i = 1, times do
-		local map, err = fs.map{
-			file = file,
-			size = size,
-			addr = addr + (i - 1) * size,
-			access = access,
-		}
-		if not map then
-			maps:free()
-			goto try_again
-		end
-		maps[i] = map
-	end
-
-	return maps
+	assert(not addr or addr == fs.aligned_addr(addr), 'addr not page-aligned')
+	assert(not (file and tagname), 'cannot have both file and tagname')
+	assert(not tagname or not tagname:find'\\', 'tagname cannot contain `\\`')
+	return fs_map(file, access, size, offset, addr, tagname, perms)
 end
 
 --memory streams -------------------------------------------------------------
@@ -744,7 +629,7 @@ function fs.open_buffer(buf, sz, mode)
 	mode = mode or 'r'
 	assert(mode == 'r' or mode == 'w', 'invalid mode: "%s"', mode)
 	local f = {
-		buffer = ffi.cast(char_ptr_ct, buf),
+		buffer = ffi.cast(u8p, buf),
 		size = sz,
 		offset = 0,
 		mode = mode,
@@ -800,11 +685,10 @@ function vfile._seek(f, whence, offset)
 	return offset
 end
 
-function vfile:truncate()
-	if f.offset > f.size then
-		return nil, 'access_denied'
-	end
-	f.size = f.offset
+function vfile:truncate(size)
+	local pos, err = f:seek(size)
+	if not pos then return nil, err end
+	f.size = size
 	return true
 end
 

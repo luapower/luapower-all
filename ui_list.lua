@@ -11,8 +11,6 @@ list.iswidget = true
 
 list.layout = 'flexbox'
 
-function list:
-
 if not ... then require('ui_demo')(function(ui, win)
 
 	ui:list{

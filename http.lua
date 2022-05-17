@@ -388,7 +388,7 @@ function http:read_body(headers, write, from_server, close, state)
 		end))
 	else
 		self:read_body_to_writer(headers, write, from_server, close, state)
-		return true
+		return true --signal that content was read.
 	end
 end
 
@@ -423,12 +423,7 @@ function http:build_request(t, cookies)
 
 	req.headers['cookie'] = cookies
 
-	req.content, req.content_size = t.content, t.content_size
-	if self.zlib and t.compress ~= false then
-		req.headers['content-encoding'] = 'gzip'
-		req.content, req.content_size =
-			self:encode_content(req.content, req.content_size, 'gzip')
-	end
+	req.content, req.content_size = t.content or '', t.content_size
 
 	self:set_body_headers(req.headers, req.content, req.content_size, req.close)
 	glue.update(req.headers, t.headers)
@@ -530,7 +525,7 @@ function http:read_response(req)
 
 	local receive_content = req.receive_content
 	if self:should_redirect(req, res) then
-		receive_content = nil --ignore the body
+		receive_content = nil --ignore the body (it's not the body we want)
 		res.redirect_location = self:check(res.headers['location'], 'no location')
 		res.receive_content = req.receive_content
 	end

@@ -62,10 +62,6 @@ return function(app)
 
 	--config ------------------------------------------------------------------
 
-	config('app_name', app_name)
-	config('var_dir' , var_dir)
-	config('tmp_dir' , tmp_dir)
-
 	if app.conf then
 		for k,v in pairs(app.conf) do
 			config(k, v)

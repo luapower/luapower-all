@@ -216,12 +216,16 @@ do
 	}
 
 	local function load_files(t, loadfile)
+		local st = {}
 		for k,v in pairs(t) do
-			if glue.ends(k, '_file') then
+			if k:find'_file$' then
 				--NOTE: bearssl doesn't handle CRLF.
-				t[k:gsub('_file$', '')] = assert(loadfile(v)):gsub('\r', '')
+				st[k:gsub('_file$', '')] = assert(loadfile(v)):gsub('\r', '')
 				t[k] = nil
 			end
+		end
+		for k,v in pairs(st) do
+			t[k] = v
 		end
 	end
 

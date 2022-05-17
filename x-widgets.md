@@ -3,11 +3,7 @@ Model-driven live-editable web components in pure JavaScript.
 
 ## Overview
 
-[Check out the demo](http://luapower.com/x-widgets-demo.html) before anything
-(but note that it may be broken until the first stable version is released.)
-
-See the [TODO list](https://trello.com/b/xde8hdAZ/luapower)
-because this is still in active development.
+__UPDATE:__ this library is now developed as part of [Allegory SDK](https://github.com/allegory-software/allegory-sdk).
 
 This library is designed for data-dense business-type apps with a focus
 on data entry and data navigation.

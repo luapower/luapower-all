@@ -35,11 +35,6 @@ local function test_load_all()
 	print('ok ('..m..')')
 end
 
-local function test_load_mysql()
-	local mysql = require'mysql_connector'
-	mysql.config()
-end
-
 local platos = {Windows = 'mingw', Linux = 'linux', OSX = 'osx'}
 local function current_platform()
 	return platos[ffi.os]..(ffi.abi'32bit' and '32' or '64')
@@ -82,7 +77,6 @@ local function test_dir()
 	end
 end
 
-test_load_all()
-test_load_mysql()
+--test_load_all()
 test_blob()
 test_dir()

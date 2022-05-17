@@ -1,5 +1,6 @@
-local tls = require'libtls'
 local ffi = require'ffi'
+ffi.tls_libname = 'tls_bearssl'
+local tls = require'libtls'
 
 local c = tls.client{
 
@@ -10,7 +11,7 @@ local c = tls.client{
 	--dheparams = 'a',
 	--ecdhecurve = 'x',
 	--ecdhecurves = 'z,y',
-	ocsp_staple = 'x',
+	--ocsp_staple = 'x',
 	--protocols = 'x',
 	verify_depth = true,
 

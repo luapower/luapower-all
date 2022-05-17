@@ -25,6 +25,7 @@ __math__
 `glue.nextpow2(x) -> y`                                            next power-of-2 number
 `glue.repl(x, v, r) -> x`                                          replace v with r in x
 `glue.random_string(n) -> s`                                       generate random string of length `n`
+`glue.uuid() -> s`                                                 generate random UUID v4
 __varargs__
 `glue.pack(...) -> t`                                              pack varargs
 `glue.unpack(t, [i] [,j]) -> ...`                                  unpack varargs
@@ -107,8 +108,8 @@ __errors__
 `glue.assert(v [,message [,format_args...]]) -> v`                 assert with error message formatting
 `glue.protect(func) -> protected_func`                             wrap an error-raising function
 `glue.pcall(f, ...) -> true, ... | false, traceback`               pcall with traceback
-`glue.fpcall(f, ...) -> result | nil, traceback`                   coding with finally and except
-`glue.fcall(f, ...) -> result`
+`glue.fpcall(f, ...) -> result | nil, traceback`                   coding with finally and except (protected)
+`glue.fcall(f, ...) -> result`                                     coding with finally and except
 __modules__
 `glue.module([name, ][parent]) -> M`                               create a module
 `glue.autoload(t, submodules) -> M`                                autoload table keys from submodules
@@ -122,6 +123,8 @@ __allocation__
 `glue.dynarray(ctype[,cap]) -> alloc(minlen|false) -> buf, minlen` auto-growing buffer that preserves data
 `glue.dynarray_pump([dynarray]) -> write(), collect()`             make a buffer with a `write()` API for writing into
 `glue.dynarray_loader([dynarray]) -> get(), put(), collect()`      make a buffer with a `get()/put()` API for writing into
+`glue.readall(read, self, ...) -> buf, len`                        repeat read based on a `read` function
+`glue.buffer_reader(buf, len) -> read`                             make a read function that consumes a buffer
 __ffi__
 `glue.addr(ptr) -> number | string`                                store pointer address in Lua value
 `glue.ptr([ctype, ]number|string) -> ptr`                          convert address to pointer
@@ -179,7 +182,14 @@ If x == v, return r, otherwise return x.
 
 ### `glue.random_string(n) -> s`
 
-Generate random string of length `n`. If you're not on LuaJIT, `n` is arg-stack-bound.
+Generate random string of length `n`.
+
+### `glue.uuid() -> s`
+
+Generate random UUID (v4).
+
+Don't forget to seed the randomizer first, eg. with
+`math.randomseed(require'time'.clock())` or what have you.
 
 ------------------------------------------------------------------------------
 
@@ -1078,6 +1088,7 @@ local result = glue.fpcall(function(finally, except, ...)
   return final_resource
 end, ...)
 ```
+> __NOTE__: Lua 5.2 and LuaJIT only.
 
 ------------------------------------------------------------------------------
 
@@ -1257,6 +1268,21 @@ an internal buffer based on the `len` argument.
 
 Like `glue.buffer()` but preserves data between reallocations, and always
 returns `minlen` instead of capacity.
+
+------------------------------------------------------------------------------
+
+### `glue.readall(read, self, ...) -> buf, len`
+
+Repeat read based on a `read(self, buf, len, ...) -> readlen` function.
+
+------------------------------------------------------------------------------
+
+### `glue.buffer_reader(buf,len | nil,err) -> read`
+
+Return a `read(buf, len) -> readlen` function that consumes data from the
+supplied buffer. The supplied `buf,len` can also be `nil,err` in which case
+the `read` function will always return just that. The buffer must be a
+`(u)int8_t` pointer or VLA.
 
 ------------------------------------------------------------------------------
 

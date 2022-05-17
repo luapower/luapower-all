@@ -1,0 +1,8 @@
+libmysql 6.1.1 from http://downloads.mysql.com/archives/c-c/ (GPL License)
+requires: libstdcxx (linux32 linux64)
+
+NOTES:
+	- libmysql wasn't built from source.
+	- since 6.1.3, the dll doesn't work on WinXP anymore.
+	- for OSX, the 6.1.5 dylib is included (6.1.1 wasn't available anymore).
+	- no static libs are included on any platform.

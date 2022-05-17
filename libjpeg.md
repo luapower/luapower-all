@@ -12,21 +12,20 @@ Comes with [libjpeg-turbo] binaries.
 ## API
 
 ------------------------------------ -----------------------------------------
-`libjpeg.open(opt | read) -> img`    open a JPEG image for decoding
-`img:load([opt]) -> bmp`             load the image into a bitmap
-`img:free()`                         free the image
+`libjpeg.open(opt | read) -> jpg`    open a JPEG image for decoding
+`jpg:load([opt]) -> bmp`             load the image into a bitmap
+`jpg:free()`                         free the image
 `libjpeg.save(opt)`                  compress a bitmap into a JPEG image
 ------------------------------------ -----------------------------------------
 
-### `libjpeg.open(opt | read) -> img`
+### `libjpeg.open(opt | read) -> jpg`
 
 Open a JPEG image and read its header. `opt` is a table containing at least
 the read function and possibly other options.
 
-The read function has the form `read(buf, size) -> readsize`, it can yield
-and it must signal I/O errors by raising an error. It must accept `nil`
-for `buf` which means skip bytes (i.e. seek). It will only be asked to read
-a positive number of bytes and it can return less bytes than asked,
+The read function has the form `read(buf, len) -> readlen`, it can yield
+and it can signal I/O errors by returning `nil, err`. It will only be asked
+to read a positive number of bytes and it can return less bytes than asked,
 including zero which signals EOF.
 
 The `opt` table has the fields:
@@ -38,13 +37,9 @@ The `opt` table has the fields:
   errors.
   * `read_buffer`: optional, the read buffer to use.
   * `read_buffer_size`: the read buffer size.
-  * `suspended_io`: use suspended I/O, i.e. yieldable callbacks
-  (default is `true`). note that arithmetic decoding doesn't work with
-  suspended I/O (browsers don't support arithmetic decoding either
-  for the same reason).
 
-The return value is an image object which gives information about the file
-and can be used to load and decode the actual pixels. It has the fields:
+The returned `jpg` object contains information about the file and can be used
+to load/decode the actual image. Its fields are:
 
   * `w`, `h`: width and height of the image.
   * `format`: the format in which the image is stored.
@@ -56,7 +51,23 @@ and can be used to load and decode the actual pixels. It has the fields:
 
 __NOTE:__ Unknown JPEG formats are opened but the `format` field is missing.
 
-### `img:load([opt]) -> bmp`
+__NOTE:__ Arithmetic decoding doesn't work with suspended I/O and we need
+that to allow the read callback to yield (browsers don't support arithmetic
+decoding either for the same reason).
+
+__TIP__: Wrap `tcp:read()` from [sock] to read from a TCP socket.
+
+__TIP__: Use `f:buffered_read()` from [fs] to read from a file.
+
+Example:
+
+```lua
+local fs = require'fs'
+local f = assert(fs.open'foo.jpg')
+local jpg = assert(libjpeg.open{read = f:buffered_read(), skip_buffer = false})
+```
+
+### `jpg:load([opt]) -> bmp`
 
 Load the image, returning a [bitmap] object. `opt` is an options table which
 can have the fields:
@@ -98,17 +109,17 @@ For more info on the decoding process and options read the
 
 __NOTE:__ the number of bits per channel in the output bitmap is always 8.
 
-### `img:free()`
+### `jpg:free()`
 
 Free the image and associated resources.
 
-### `libjpeg.save(opt) -> string | chunks_t | nil`
+### `libjpeg.save(opt)`
 
-Save a [bitmap] as JPEG. `opt` is a table containing at least the source
-bitmap and destination, and possibly other options:
+Encode a [bitmap] as JPEG. `opt` is a table containing at least the source
+bitmap and an output write function, and possibly other options:
 
   * `bitmap`: a [bitmap] in an accepted format.
-  * `write`: write data to a sink of the form `write(buf, size)`.
+  * `write`: write data to a sink of the form `write(buf, size) -> true | nil,err`.
   * `finish`: optional function to be called after all the data is written.
   * `format`: output format (see list of supported formats above).
   * `quality`: `0..100` range. you know what that is.
@@ -116,10 +127,9 @@ bitmap and destination, and possibly other options:
   * `dct_method`: `'accurate'`, `'fast'`, `'float'` (default is `'accurate'`).
   * `optimize_coding`: optimize huffmann tables.
   * `smoothing`: `0..100` range. smoothing factor.
-  * `bufsize`: internal buffer size (default is 4096).
+  * `write_buffer_size`: internal buffer size (default is 4096).
+  * `write_buffer`: internal buffer (default is to internally allocate one).
 
-----
-See also: [nanojpeg]
 
 [libjpeg-home]:       http://libjpeg.sourceforge.net/
 [libjpeg-turbo]:      http://www.libjpeg-turbo.org/

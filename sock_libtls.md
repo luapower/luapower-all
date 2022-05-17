@@ -3,8 +3,6 @@
 
 Secure async TCP sockets with [sock] and [libtls].
 
-<warn>WIP</warn>
-
 ## API
 
 ----------------------------------------------------- -----------------------------------
@@ -12,6 +10,9 @@ Secure async TCP sockets with [sock] and [libtls].
 `stls.server_stcp(tcp, opt) -> sstcp`                 create a secure socket for a server
 `cstcp:recv()`                                        same semantics as `tcp:recv()`
 `cstcp:send()`                                        same semantics as `tcp:send()`
+`cstcp:recvn()`                                       same semantics as `tcp:recvn()`
+`cstcp:recvall()`                                     same semantics as `tcp:recvall()`
+`cstcp:recvall_read()`                                same semantics as `tcp:recvall_read()`
 `sstcp:accept() -> cstcp`                             accept a client connection
 `cstcp:shutdown('r'|'w'|'rw')`                        calls `self.tcp:shutdown()`
 `cstcp:close()`                                       close client socket

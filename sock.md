@@ -13,7 +13,7 @@ multi-threading support).
 
 ## Status
 
-<warn>Alpha (Windows & Linux)</warn>
+<warn>Windows & Linux only.</warn>
 
 ## API
 
@@ -53,6 +53,8 @@ __sockets__
 `tcp:listen([backlog, ]host, port, [af])`                        put socket in listening mode
 `tcp:accept([expires]) -> ctcp`                                  accept a client connection
 `tcp:recvn(buf, len, [expires]) -> buf, len`                     receive n bytes
+`tcp:recvall() -> buf, len`                                      receive until closed
+`tcp:recvall_read() -> read`                                     make a buffered read function
 `udp:sendto(host, port, s|buf, [len], [expires], [af]) -> len`   send a datagram to an address
 `udp:recvnext(buf, maxlen, [expires], [flags]) -> len, sa`       receive the next datagram
 `tcp:shutdown('r'|'w'|'rw', [expires])`                          send FIN
@@ -194,6 +196,16 @@ Accept a client connection. The connection socket has additional fields:
 
 Repeat recv until `len` bytes are received.
 Partial reads are signaled with `nil, err, readlen`.
+
+### `tcp:recvall() -> buf,len | nil,err,buf,len`
+
+Receive until closed into an accumulating buffer. If an error occurs
+before the socket is closed, the partial buffer and length is returned after it.
+
+### `tcp:recvall_read() -> read`
+
+Receive all data into a buffer and make a `read` function that consumes it.
+Useful for APIs that require an input `read` function that cannot yield.
 
 ### `udp:sendto(host, port, s|buf, [maxlen], [expires], [flags], [af]) -> len`
 

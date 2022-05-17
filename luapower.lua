@@ -68,9 +68,9 @@ CONVENTIONS:
 	* docs are `*.md` files in Pandoc Markdown format and can be anywhere in
 	the tree where modules can be.
 
-	* modules that end in `_test`, `_demo`, `_demo_<arch>`, `_benchmark`
-	or `_app` are considered standalone scripts and are never loaded for
-	tracking dependencies.
+	* modules that end in `_test[0-9]*`, `_demo[0-9]*`, `_demo*_<arch>`,
+	`_benchmark*` or `_app` are considered standalone scripts and are never
+	loaded for tracking dependencies.
 
 	* packages containing Lua/C modules have an _implicit_ binary dependency
 	on the luajit package because they link against the LuaJIT library.
@@ -1340,13 +1340,12 @@ local function is_doc_path(p)
 end
 
 --check if a name is a loadable module as opposed to a script or app.
---*_demo, *_test, *_benchmark and *_app modules are excluded from tracking.
 local function is_module(mod)
 	return not (
-		mod:find'_test$'
-		or mod:find'_demo$'
+		   mod:find'_test[0-9]*$'
+		or mod:find'_demo[0-9]*$'
 		or mod:find'_demo_.*$' --"demo_<arch>"
-		or mod:find'_benchmark$'
+		or mod:find'_benchmark*$'
 		or mod:find'_app$'
 	)
 end

@@ -1,5 +1,5 @@
 local player = require'cplayer'
-local socket = require'socket' --for gettime(), self.clock is not synchronized
+local gettime = require'time'.time
 local easing = require'easing'
 
 --point on the circle of radius r, at position n, on a circle
@@ -26,7 +26,7 @@ function player:analog_clock(t)
 	local h = time.hour
 	local m = time.min
 	local s = time.sec
-	local ms = math.floor(socket.gettime() * 1000) % 1000
+	local ms = math.floor(gettime() * 1000) % 1000
 
 	--logo
 	if t.text then

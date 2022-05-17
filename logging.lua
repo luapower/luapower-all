@@ -1,6 +1,6 @@
 --[[
 
-	File and tcp logging with capped disk & memory usage.
+	File and TCP logging with capped disk & memory usage.
 	Written by Cosmin Apreutesei. Public domain.
 
 	logging.log(severity, module, event, fmt, ...)
@@ -252,8 +252,10 @@ local function debug_arg(for_printing, v)
 	else --string, table, function, thread, cdata
 		v = type(v) == 'string' and v
 			or names[v]
-			or (getmetatable(v) and getmetatable(v).__tostring and tostring(v))
 			or (type(v) == 'table' and not v.type and not v.debug_prefix and pp_compact(v))
+			or (getmetatable(v) and getmetatable(v).__tostring
+				and not (type(v) == 'table' and v.type and v.debug_prefix)
+				and tostring(v))
 			or debug_id(v)
 		if not for_printing then
 			if v:find('\n', 1, true) then --multiline, make room for it.

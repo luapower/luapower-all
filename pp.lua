@@ -385,6 +385,7 @@ local function pp(...)
 		else
 			to_openfile(io.stdout, v, nil, nil, nil, nil, nil, nil, filter)
 		end
+		if i < n then io.stdout:write'\t' end
 	end
 	io.stdout:write'\n'
 	io.stdout:flush()

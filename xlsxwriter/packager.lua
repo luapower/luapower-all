@@ -40,7 +40,7 @@
 -- Copyright 2014-2015, John McNamara, jmcnamara@cpan.org
 --
 
-local minizip       = require "minizip"
+local minizip2      = require "minizip2"
 local App           = require "xlsxwriter.app"
 local Core          = require "xlsxwriter.core"
 local ContentTypes  = require "xlsxwriter.contenttypes"
@@ -109,7 +109,7 @@ end
 --
 function Packager:_create_package()
 
-  self.zip = minizip.open(self.filename, 'w')
+  self.zip = minizip2.open(self.filename, 'w')
 
   self:_write_worksheet_files()
   self:_write_chartsheet_files()

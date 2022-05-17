@@ -10,8 +10,8 @@ local loaded
 local root_dir = 'x:/luapower'
 
 local font_files = {
-	root_dir .. '/media/fonts/FSEX300.ttf',
-	root_dir .. '/media/fonts/DejaVuSerif.ttf',
+	root_dir .. '/FSEX300.ttf',
+	root_dir .. '/DejaVuSerif.ttf',
 }
 
 filename = root_dir .. '/codedt_demo.lua'

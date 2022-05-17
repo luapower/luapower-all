@@ -6,6 +6,7 @@ if not ... then require'fs_test'; return end
 
 local ffi = require'ffi'
 local bit = require'bit'
+local bor, band, shl = bit.bor, bit.band, bit.lshift
 setfenv(1, require'fs_common')
 
 local C = ffi.C
@@ -66,22 +67,7 @@ local INVALID_HANDLE_VALUE = ffi.cast('HANDLE', -1)
 local wbuf = buffer'WCHAR[?]'
 local libuf = ffi.new'LARGE_INTEGER[1]'
 
-local m = ffi.new[[
-	union {
-		struct { uint32_t lo; uint32_t hi; };
-		uint64_t x;
-	}
-]]
-local function split_uint64(x)
-	m.x = x
-	return m.hi, m.lo
-end
-local function join_uint64(hi, lo)
-	m.hi, m.lo = hi, lo
-	return m.x
-end
-
---error reporting ------------------------------------------------------------
+--error handling -------------------------------------------------------------
 
 cdef[[
 DWORD GetLastError(void);
@@ -101,37 +87,57 @@ local FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
 
 local errbuf = buffer'char[?]'
 
-local error_classes = {
-	[0x002] = 'not_found', --ERROR_FILE_NOT_FOUND, CreateFileW
-	[0x003] = 'not_found', --ERROR_PATH_NOT_FOUND, CreateDirectoryW
-	[0x005] = 'access_denied', --ERROR_ACCESS_DENIED, CreateFileW
-	[0x050] = 'already_exists', --ERROR_FILE_EXISTS, CreateFileW
-	[0x091] = 'not_empty', --ERROR_DIR_NOT_EMPTY, RemoveDirectoryW
-	[0x0b7] = 'already_exists', --ERROR_ALREADY_EXISTS, CreateDirectoryW
-	[0x10B] = 'not_found', --ERROR_DIRECTORY, FindFirstFileW
-	[  109] = 'eof', --ERROR_BROKEN_PIPE ReadFile, WriteFile
-
-	--TODO: mmap
-	[0x0008] = 'file_too_short', --readonly file too short
-	[0x0057] = 'out_of_mem', --size or address too large
-	[0x0070] = 'disk_full',
-	[0x01E7] = 'out_of_mem', --address in use
-	[0x03ee] = 'file_too_short', --file has zero size
-	[0x05af] = 'out_of_mem', --swapfile too short
-
+local errors = {
+	[0x002] = 'not_found'       , --ERROR_FILE_NOT_FOUND, CreateFileW
+	[0x003] = 'not_found'       , --ERROR_PATH_NOT_FOUND, CreateDirectoryW
+	[0x005] = 'access_denied'   , --ERROR_ACCESS_DENIED, CreateFileW
+	[0x01D] = 'io_error'        , --ERROR_WRITE_FAULT, WriteFile
+	[0x01E] = 'io_error'        , --ERROR_READ_FAULT, ReadFile
+	[0x050] = 'already_exists'  , --ERROR_FILE_EXISTS, CreateFileW
+	[0x091] = 'not_empty'       , --ERROR_DIR_NOT_EMPTY, RemoveDirectoryW
+	[0x0b7] = 'already_exists'  , --ERROR_ALREADY_EXISTS, CreateDirectoryW
+	[0x10B] = 'not_found'       , --ERROR_DIRECTORY, FindFirstFileW
+	[0x06D] = 'eof'             , --ERROR_BROKEN_PIPE ReadFile, WriteFile
 }
 
-local function check(ret, err)
-	if ret then return ret end
+local mmap_errors = { --CreateFileMappingW, MapViewOfFileEx
+	[0x0008] = 'file_too_short' , --ERROR_NOT_ENOUGH_MEMORY, readonly file too short
+	[0x0057] = 'out_of_mem'     , --ERROR_INVALID_PARAMETER, size or address too large
+	[0x0070] = 'disk_full'      , --ERROR_DISK_FULL
+	[0x01E7] = 'out_of_mem'     , --ERROR_INVALID_ADDRESS, address in use
+	[0x03EE] = 'file_too_short' , --ERROR_FILE_INVALID, file has zero size
+	[0x05AF] = 'out_of_mem'     , --ERROR_COMMITMENT_LIMIT, swapfile too short
+}
+
+local function checkneq(fail_ret, ok_ret, err_ret, ret, err, xtra_errors)
+	if ret ~= fail_ret then
+		return ok_ret
+	end
 	err = err or C.GetLastError()
-	local msg = error_classes[err]
+	local msg = errors[err] or (xtra_errors and xtra_errors[err])
 	if not msg then
 		local buf, bufsz = errbuf(512)
 		local sz = C.FormatMessageA(
 			FORMAT_MESSAGE_FROM_SYSTEM, nil, err, 0, buf, bufsz, nil)
 		msg = sz > 0 and ffi.string(buf, sz):gsub('[\r\n]+$', '') or 'Error '..err
 	end
-	return ret, msg, err
+	return err_ret, msg
+end
+
+local function checkh(ret, err)
+	return checkneq(INVALID_HANDLE_VALUE, ret, nil, ret, err)
+end
+
+local function checknz(ret, err)
+	return checkneq(0, true, false, ret, err)
+end
+
+local function checknil(ret, err, errors)
+	return checkneq(nil, ret, nil, ret, err, errors)
+end
+
+local function checknum(ret, err)
+	return checkneq(0, ret, nil, ret, err)
 end
 
 --utf16/utf8 conversion ------------------------------------------------------
@@ -238,25 +244,25 @@ local t = {
 	generic_all     = 0x10000000,
 }
 --FILE_ALL_ACCESS
-t.all_access = bit.bor(
+t.all_access = bor(
 	t.standard_rights_required,
 	t.synchronize,
 	0x1ff)
 --FILE_GENERIC_*
-t.read = bit.bor(
+t.read = bor(
 	t.standard_rights_read,
 	t.read_data,
    t.read_attributes,
 	t.read_ea,
 	t.synchronize)
-t.write = bit.bor(
+t.write = bor(
 	t.standard_rights_write,
 	t.write_data,
    t.write_attributes,
 	t.write_ea,
 	t.append_data,
 	t.synchronize)
-t.execute = bit.bor(
+t.execute = bor(
 	t.standard_rights_execute,
 	t.read_attributes,
 	t.execute,
@@ -375,19 +381,20 @@ function fs.open(path, opt)
 	local attrbits = flags(opt.attrs, attr_bits, nil, true)
 	attrbits = attrbits == 0 and FILE_ATTRIBUTE_NORMAL or attrbits
 	local flagbits = flags(opt.flags, flag_bits)
-	local attflags = bit.bor(attrbits, flagbits, async and FILE_FLAG_OVERLAPPED or 0)
+	local attflags = bor(attrbits, flagbits, async and FILE_FLAG_OVERLAPPED or 0)
 	local sa = sec_attr(opt.inheritable)
-	local h = C.CreateFileW(
-		wcs(path), access, sharing, sa, creation, attflags, nil)
-	if h == INVALID_HANDLE_VALUE then return check() end
+	local h, err = checkh(C.CreateFileW(
+		wcs(path), access, sharing, sa, creation, attflags, nil
+	))
+	if not h then return nil, err end
 	local f, err = fs.wrap_handle(h,
 		opt.async or opt.read_async,
 		opt.async or opt.write_async,
 		opt.is_pipe_end)
 	if not f then return nil, err end
 	if opt.seek_end then
-		local ok, err = f:seek('end', 0)
-		if not ok then
+		local pos, err = f:seek('end', 0)
+		if not pos then
 			f:close()
 			return nil, err
 		end
@@ -404,10 +411,10 @@ function file.close(f)
 	if f._read_async or f._write_async then
 		local sock = require'sock'
 		local ok, err = sock._unregister(f)
-		if not ok then return nil, err end
+		if not ok then return false, err end
 	end
-	local ok = C.CloseHandle(f.handle) ~= 0
-	if not ok then return check(false) end
+	local ok, err = checknz(C.CloseHandle(f.handle))
+	if not ok then return false, err end
 	f.handle = INVALID_HANDLE_VALUE
 	return true
 end
@@ -462,8 +469,9 @@ end
 local HANDLE_FLAG_INHERIT = 1
 
 function file.set_inheritable(file, inheritable)
-	assert(check(C.SetHandleInformation(
-		file.handle, HANDLE_FLAG_INHERIT, inheritable and 1 or 0) ~= 0))
+	assert(checknz(C.SetHandleInformation(
+		file.handle, HANDLE_FLAG_INHERIT, inheritable and 1 or 0
+	)))
 end
 
 --pipes ----------------------------------------------------------------------
@@ -517,7 +525,7 @@ function fs.pipe(path, opt)
 
 	if path then --named pipe
 
-		local h = C.CreateNamedPipeW(
+		local h, err = checkh(C.CreateNamedPipeW(
 			wcs(path),
 			flags(opt, pipe_flag_bits, async and FILE_FLAG_OVERLAPPED or 0),
 			0, --nothing interesting here
@@ -525,11 +533,9 @@ function fs.pipe(path, opt)
 			opt.write_buffer_size or 8192,
 			opt.read_buffer_size or 8192,
 			(opt.timeout or 0) * 1000,
-			sec_attr(opt.inheritable))
-
-		if h == INVALID_HANDLE_VALUE then
-			return check()
-		end
+			sec_attr(opt.inheritable)
+		))
+		if not h then return nil, err end
 
 		return fs.wrap_handle(h,
 				opt.async or opt.read_async,
@@ -544,8 +550,8 @@ function fs.pipe(path, opt)
 		if async then
 
 			serial = (serial + 1) % 0xffffffff
-			local path = string.format([[\\.\pipe\LuaPipe.%08x.%08x]],
-				C.GetCurrentThreadId(), serial)
+			local path = string.format([[\\.\pipe\LuaPipe.%08x.%08x.%08x]],
+				C.GetCurrentThreadId(), fs.lua_state_id or 0, serial)
 
 			local rf, err = fs.pipe{
 				path = path,
@@ -582,9 +588,8 @@ function fs.pipe(path, opt)
 				or opt.read_inheritable
 				or opt.write_inheritable
 			)
-			if C.CreatePipe(hs, hs+1, sa, 0) == 0 then
-				return check()
-			end
+			local ok, err = checknz(C.CreatePipe(hs, hs+1, sa, 0))
+			if not ok then return nil, err end
 			local rf = fs.wrap_handle(hs[0], nil, nil, true)
 			local wf = fs.wrap_handle(hs[1], nil, nil, true)
 			if opt.inheritable or opt.read_inheritable  then rf:set_inheritable(true) end
@@ -661,9 +666,9 @@ function file.read(f, buf, sz, expires)
 		local sock = require'sock'
 		return mask_eof(sock._file_async_read(f, read_overlapped, buf, sz, expires))
 	else
-		local ok = C.ReadFile(f.handle, buf, sz, dwbuf, nil) ~= 0
-		if not ok then return mask_eof(check()) end
-		return dwbuf[0]
+		local ok, err = mask_eof(checknz(C.ReadFile(f.handle, buf, sz, dwbuf, nil)))
+		if not ok then return nil, err end
+		return tonumber(dwbuf[0])
 	end
 end
 
@@ -672,30 +677,27 @@ function file._write(f, buf, sz, expires)
 		local sock = require'sock'
 		return sock._file_async_write(f, write_overlapped, buf, sz, expires)
 	else
-		local ok = C.WriteFile(f.handle, buf, sz or #buf, dwbuf, nil) ~= 0
-		if not ok then return check() end
-		return dwbuf[0]
+		local ok, err = checknz(C.WriteFile(f.handle, buf, sz or #buf, dwbuf, nil))
+		if not ok then return nil, err end
+		return tonumber(dwbuf[0])
 	end
 end
 
 function file.flush(f)
-	return check(C.FlushFileBuffers(f.handle) ~= 0)
+	return checknz(C.FlushFileBuffers(f.handle))
 end
 
 local ofsbuf = ffi.new'LARGE_INTEGER[1]'
 function file._seek(f, whence, offset)
 	ofsbuf[0].QuadPart = offset
-	local ok = C.SetFilePointerEx(f.handle, ofsbuf[0], libuf, whence) ~= 0
-	if not ok then return check() end
+	local ok, err = checknz(C.SetFilePointerEx(f.handle, ofsbuf[0], libuf, whence))
+	if not ok then return nil, err end
 	return tonumber(libuf[0].QuadPart)
 end
 
---truncate/getsize/setsize ---------------------------------------------------
+--truncate -------------------------------------------------------------------
 
-cdef[[
-BOOL SetEndOfFile(HANDLE hFile);
-BOOL GetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize);
-]]
+cdef'BOOL SetEndOfFile(HANDLE hFile);'
 
 --NOTE: seeking beyond file size and then truncating the file incurs no delay
 --on NTFS, but that's not because the file becomes sparse (it doesn't, and
@@ -703,14 +705,10 @@ BOOL GetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize);
 --until the first write call _that requires it_. This is a good optimization
 --since usually the file will be written sequentially after the truncation
 --in which case those extra zero bytes will never get a chance to be written.
-function file.truncate(f, opt)
-	return check(C.SetEndOfFile(f.handle) ~= 0)
-end
-
-function file_getsize(f)
-	local ok = C.GetFileSizeEx(f.handle, libuf) ~= 0
-	if not ok then return check() end
-	return tonumber(libuf[0].QuadPart)
+function file.truncate(f, size)
+	local pos, err = f:seek('set', size)
+	if not pos then return nil, err end
+	return checknz(C.SetEndOfFile(f.handle))
 end
 
 --filesystem operations ------------------------------------------------------
@@ -729,28 +727,30 @@ BOOL MoveFileExW(
 ]]
 
 function mkdir(path)
-	return check(C.CreateDirectoryW(wcs(path), nil) ~= 0)
+	return checknz(C.CreateDirectoryW(wcs(path), nil))
 end
 
 function rmdir(path)
-	return check(C.RemoveDirectoryW(wcs(path)) ~= 0)
+	return checknz(C.RemoveDirectoryW(wcs(path)))
 end
 
 function chdir(path)
-	return check(C.SetCurrentDirectoryW(wcs(path)) ~= 0)
+	initial_cwd()
+	return checknz(C.SetCurrentDirectoryW(wcs(path)))
 end
 
 function getcwd()
-	local sz = C.GetCurrentDirectoryW(0, nil)
-	if sz == 0 then return check() end
+	local sz, err = checknum(C.GetCurrentDirectoryW(0, nil))
+	if not sz then return nil, err end
 	local buf = wbuf(sz)
-	local sz = C.GetCurrentDirectoryW(sz, buf)
-	if sz == 0 then return check() end
+	local sz, err = checknum(C.GetCurrentDirectoryW(sz, buf))
+	if not sz then return nil, err end
 	return mbs(buf, sz)
 end
+initial_cwd = memoize(getcwd)
 
 function rmfile(path)
-	return check(C.DeleteFileW(wcs(path)) ~= 0)
+	return checknz(C.DeleteFileW(wcs(path)))
 end
 
 local move_bits = {
@@ -763,16 +763,15 @@ local move_bits = {
 }
 
 --NOTE: MoveFileExW is atomic if both files are on the same NTFS volume.
---TODO: Alternative implementation: call SetFileInformationByHandle with
---FILE_RENAME_INFO and ReplaceIfExists which is atomic and also works on
---open handles which is even more atomic :)
+--TODO: implement this for file handles too: call SetFileInformationByHandle
+--with FILE_RENAME_INFO and ReplaceIfExists.
 local default_move_opt = 'replace_existing write_through' --posix
 function fs.move(oldpath, newpath, opt)
-	return check(C.MoveFileExW(
+	return checknz(C.MoveFileExW(
 		wcs(oldpath),
 		wcs(newpath, nil, wbuf),
 		flags(opt or default_move_opt, move_bits, nil, true)
-	) ~= 0)
+	))
 end
 
 --symlinks & hardlinks -------------------------------------------------------
@@ -805,26 +804,27 @@ local SYMBOLIC_LINK_FLAG_DIRECTORY = 0x1
 
 function fs.mksymlink(link_path, target_path, is_dir)
 	local flags = is_dir and SYMBOLIC_LINK_FLAG_DIRECTORY or 0
-	print(link_path, target_path)
-	return check(C.CreateSymbolicLinkW(
+	return checknz(C.CreateSymbolicLinkW(
 		wcs(link_path),
 		wcs(target_path, nil, wbuf),
-		flags) == 1)
+		flags
+	))
 end
 
 function fs.mkhardlink(link_path, target_path)
-	return check(C.CreateHardLinkW(
+	return checknz(C.CreateHardLinkW(
 		wcs(link_path),
 		wcs(target_path, nil, wbuf),
-		nil) ~= 0)
+		nil
+	))
 end
 
 do
 	local function CTL_CODE(DeviceType, Function, Method, Access)
-		return bit.bor(
-			bit.lshift(DeviceType, 16),
-			bit.lshift(Access, 14),
-			bit.lshift(Function, 2),
+		return bor(
+			shl(DeviceType, 16),
+			shl(Access    , 14),
+			shl(Function  ,  2),
 			Method)
 	end
 	local FILE_DEVICE_FILE_SYSTEM = 0x00000009
@@ -868,7 +868,8 @@ do
 		local buf = buf or REPARSE_DATA_BUFFER(sz)
 		local ok = C.DeviceIoControl(
 			f.handle, FSCTL_GET_REPARSE_POINT, nil, 0,
-			buf, ffi.sizeof(buf), szbuf, nil) ~= 0
+			buf, ffi.sizeof(buf), szbuf, nil
+		) ~= 0
 		if not ok then
 			local err = C.GetLastError()
 			if err == ERROR_INSUFFICIENT_BUFFER or err == ERROR_MORE_DATA then
@@ -876,12 +877,13 @@ do
 				goto again
 			end
 			f:close()
-			return check(false)
+			return checknz(0, err)
 		end
 		f:close()
 		return mbs(
 			buf.PathBuffer + buf.SubstituteNameOffset / 2,
-			buf.SubstituteNameLength / 2)
+			buf.SubstituteNameLength / 2
+		)
 	end
 end
 
@@ -898,13 +900,13 @@ end
 
 function fs.tmpdir()
 	local buf, bufsz = wbuf(256)
-	local sz = C.GetTempPathW(bufsz, buf)
-	if sz == 0 then return check() end
+	local sz, err = checknum(C.GetTempPathW(bufsz, buf))
+	if not sz then return nil, err end
 	if sz > bufsz then
 		buf, bufsz = wbuf(sz)
-		local sz = C.GetTempPathW(bufsz, buf)
+		local sz, err = checknum(C.GetTempPathW(bufsz, buf))
+		if not sz then return nil, err end
 		assert(sz <= bufsz)
-		if sz == 0 then return check() end
 	end
 	return mbs(buf, sz-1) --strip trailing '\'
 end
@@ -921,12 +923,12 @@ function fs.exepath()
 	::again::
 	local sz = C.GetModuleFileNameW(hmodule, buf, bufsz)
 	if sz < 0 then
-		if GetLastError() == ERROR_INSUFFICIENT_BUFFER then
+		local err = C.GetLastError()
+		if err == ERROR_INSUFFICIENT_BUFFER then
 			buf, bufsz = wbuf(bufsz * 2)
 			goto again
-		else
-			return check(false)
 		end
+		return checknz(0, err)
 	end
 	return mbs(buf, sz)
 end
@@ -1038,7 +1040,7 @@ end
 
 local function attrbit(bits, k)
 	if k ~= 'directory' and k ~= 'device' and attr_bits[k] then
-		return bit.band(attr_bits[k], bits) ~= 0
+		return band(attr_bits[k], bits) ~= 0
 	end
 end
 
@@ -1067,15 +1069,15 @@ end
 local IO_REPARSE_TAG_SYMLINK = 0xA000000C
 
 local function is_symlink(bits, reparse_tag)
-	return bit.band(bits, attr_bits.reparse_point) ~= 0
+	return band(bits, attr_bits.reparse_point) ~= 0
 		and (not reparse_tag or reparse_tag == IO_REPARSE_TAG_SYMLINK)
 end
 
 local function filetype(bits, reparse_tag)
 	return
 		is_symlink(bits, reparse_tag) and 'symlink'
-		or bit.band(bits, attr_bits.directory) ~= 0 and 'dir'
-		or bit.band(bits, attr_bits.device) ~= 0    and 'dev'
+		or band(bits, attr_bits.directory) ~= 0 and 'dir'
+		or band(bits, attr_bits.device   ) ~= 0 and 'dev'
 		or 'file'
 end
 
@@ -1083,8 +1085,8 @@ local file_info_ct = ffi.typeof'BY_HANDLE_FILE_INFORMATION'
 local info
 local function file_get_info(f)
 	info = info or file_info_ct()
-	local ok = C.GetFileInformationByHandle(f.handle, info) ~= 0
-	if not ok then return check() end
+	local ok, err = checknz(C.GetFileInformationByHandle(f.handle, info))
+	if not ok then return nil, err end
 	return info
 end
 
@@ -1092,15 +1094,17 @@ local file_basic_info_ct = ffi.typeof'FILE_BASIC_INFO'
 local binfo
 local function file_get_basic_info(f)
 	binfo = binfo or file_basic_info_ct()
-	local ok = C.GetFileInformationByHandleEx(
-		f.handle, C.FileBasicInfo, binfo, ffi.sizeof(binfo)) ~= 0
-	if not ok then return check() end
+	local ok, err = checknz(C.GetFileInformationByHandleEx(
+		f.handle, C.FileBasicInfo, binfo, ffi.sizeof(binfo)
+	))
+	if not ok then return nil, err end
 	return binfo
 end
 
 local function file_set_basic_info(f, binfo)
-	return check(C.SetFileInformationByHandle(
-		f.handle, C.FileBasicInfo, binfo, ffi.sizeof(binfo)) ~= 0)
+	return checknz(C.SetFileInformationByHandle(
+		f.handle, C.FileBasicInfo, binfo, ffi.sizeof(binfo)
+	))
 end
 
 local binfo_getters = {
@@ -1272,8 +1276,8 @@ dir_ct = ffi.typeof[[
 
 function dir.close(dir)
 	if dir:closed() then return true end
-	local ok = C.FindClose(dir._handle) ~= 0
-	if not ok then return check(false) end
+	local ok, err = checknz(C.FindClose(dir._handle))
+	if not ok then return false, err end
 	dir._handle = INVALID_HANDLE_VALUE
 	return true
 end
@@ -1301,7 +1305,7 @@ function dir.next(dir)
 		if dir._errcode ~= 0 then
 			local errcode = dir._errcode
 			dir._errcode = 0
-			return check(false, errcode)
+			return checknz(0, errcode)
 		end
 		return nil
 	end
@@ -1318,7 +1322,7 @@ function dir.next(dir)
 			if errcode == ERROR_NO_MORE_FILES then
 				return nil
 			end
-			return check(false, errcode)
+			return checknz(0, errcode)
 		end
 	end
 end
@@ -1395,13 +1399,13 @@ HANDLE CreateFileMappingW(
 	DWORD flProtect,
 	DWORD dwMaximumSizeHigh,
 	DWORD dwMaximumSizeLow,
-	LPCWSTR *lpName
+	LPCWSTR lpName
 );
 
 HANDLE OpenFileMappingW(
-  DWORD   dwDesiredAccess,
-  BOOL    bInheritHandle,
-  LPCWSTR lpName
+	DWORD   dwDesiredAccess,
+	BOOL    bInheritHandle,
+	LPCWSTR lpName
 );
 
 void* MapViewOfFileEx(
@@ -1427,113 +1431,111 @@ BOOL VirtualProtect(
 	PDWORD lpflOldProtect);
 ]]
 
-local A = {
-	page_noaccess                = 0x0001,
-	page_readonly                = 0x0002,
-	page_readwrite               = 0x0004,
-	page_writecopy               = 0x0008, --no file auto-grow with this!
-	page_execute                 = 0x0010,
-	page_execute_read            = 0x0020, --xp sp2+
-	page_execute_readwrite       = 0x0040, --xp sp2+
-	page_execute_writecopy       = 0x0080, --vista sp1+
-	page_guard                   = 0x0100,
-	page_nocache                 = 0x0200,
-	page_writecombine            = 0x0400,
-	section_query                = 0x0001,
-	section_map_write            = 0x0002,
-	section_map_read             = 0x0004,
-	section_map_execute          = 0x0008,
-	section_extend_size          = 0x0010,
-	section_map_execute_explicit = 0x0020, --xp sp2+
-	file_map_write               = 0x0002, --section_map_write
-	file_map_read                = 0x0004, --section_map_read
-	file_map_copy                = 0x00000001,
-	file_map_reserve             = 0x80000000,
-	file_map_execute             = 0x0020, --execute_explicit, xp sp2+
-}
+local PAGE_READONLY                = 0x0002
+local PAGE_READWRITE               = 0x0004
+local PAGE_WRITECOPY               = 0x0008 --no file auto-grow with this!
+local PAGE_EXECUTE_READ            = 0x0020
+local PAGE_EXECUTE_READWRITE       = 0x0040
+local PAGE_EXECUTE_WRITECOPY       = 0x0080
 
-local function protect_bits(access_write, access_exec, access_copy)
-	return bit.bor(
-		access_exec
-			and (access_write
-				and A.page_execute_readwrite
-				or A.page_execute_read)
-			or (access_write
-				and A.page_readwrite
-				or A.page_readonly))
+local function protect_flag(write, exec, copy)
+	return exec and (
+			   copy  and PAGE_EXECUTE_WRITECOPY
+			or write and PAGE_EXECUTE_READWRITE
+			or           PAGE_EXECUTE_READ
+		) or (
+			   copy  and PAGE_WRITECOPY
+			or write and PAGE_READWRITE
+			or           PAGE_READONLY
+		)
 end
 
-function fs_map(file, write, exec, copy, size, offset, addr, tagname)
+local FILE_MAP_COPY    = 0x0001
+local FILE_MAP_WRITE   = 0x0002
+local FILE_MAP_READ    = 0x0004
+local FILE_MAP_EXECUTE = 0x0020
+
+function fs_map(file, access, size, offset, addr, tagname)
+
+	local write, exec, copy = parse_access(access or '')
+
+	--open the file, if any.
+
+	local function exit(err)
+		if file then file:close() end
+		return nil, err
+	end
 
 	if type(file) == 'string' then
 		local open_opt = {
-			access = 'read execute ' ..
-				(write and 'write' or ''),
+			access = 'read'
+				.. (exec  and ' execute' or '')
+				.. (write and ' write'   or ''),
 			sharing = 'read write delete',
 			creation = write and 'open_always' or 'open_existing',
 		}
-		local f, err = fs.open(file, open_opt)
-		if not f then return nil, err end
-	else
-		assert(fs.isfile(file), 'invalid file argument')
+		local err
+		file, err = fs.open(file, open_opt)
+		if not file then
+			return nil, err
+		end
 	end
 
-	local protect = protect_bits(write, exec)
-	local mhi, mlo = split_uint64(size or 0) --0 means whole file
-	local tagname = tagname and wcs('Local\\'..tagname)
-	local filemap
-	if false then
-		--TODO: test shared memory (see if OpenFileMappingW is needed)
-		--filemap = C.OpenFileMappingW(tagname)
-	else
-		filemap = C.CreateFileMappingW(
-			file and file.handle or INVALID_HANDLE_VALUE,
-			nil, protect, mhi, mlo, tagname)
-	end
+	--create file mapping.
+
+	local protect = protect_flag(write, exec, copy)
+	local size_hi, size_lo = split_uint64(size or 0) --0 means whole file
+	local wtagname = tagname and wcs('Local\\'..check_tagname(tagname))
+
+	local filemap, err = checknil(C.CreateFileMappingW(
+		file and file.handle or INVALID_HANDLE_VALUE,
+		nil, protect, size_hi, size_lo, wtagname
+	), nil, mmap_errors)
 
 	if filemap == nil then
-		--convert `file_too_short` error into `out_of_mem` error when
-		--opening the swap file.
-		if not file and err == ERROR_NOT_ENOUGH_MEMORY then
-			err = ERROR_COMMITMENT_LIMIT
+		if not file and err == 'file_too_short' then --opening the swap file
+			err = 'out_of_mem'
 		end
-		return check(err)
+		return exit(err)
 	end
 
-	local access = bit.bor(
-		not write and not copy and A.file_map_read or 0,
-		write and A.file_map_write or 0,
-		copy and A.file_map_copy or 0,
-		exec and A.section_map_execute or 0)
-	local ohi, olo = split_uint64(offset)
-	local baseaddr = addr
+	--map view of file.
 
-	local addr = C.MapViewOfFileEx(
-		filemap, access, ohi, olo, size or 0, baseaddr)
+	local access_bits = bor(
+		not write and not copy and FILE_MAP_READ or 0,
+		write and FILE_MAP_WRITE   or 0,
+		copy  and FILE_MAP_COPY    or 0,
+		exec  and FILE_MAP_EXECUTE or 0
+	)
+	local offset_hi, offset_lo = split_uint64(offset)
+
+	local addr, err = checknil(C.MapViewOfFileEx(
+		filemap, access_bits, offset_hi, offset_lo, size or 0, addr
+	), nil, mmap_errors)
 
 	if addr == nil then
-		local err = C.GetLastError()
-		close(filemap)
-		closefile()
-		return reterr(err)
+		C.CloseHandle(filemap)
+		return exit(err)
 	end
+
+	--create the map object.
 
 	local function free()
 		C.UnmapViewOfFile(addr)
-		close(filemap)
-		closefile()
+		C.CloseHandle(filemap)
+		exit()
 	end
 
 	local function flush(self, async, addr, sz)
 		if type(async) ~= 'boolean' then --async arg is optional
 			async, addr, sz = false, async, addr
 		end
-		local addr = mmap.aligned_addr(addr or self.addr, 'left')
-		local ok = C.FlushViewOfFile(addr, sz or 0) ~= 0
-		if not ok then return reterr() end
-		if not async then
-			local ok = C.FlushFileBuffers(file) ~= 0
-			if not ok then return reterr() end
+		local addr = fs.aligned_addr(addr or self.addr, 'left')
+		local ok, err = checknz(C.FlushViewOfFile(addr, sz or self.size))
+		if not ok then return false, err end
+		if not async and file then
+			local ok, err = file:flush()
+			if not ok then return false, err end
 		end
 		return true
 	end
@@ -1541,29 +1543,102 @@ function fs_map(file, write, exec, copy, size, offset, addr, tagname)
 	--if size wasn't given, get the file size so that the user always knows
 	--the actual size of the mapped memory.
 	if not size then
-		local filesize, errmsg = mmap.filesize(file)
-		if not filesize then return nil, errmsg end
+		local filesize, err = file:attr'size'
+		if not filesize then return nil, err end
 		size = filesize - offset
 	end
 
-	local function unlink() --no-op
-		assert(tagname, 'no tagname given')
+	local function unlink()
+		return fs.unlink_mapfile(tagname)
 	end
 
-	return {addr = addr, size = size, free = free, flush = flush,
-		unlink = unlink, protect = protect}
+	return {addr = addr, size = size, free = free,
+		flush = flush, unlink = unlink, access = access}
 
 end
 
 function fs.unlink_mapfile(tagname) --no-op
-	map_check_tagname(tagname)
+	check_tagname(tagname)
+	return true
 end
 
 function fs.protect(addr, size, access)
-	local write, exec = map_access_args(access or 'x')
-	local protect = protect_bits(write, exec)
+	local protect = protect_flag(parse_access(access or 'x'))
 	local old = ffi.new'DWORD[1]'
-	local ok = C.VirtualProtect(addr, size, prot, old) ~= 0
-	if not ok then return reterr() end
+	local ok, err = checknz(C.VirtualProtect(addr, size, prot, old))
+	if not ok then return false, err end
 	return true
+end
+
+--mirror buffer --------------------------------------------------------------
+
+function fs.mirror_buffer(size, addr)
+
+	local size = fs.aligned_size(size or 1)
+	local size_hi, size_lo = split_uint64(size * 2)
+	local addr = ffi.cast('uint8_t*', addr)
+
+	local filemap, err = checknil(C.CreateFileMappingW(
+		INVALID_HANDLE_VALUE,
+		nil, protect_flag(true), size_hi, size_lo, nil
+	), nil, mmap_errors)
+
+	if filemap == nil then
+		if not file and err == 'file_too_short' then
+			err = 'out_of_mem'
+		end
+		return nil, err
+	end
+
+	local access_bits = bor(FILE_MAP_READ, FILE_MAP_WRITE)
+
+	local addr1, addr2
+
+	local function free()
+		if addr1 then C.UnmapViewOfFile(addr1) end
+		if addr2 then C.UnmapViewOfFile(addr2) end
+		if filemap then C.CloseHandle(filemap) end
+	end
+
+	for i = 1, 100 do
+
+		local addr, err = checknil(C.MapViewOfFileEx(
+			filemap, access_bits, 0, 0, size * 2, addr
+		), nil, mmap_errors)
+
+		if addr == nil then
+			free()
+			return nil, err
+		end
+
+		C.UnmapViewOfFile(addr)
+
+		addr1, err = checknil(C.MapViewOfFileEx(
+			filemap, access_bits, 0, 0, size, addr
+		), nil, mmap_errors)
+
+		if not addr1 then
+			goto skip
+		end
+
+		addr2, err = checknil(C.MapViewOfFileEx(
+			filemap, access_bits, 0, 0, size, ffi.cast('uint8_t*', addr1) + size
+		), nil, mmap_errors)
+
+		if not addr2 then
+			C.UnmapViewOfFile(addr1)
+			goto skip
+		end
+
+		C.CloseHandle(filemap)
+		filemap = nil
+
+		do return {addr = addr1, size = size, free = free} end
+
+		::skip::
+	end
+
+	free()
+	return nil, 'max_tries'
+
 end

@@ -1,0 +1,13 @@
+Patch for luasec.
+--- wsocket.h 2019-11-01 17:23:30.892820900 +0200
++++ src/wsocket.h	2019-11-01 17:23:16.524324600 +0200
+@@ -30,4 +30,9 @@
+ #define AI_NUMERICSERV (0)
+ #endif
+ 
++#define WAITFD_R        1
++#define WAITFD_W        2
++#define WAITFD_E        4
++#define WAITFD_C        (WAITFD_E|WAITFD_W)
++
+ #endif /* WSOCKET_H */

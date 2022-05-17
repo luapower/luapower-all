@@ -5,13 +5,9 @@ libtls ffi binding. Use it with [libtls_bearssl] or with your own LibreSSL binar
 
 ## Rationale
 
-libtls has a sane API as opposed to OpenSSL which was written by monkeys.
+libtls has a sane API as opposed to OpenSSL.
 libtls doesn't force us to do I/O in its callbacks which allows us to yield in I/O.
 libtls works on user-provided I/O as opposed to LuaSec which only works on sockets.
-
-## Status
-
-Works for me.
 
 ## API
 

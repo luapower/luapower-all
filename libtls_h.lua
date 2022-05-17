@@ -44,8 +44,8 @@ enum {
 struct tls;
 struct tls_config;
 
-typedef ssize_t (*tls_read_cb )(struct tls *_ctx, char *_buf, size_t _buflen, void *_cb_arg);
-typedef ssize_t (*tls_write_cb)(struct tls *_ctx, char *_buf, size_t _buflen, void *_cb_arg);
+typedef ssize_t (*tls_read_cb )(struct tls *ctx, char *buf, size_t buflen, intptr_t cb_arg);
+typedef ssize_t (*tls_write_cb)(struct tls *ctx, char *buf, size_t buflen, intptr_t cb_arg);
 
 int tls_init(void);
 
@@ -142,7 +142,7 @@ int tls_connect_servername(struct tls *_ctx, const char *_host,
     const char *_port, const char *_servername);
 int tls_connect_socket(struct tls *_ctx, int _s, const char *_servername);
 int tls_connect_cbs(struct tls *_ctx, tls_read_cb _read_cb,
-    tls_write_cb _write_cb, void *_cb_arg, const char *_servername);
+    tls_write_cb _write_cb, intptr_t _cb_arg, const char *_servername);
 int tls_handshake(struct tls *_ctx);
 ssize_t tls_read(struct tls *_ctx, void *_buf, size_t _buflen);
 ssize_t tls_write(struct tls *_ctx, const void *_buf, size_t _buflen);

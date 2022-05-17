@@ -30,6 +30,9 @@ if(CPU_TYPE STREQUAL "x86_64")
   if(CYGWIN)
     set(CMAKE_ASM_NASM_OBJECT_FORMAT win64)
   endif()
+  if(CMAKE_C_COMPILER_ABI MATCHES "ELF X32")
+    set(CMAKE_ASM_NASM_OBJECT_FORMAT elfx32)
+  endif()
 elseif(CPU_TYPE STREQUAL "i386")
   if(BORLAND)
     set(CMAKE_ASM_NASM_OBJECT_FORMAT obj)
@@ -38,12 +41,20 @@ elseif(CPU_TYPE STREQUAL "i386")
   endif()
 endif()
 
+if(NOT REQUIRE_SIMD)
+  include(CheckLanguage)
+  check_language(ASM_NASM)
+  if(NOT CMAKE_ASM_NASM_COMPILER)
+    simd_fail("SIMD extensions disabled: could not find NASM compiler")
+    return()
+  endif()
+endif()
 enable_language(ASM_NASM)
 message(STATUS "CMAKE_ASM_NASM_COMPILER = ${CMAKE_ASM_NASM_COMPILER}")
 
-if(CMAKE_ASM_NASM_OBJECT_FORMAT MATCHES "macho*")
+if(CMAKE_ASM_NASM_OBJECT_FORMAT MATCHES "^macho")
   set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DMACHO")
-elseif(CMAKE_ASM_NASM_OBJECT_FORMAT MATCHES "elf*")
+elseif(CMAKE_ASM_NASM_OBJECT_FORMAT MATCHES "^elf")
   set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DELF")
   set(CMAKE_ASM_NASM_DEBUG_FORMAT "dwarf2")
 endif()
@@ -135,6 +146,9 @@ endif()
 if(MSVC_IDE)
   set(OBJDIR "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}")
   string(REGEX REPLACE " " ";" CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS}")
+elseif(XCODE)
+  set(OBJDIR "${CMAKE_CURRENT_BINARY_DIR}")
+  string(REGEX REPLACE " " ";" CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS}")
 endif()
 
 file(GLOB INC_FILES nasm/*.inc)
@@ -162,13 +176,13 @@ foreach(file ${SIMD_SOURCES})
       ${CMAKE_CURRENT_SOURCE_DIR}/${DEPFILE})
   endif()
   set(OBJECT_DEPENDS ${OBJECT_DEPENDS} ${INC_FILES})
-  if(MSVC_IDE)
+  if(MSVC_IDE OR XCODE)
     # The CMake Visual Studio generators do not work properly with the ASM_NASM
     # language, so we have to go rogue here and use a custom command like we
     # did in prior versions of libjpeg-turbo.  (This is why we can't have nice
     # things.)
     string(REGEX REPLACE "${CPU_TYPE}/" "" filename ${file})
-    set(SIMD_OBJ ${OBJDIR}/${filename}.obj)
+    set(SIMD_OBJ ${OBJDIR}/${filename}${CMAKE_C_OUTPUT_EXTENSION})
     add_custom_command(OUTPUT ${SIMD_OBJ} DEPENDS ${file} ${OBJECT_DEPENDS}
       COMMAND ${CMAKE_ASM_NASM_COMPILER} -f${CMAKE_ASM_NASM_OBJECT_FORMAT}
         ${CMAKE_ASM_NASM_FLAGS} ${CMAKE_CURRENT_SOURCE_DIR}/${file}
@@ -180,7 +194,7 @@ foreach(file ${SIMD_SOURCES})
   endif()
 endforeach()
 
-if(MSVC_IDE)
+if(MSVC_IDE OR XCODE)
   set(SIMD_OBJS ${SIMD_OBJS} PARENT_SCOPE)
   add_library(simd OBJECT ${CPU_TYPE}/jsimd.c)
   add_custom_target(simd-objs DEPENDS ${SIMD_OBJS})
@@ -194,64 +208,115 @@ endif()
 
 
 ###############################################################################
-# ARM (GAS)
+# Arm (Intrinsics or GAS)
 ###############################################################################
 
 elseif(CPU_TYPE STREQUAL "arm64" OR CPU_TYPE STREQUAL "arm")
 
-enable_language(ASM)
-
-set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_ASM_FLAGS}")
-
-string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UC)
-set(EFFECTIVE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${CMAKE_ASM_FLAGS_${CMAKE_BUILD_TYPE_UC}}")
-message(STATUS "CMAKE_ASM_FLAGS = ${EFFECTIVE_ASM_FLAGS}")
-
-# Test whether we need gas-preprocessor.pl
-if(CPU_TYPE STREQUAL "arm")
-  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/gastest.S "
-    .text
-    .fpu neon
-    .arch armv7a
-    .object_arch armv4
-    .arm
-    pld [r0]
-    vmovn.u16 d0, q0")
-else()
-  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/gastest.S "
-    .text
-    MYVAR .req x0
-    movi v0.16b, #100
-    mov MYVAR, #100
-    .unreq MYVAR")
-endif()
-
-separate_arguments(CMAKE_ASM_FLAGS_SEP UNIX_COMMAND "${CMAKE_ASM_FLAGS}")
-
-execute_process(COMMAND ${CMAKE_ASM_COMPILER} ${CMAKE_ASM_FLAGS_SEP}
-    -x assembler-with-cpp -c ${CMAKE_CURRENT_BINARY_DIR}/gastest.S
-  RESULT_VARIABLE RESULT OUTPUT_VARIABLE OUTPUT ERROR_VARIABLE ERROR)
-if(NOT RESULT EQUAL 0)
-  message(STATUS "GAS appears to be broken.  Trying gas-preprocessor.pl ...")
-  execute_process(COMMAND gas-preprocessor.pl ${CMAKE_ASM_COMPILER}
-      ${CMAKE_ASM_FLAGS_SEP} -x assembler-with-cpp -c
-      ${CMAKE_CURRENT_BINARY_DIR}/gastest.S
-    RESULT_VARIABLE RESULT OUTPUT_VARIABLE OUTPUT ERROR_VARIABLE ERROR)
-  if(NOT RESULT EQUAL 0)
-    simd_fail("SIMD extensions disabled: GAS is not working properly")
-    return()
-  else()
-    message(STATUS "Using gas-preprocessor.pl")
-    configure_file(gas-preprocessor.in gas-preprocessor @ONLY)
-    set(CMAKE_ASM_COMPILER ${CMAKE_CURRENT_BINARY_DIR}/gas-preprocessor)
+# If Neon instructions are not explicitly enabled at compile time (e.g. using
+# -mfpu=neon) with an AArch32 Linux or Android build, then the AArch32 SIMD
+# dispatcher will parse /proc/cpuinfo to determine whether the Neon SIMD
+# extensions can be enabled at run time.  In order to support all AArch32 CPUs
+# using the same code base, i.e. to support run-time FPU and Neon
+# auto-detection, it is necessary to compile the scalar C source code using
+# -mfloat-abi=soft (which is usually the default) but compile the intrinsics
+# implementation of the Neon SIMD extensions using -mfloat-abi=softfp.  The
+# following test determines whether -mfloat-abi=softfp should be explicitly
+# added to the compile flags for the intrinsics implementation of the Neon SIMD
+# extensions.
+if(BITS EQUAL 32)
+  check_c_source_compiles("
+    #if defined(__ARM_NEON__) || (!defined(__linux__) && !defined(ANDROID) && !defined(__ANDROID__))
+    #error \"Neon run-time auto-detection will not be used\"
+    #endif
+    #if __ARM_PCS_VFP == 1
+    #error \"float ABI = hard\"
+    #endif
+    #if __SOFTFP__ != 1
+    #error \"float ABI = softfp\"
+    #endif
+    int main(void) { return 0; }" NEED_SOFTFP_FOR_INTRINSICS)
+  if(NEED_SOFTFP_FOR_INTRINSICS)
+    set(SOFTFP_FLAG -mfloat-abi=softfp)
   endif()
-else()
-  message(STATUS "GAS is working properly")
 endif()
 
-file(REMOVE ${CMAKE_CURRENT_BINARY_DIR}/gastest.S)
+include(CheckSymbolExists)
+if(BITS EQUAL 32)
+  set(CMAKE_REQUIRED_FLAGS "-mfpu=neon ${SOFTFP_FLAG}")
+  check_c_source_compiles("
+    #include <arm_neon.h>
+    int main(int argc, char **argv) {
+      uint16x8_t input = vdupq_n_u16((uint16_t)argc);
+      uint8x8_t output = vmovn_u16(input);
+      return (int)output[0];
+    }" HAVE_NEON)
+  if(NOT HAVE_NEON)
+    simd_fail("SIMD extensions not available for this architecture")
+    return()
+  endif()
+endif()
+check_symbol_exists(vld1_s16_x3 arm_neon.h HAVE_VLD1_S16_X3)
+check_symbol_exists(vld1_u16_x2 arm_neon.h HAVE_VLD1_U16_X2)
+check_symbol_exists(vld1q_u8_x4 arm_neon.h HAVE_VLD1Q_U8_X4)
+if(BITS EQUAL 32)
+  unset(CMAKE_REQUIRED_FLAGS)
+endif()
+configure_file(arm/neon-compat.h.in arm/neon-compat.h @ONLY)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/arm)
 
-add_library(simd OBJECT ${CPU_TYPE}/jsimd_neon.S ${CPU_TYPE}/jsimd.c)
+# GCC (as of this writing) and some older versions of Clang do not have a full
+# or optimal set of Neon intrinsics, so for performance reasons, when using
+# those compilers, we default to using the older GAS implementation of the Neon
+# SIMD extensions for certain algorithms.  The presence or absence of the three
+# intrinsics we tested above is a reasonable proxy for this.  We always default
+# to using the full Neon intrinsics implementation when building for macOS or
+# iOS, to avoid the need for gas-preprocessor.
+if((HAVE_VLD1_S16_X3 AND HAVE_VLD1_U16_X2 AND HAVE_VLD1Q_U8_X4) OR APPLE)
+  set(DEFAULT_NEON_INTRINSICS 1)
+else()
+  set(DEFAULT_NEON_INTRINSICS 0)
+endif()
+option(NEON_INTRINSICS
+  "Because GCC (as of this writing) and some older versions of Clang do not have a full or optimal set of Neon intrinsics, for performance reasons, the default when building libjpeg-turbo with those compilers is to continue using the older GAS implementation of the Neon SIMD extensions for certain algorithms.  Setting this option forces the full Neon intrinsics implementation to be used with all compilers.  Unsetting this option forces the hybrid GAS/intrinsics implementation to be used with all compilers."
+  ${DEFAULT_NEON_INTRINSICS})
+boolean_number(NEON_INTRINSICS PARENT_SCOPE)
+if(NEON_INTRINSICS)
+  add_definitions(-DNEON_INTRINSICS)
+  message(STATUS "Use full Neon SIMD intrinsics implementation (NEON_INTRINSICS = ${NEON_INTRINSICS})")
+else()
+  message(STATUS "Use partial Neon SIMD intrinsics implementation (NEON_INTRINSICS = ${NEON_INTRINSICS})")
+endif()
+
+set(SIMD_SOURCES arm/jcgray-neon.c arm/jcphuff-neon.c arm/jcsample-neon.c
+  arm/jdmerge-neon.c arm/jdsample-neon.c arm/jfdctfst-neon.c
+  arm/jidctred-neon.c arm/jquanti-neon.c)
+if(NEON_INTRINSICS)
+  set(SIMD_SOURCES ${SIMD_SOURCES} arm/jccolor-neon.c arm/jidctint-neon.c)
+endif()
+if(NEON_INTRINSICS OR BITS EQUAL 64)
+  set(SIMD_SOURCES ${SIMD_SOURCES} arm/jidctfst-neon.c)
+endif()
+if(NEON_INTRINSICS OR BITS EQUAL 32)
+  set(SIMD_SOURCES ${SIMD_SOURCES} arm/aarch${BITS}/jchuff-neon.c
+    arm/jdcolor-neon.c arm/jfdctint-neon.c)
+endif()
+if(BITS EQUAL 32)
+  set_source_files_properties(${SIMD_SOURCES} COMPILE_FLAGS "-mfpu=neon ${SOFTFP_FLAG}")
+endif()
+if(NOT NEON_INTRINSICS)
+  enable_language(ASM)
+
+  set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_ASM_FLAGS}")
+
+  string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UC)
+  set(EFFECTIVE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${CMAKE_ASM_FLAGS_${CMAKE_BUILD_TYPE_UC}}")
+  message(STATUS "CMAKE_ASM_FLAGS = ${EFFECTIVE_ASM_FLAGS}")
+
+  set(SIMD_SOURCES ${SIMD_SOURCES} arm/aarch${BITS}/jsimd_neon.S)
+endif()
+
+add_library(simd OBJECT ${SIMD_SOURCES} arm/aarch${BITS}/jsimd.c)
 
 if(CMAKE_POSITION_INDEPENDENT_CODE OR ENABLE_SHARED)
   set_target_properties(simd PROPERTIES POSITION_INDEPENDENT_CODE 1)
@@ -300,14 +365,35 @@ if(CMAKE_POSITION_INDEPENDENT_CODE OR ENABLE_SHARED)
 endif()
 
 ###############################################################################
-# Loongson (Intrinsics)
+# MIPS64 (Intrinsics)
 ###############################################################################
 
-elseif(CPU_TYPE STREQUAL "loongson")
+elseif(CPU_TYPE STREQUAL "loongson" OR CPU_TYPE MATCHES "^mips64")
 
-set(SIMD_SOURCES loongson/jccolor-mmi.c loongson/jcsample-mmi.c
-  loongson/jdcolor-mmi.c loongson/jdsample-mmi.c loongson/jfdctint-mmi.c
-  loongson/jidctint-mmi.c loongson/jquanti-mmi.c)
+set(CMAKE_REQUIRED_FLAGS -Wa,-mloongson-mmi,-mloongson-ext)
+
+check_c_source_compiles("
+  int main(void) {
+    int c = 0, a = 0, b = 0;
+    asm (
+      \"paddb %0, %1, %2\"
+      : \"=f\" (c)
+      : \"f\" (a), \"f\" (b)
+    );
+    return c;
+  }" HAVE_MMI)
+
+unset(CMAKE_REQUIRED_FLAGS)
+
+if(NOT HAVE_MMI)
+  simd_fail("SIMD extensions not available for this CPU")
+  return()
+endif()
+
+set(SIMD_SOURCES mips64/jccolor-mmi.c mips64/jcgray-mmi.c mips64/jcsample-mmi.c
+  mips64/jdcolor-mmi.c mips64/jdmerge-mmi.c mips64/jdsample-mmi.c
+  mips64/jfdctfst-mmi.c mips64/jfdctint-mmi.c mips64/jidctfst-mmi.c
+  mips64/jidctint-mmi.c mips64/jquanti-mmi.c)
 
 if(CMAKE_COMPILER_IS_GNUCC)
   foreach(file ${SIMD_SOURCES})
@@ -315,8 +401,12 @@ if(CMAKE_COMPILER_IS_GNUCC)
       " -fno-strict-aliasing")
   endforeach()
 endif()
+foreach(file ${SIMD_SOURCES})
+  set_property(SOURCE ${file} APPEND_STRING PROPERTY COMPILE_FLAGS
+    " -Wa,-mloongson-mmi,-mloongson-ext")
+endforeach()
 
-add_library(simd OBJECT ${SIMD_SOURCES} loongson/jsimd.c)
+add_library(simd OBJECT ${SIMD_SOURCES} mips64/jsimd.c)
 
 if(CMAKE_POSITION_INDEPENDENT_CODE OR ENABLE_SHARED)
   set_target_properties(simd PROPERTIES POSITION_INDEPENDENT_CODE 1)

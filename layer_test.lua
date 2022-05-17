@@ -436,7 +436,7 @@ local function slide(prop, min, max, step, ...)
 	local v = get(e, prop, ...)
 	local _, get_default = getset(prop, (...))
 	local default_v = get_default(default_e, prop, 0)
-	local v = testui:slide(id, nil, v, min, max, step, default_v)
+	local v = testui:slide(id, v, min, max, step, default_v)
 	if v then
 		set(e, prop, v, ...)
 		return v
