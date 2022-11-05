@@ -1,4 +1,4 @@
---Written by Matías "Starkkz" Hermosilla. BNet sockets library.
+--Written by MatÃ­as Hermosilla. BNet sockets library.
 
 local ffi = require("ffi")
 

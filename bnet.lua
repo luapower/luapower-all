@@ -1,5 +1,5 @@
 -- LuaSocket-API like and BNet-API like source code
--- Author: Matías "Starkkz" Hermosilla
+-- Author: MatÃ­as Hermosilla
 -- License: MIT
 
 local ffi = require("ffi")
