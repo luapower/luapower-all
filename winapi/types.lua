@@ -224,7 +224,7 @@ typedef int (*NEARPROC)();
 typedef int (*PROC)();
 typedef void *HGDIOBJ;
 
-typedef LONG (__stdcall* WNDPROC)(HWND, UINT, WPARAM, LONG);
+typedef LONG (__stdcall* WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 
 struct HACCEL__ { int unused; }; typedef struct HACCEL__ *HACCEL;
 struct HBITMAP__ { int unused; }; typedef struct HBITMAP__ *HBITMAP;
