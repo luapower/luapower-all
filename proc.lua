@@ -5,7 +5,7 @@
 if not ... then require'proc_test'; return end
 
 local ffi = require'ffi'
-local current_platform = ffi.os == 'Windows' and 'win' or 'unix'
+local current_platform = ffi.os == 'Windows' and 'win' or 'posix'
 local M = require('proc_'..current_platform)
 
 local function extend(dt, t)
