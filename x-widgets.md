@@ -3,8 +3,6 @@ Model-driven live-editable web components in pure JavaScript.
 
 ## Overview
 
-__UPDATE:__ this library is now developed as part of [Allegory SDK](https://github.com/allegory-software/allegory-sdk).
-
 This library is designed for data-dense business-type apps with a focus
 on data entry and data navigation.
 
