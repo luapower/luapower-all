@@ -399,7 +399,7 @@ function spng.save(opt)
 	}))
 
 	if opt.chunks then
-		for name, v in pairs(chunks) do
+		for name, v in pairs(opt.chunks) do
 			local encode = assert(chunk_encoders[name], 'unknown chunk '..name)
 			assert(encode(ctx, v), 'invalid chunk '..name)
 		end
@@ -419,6 +419,7 @@ function spng.save(opt)
 		return nil, write_err or err
 	end
 
+	free()
 	return true
 end
 jit.off(spng.save) --calls back into Lua through a ffi call.
